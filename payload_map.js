@@ -2,7 +2,7 @@ const payload_map =
     [
     {
         displayTitle: 'etaHEN',
-        description: '',
+        description: 'etaHEN',
         fileName: 'etaHEN.bin',
         author: '-',
         source: '-', 
@@ -10,18 +10,9 @@ const payload_map =
     }
 ,
     {
-        displayTitle: 'Elfldr',
-        description: '',
+        displayTitle: 'elfldr',
+        description: 'elfldr',
         fileName: 'elfldr.bin',
-        author: '-',
-        source: '-', 
-        version: '-' 
-    }
-,
-    {
-        displayTitle: 'Websrv',
-        description: '',
-        fileName: 'websrv.bin',
         author: '-',
         source: '-', 
         version: '-' 
