@@ -43,8 +43,9 @@ body {
     font-size: 16px;
     text-transform: uppercase;
     color: #000;
-    background: #ffd700;
-    border: 2px solid #000;
+    background: #5a5a69;
+    border: none;
+    color: #fff;
     padding: 12px 150px;
     cursor: pointer;
     position: relative;
@@ -61,7 +62,7 @@ body {
     position: absolute;
     width: 100%;
     height: 100%;
-    background: rgba(255, 255, 255, 0.1);
+    background: #5a5a69;
     top: 0;
     left: 0;
     clip-path: polygon(0 0, 100% 0, 100% 20%, 0 20%);
