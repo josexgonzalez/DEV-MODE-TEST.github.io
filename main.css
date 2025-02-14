@@ -38,7 +38,7 @@ body {
     font-family: Calibri, Helvetica, 'Sans-Serif';
 }
 
-.neon-btn {
+.btn {
     font-family: 'Orbitron', sans-serif;
     font-size: 20px;
     text-transform: uppercase;
@@ -59,14 +59,14 @@ body {
 }
 
 /* Efecto hover */
-.neon-btn:hover {
+.btn:hover {
     background: rgba(0, 40, 80, 0.9);
     box-shadow: 0 0 15px #00eaff, 0 0 30px #00eaff;
     transform: scale(1.05);
 }
 
 /* Efecto click */
-.neon-btn:active {
+.btn:active {
     background: rgba(0, 20, 40, 1);
     box-shadow: 0 0 5px #00eaff, 0 0 15px #00eaff;
     transform: scale(0.98);
