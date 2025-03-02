@@ -8,32 +8,21 @@
 
 <!-- body is set up as three rows: auto 1fr auto -->
 <body>
-    <div id="toast-container"></div>
-
-    <div style="margin: 40px;">
-        <h1 style="text-align: center;"></h1>
+    <!-- Row 1 -->
+    <div class="p-2">
+        <h1 class="text-center"></h1>
         <p id="current-fw" class="text-secondary" style="text-align: center; position: absolute; top: 585;left: 10;">
         </p>
-        <p id="listening-ip" class="text-secondary" style="text-align: center; position: absolute; top: 15;left: 10;">
-        </p>
-        <p id="current-ip" class="text-secondary" style="text-align: center; position: absolute; top: 611;left: 10;">
-        </p>
+
+        <!-- This is absolute positioned to the body-->
+        <div id="toast-container"></div>
     </div>
 
-    <div id="before-jb-view">
-
-    <div id="run-jb-parent" class="opacity-transition"
-          style="display: flex; justify-content: center; align-items: center; position: absolute; top: 0;left: 0; width: 100%; height: 100%;">
-          <a tabindex="0" class="btn" style="max-width: 50%;" id="run-jb" onclick="runJailbreak()"></a>
+    <!-- Row 2 -->
+    <div id="main-content">
+        <div id="pre-jb-view" class="d-flex align-items-center justify-content-center flex-direction-column selected">
+            <a tabindex="0" class="btn fw-bold" id="run-jb" onclick="run()">Jailbreak</a>
         </div>
-
-        <div id="console-view">
-            <textarea id="console" class="log" readonly></textarea>
-        </div>
-
-        <div id="payloads-view">
-        </div>
-    </div>
 
     <script>
         setTimeout(() => {
