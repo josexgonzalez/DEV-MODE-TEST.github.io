@@ -26,33 +26,10 @@ const payload_map = [
     //     fileName: "elfldr.elf",
     //     author: "john-tornblom",
     //     projectSource: "https://github.com/ps5-payload-dev/elfldr",
-    //     binarySource: "https://github.com/ps5-payload-dev/pacbrew-repo/actions/runs/12400108209",
+    //     binarySource: "https://github.com/ps5-payload-dev/pacbrew-repo/actions/runs/11597570082",
     //     version: "?",
     //     supportedFirmwares: ["1.", "2.", "3.", "4.", "5."]
     // },
-    // etaHEN is added twice so that on 1.xx-2.xx you can load it in webkit only mode too
-    // but on 3.xx-4.xx it only shows in kernel exploit mode since it needs the 9020 elf loader for kstuff
-    {
-        displayTitle: "etaHEN",
-        description: "AIO HEN",
-        fileName: "etaHEN.bin",
-        author: "LightningMods, Buzzer, sleirsgoevy, ChendoChap, astrelsky, illusion, CTN, SiSTR0, Nomadic",
-        projectSource: "https://github.com/LightningMods/etaHEN",
-        binarySource: "https://github.com/LightningMods/etaHEN/releases/download/1.9b/etaHEN.bin",
-        version: "1.9b",
-        supportedFirmwares: ["3.", "4."]
-    },
-    {
-        displayTitle: "etaHEN",
-        description: "AIO HEN",
-        fileName: "etaHEN.bin",
-        author: "LightningMods, Buzzer, sleirsgoevy, ChendoChap, astrelsky, illusion, CTN, SiSTR0, Nomadic",
-        projectSource: "https://github.com/LightningMods/etaHEN",
-        binarySource: "https://github.com/LightningMods/etaHEN/releases/download/1.9b/etaHEN.bin",
-        version: "1.9b",
-        supportedFirmwares: ["1.", "2."],
-        toPort: 9021
-    },
     {
         displayTitle: "ps5-kstuff",
         description: "FPKG enabler",
@@ -89,9 +66,9 @@ const payload_map = [
         description: "Uses john-tornblom's elfldr. Custom homebrew loader. Runs on port 8080.",
         fileName: "websrv.elf",
         author: "john-tornblom",
-        projectSource: "https://github.com/ps5-payload-dev/websrv",
-        binarySource: "https://github.com/ps5-payload-dev/websrv/releases/tag/v0.18",
-        version: "0.18",
+        projectSource: "https://github.com/ps5-payload-dev/websrv/releases",
+        binarySource: "https://github.com/ps5-payload-dev/pacbrew-repo/actions/runs/11597570082",
+        version: "0.14",
         toPort: 9021
     },
     {
@@ -100,8 +77,8 @@ const payload_map = [
         fileName: "ftpsrv.elf",
         author: "john-tornblom",
         projectSource: "https://github.com/ps5-payload-dev/ftpsrv",
-        binarySource: "https://github.com/ps5-payload-dev/ftpsrv/releases/tag/v0.11.1",
-        version: "0.11.1",
+        binarySource: "https://github.com/ps5-payload-dev/pacbrew-repo/actions/runs/11597570082",
+        version: "0.11",
         toPort: 9021
     },
     {
@@ -109,9 +86,9 @@ const payload_map = [
         description: "Uses john-tornblom's elfldr. Klog server. Runs on port 3232.",
         fileName: "klogsrv.elf",
         author: "john-tornblom",
-        projectSource: "https://github.com/ps5-payload-dev/klogsrv",
-        binarySource: "https://github.com/ps5-payload-dev/klogsrv/releases/tag/v0.5.1",
-        version: "0.5.1",
+        projectSource: "https://github.com/ps5-payload-dev/klogsrv/releases",
+        binarySource: "https://github.com/ps5-payload-dev/pacbrew-repo/actions/runs/11597570082",
+        version: "0.5",
         toPort: 9021
     },
     {
@@ -119,9 +96,9 @@ const payload_map = [
         description: "Uses john-tornblom's elfldr. Telnet shell server. Runs on port 2323.",
         fileName: "shsrv.elf",
         author: "john-tornblom",
-        projectSource: "https://github.com/ps5-payload-dev/shsrv",
-        binarySource: "https://github.com/ps5-payload-dev/shsrv/releases/tag/v0.13",
-        version: "0.13",
+        projectSource: "https://github.com/ps5-payload-dev/shsrv/releases",
+        binarySource: "https://github.com/ps5-payload-dev/pacbrew-repo/actions/runs/11597570082",
+        version: "0.12",
         toPort: 9021
     },
     {
@@ -129,21 +106,20 @@ const payload_map = [
         description: "Uses john-tornblom's elfldr. GDB server. Runs on port 2159.",
         fileName: "gdbsrv.elf",
         author: "john-tornblom",
-        projectSource: "https://github.com/ps5-payload-dev/gdbsrv",
-        binarySource: "https://github.com/ps5-payload-dev/gdbsrv/releases/tag/v0.5",
-        version: "0.5",
+        projectSource: "https://github.com/ps5-payload-dev/gdbsrv/releases",
+        binarySource: "https://github.com/ps5-payload-dev/pacbrew-repo/actions/runs/11597570082",
+        version: "0.4-1",
         toPort: 9021
     },
     {
         displayTitle: "ps5debug",
         description: "Debugger (Experimental beta)",
-        fileName: "ps5debug_v1.0b2.elf",
+        fileName: "ps5debug.elf",
         author: "SiSTR0, ctn123",
         projectSource: "https://github.com/GoldHEN/ps5debug",
-        binarySource: "https://github.com/GoldHEN/ps5debug/releases/download/1.0b2/ps5debug_v1.0b2.elf",
-        version: "1.0b2",
-        supportedFirmwares: ["3.", "4.", "5."],
-        toPort: 9021
+        binarySource: "https://github.com/GoldHEN/ps5debug/releases/download/1.0b1/ps5debug_v1.0b1.7z",
+        version: "1.0b1",
+        supportedFirmwares: ["3.", "4."]
     },
     {
         displayTitle: "ps5debug",
@@ -164,16 +140,6 @@ const payload_map = [
         binarySource: "https://github.com/SiSTR0/ps5-versions/releases/download/v1.0/ps5-versions.elf",
         version: "1.0",
         supportedFirmwares: ["1.", "2.", "3.", "4."]
-    },
-    {
-        displayTitle: "ps5-remoteplay-get-pin",
-        description: "Get Remote Play PIN for offline activated users. Send again to cancel.",
-        fileName: "rp-get-pin.elf",
-        author: "idlesauce",
-        projectSource: "https://github.com/idlesauce/ps5-remoteplay-get-pin",
-        binarySource: "https://github.com/idlesauce/ps5-remoteplay-get-pin/releases/tag/v0.1",
-        version: "0.1",
-        toPort: 9021
     },
     {
         // https://github.com/Storm21CH/PS5_Browser_appCache_remove
