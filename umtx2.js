@@ -53,8 +53,6 @@ function showTemporaryAlert(message, callback) {
 
 // @ts-check
 
-await log("[/] [----------------------------------------]: 0%");
-
 /** 
  * @typedef {Object} KernelRW
  * 
