@@ -53,6 +53,8 @@ function showTemporaryAlert(message, callback) {
 
 // @ts-check
 
+await log("[/] [----------------------------------------]: 0%");
+
 /** 
  * @typedef {Object} KernelRW
  * 
@@ -863,7 +865,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
                 if (debug) {
                     showTemporaryAlert(`Race attempt ${i}-${i2} (mem access fail count: ${checkMemoryAccessFailCount})`, LogLevel.INFO | LogLevel.FLAG_TEMP);
                 } else {
-                    showTemporaryAlert(`Race attempt ${i}-${i2}`, LogLevel.INFO | LogLevel.FLAG_TEMP);
+                    await log(`Race attempt ${i}-${i2}`, LogLevel.INFO | LogLevel.FLAG_TEMP);
                 }
             }
 
