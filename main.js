@@ -512,7 +512,7 @@ async function main(userlandRW, wkOnly = false) {
     }
 
     let is_elfldr_running = await probe_sb_elfldr();
-    await log("is elfldr running: " + is_elfldr_running, LogLevel.INFO);
+    showTemporaryAlert("is elfldr running: " + is_elfldr_running, LogLevel.INFO);
     if (wkOnly && !is_elfldr_running) {
         let res = confirm("elfldr doesnt seem to be running and in webkit only mode it wont be loaded, continue?");
         if (!res) {
