@@ -1183,7 +1183,7 @@ async function main(userlandRW, wkOnly = false) {
     }
 
     // @ts-ignore
-    document.getElementById('top-bar-text').innerHTML = `Listening on: <span class="fw-bold">${ip.ip}</span> (port: ${ports}) (${ip.name})`;
+    document.getElementById('top-bar-text').innerHTML = `[/] Listening on: <span class="fw-bold">${ip.ip}</span> (port: ${ports}) (${ip.name})`;
 
     /** @type {Array<{payload_info: PayloadInfo, toast: HTMLElement}>} */
     let queue = [];
