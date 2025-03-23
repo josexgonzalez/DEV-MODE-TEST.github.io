@@ -676,12 +676,6 @@ async function main(userlandRW, wkOnly = false) {
         await log("We escaped now? in sandbox: " + is_in_sandbox, LogLevel.INFO);
 
         // Patch PS4 SDK version
-        if (typeof OFFSET_KERNEL_PS4SDK != 'undefined') {
-            await krw.write4(get_kaddr(OFFSET_KERNEL_PS4SDK), 0x99999999);
-            await log("Patched PS4 SDK version to 99.99", LogLevel.INFO);
-        }
-
-        // Patch PS4 SDK version
         if (typeof OFFSET_KERNEL_DATA_BASE_PS4SDK != 'undefined') {
             await krw.write4(get_kaddr(OFFSET_KERNEL_DATA_BASE_PS4SDK), 0x99999999);
             await log("Patched PS4 SDK version to 99.99", LogLevel.INFO);
