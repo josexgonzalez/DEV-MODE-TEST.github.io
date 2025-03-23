@@ -803,7 +803,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         const mainFdSizeBuf = alloc(0x8);
 
         const beforeRaceTime = performance.now();
-        await log("Triggering race...", LogLevel.LOG);
+        showTemporaryAlert("Triggering race...", LogLevel.LOG);
 
         for (let i2 = 0; i2 < config.max_race_attempts; i2++) {
             if (i2 % 2 == 0) {
@@ -972,7 +972,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
 
         kstacksToFix.push(kstack);
 
-        await log(`Managed to reclaim kstack with mmap. kstack = ${kstack.toString(16)}`, LogLevel.INFO);
+        showTemporaryAlert(`Managed to reclaim kstack with mmap. kstack = ${kstack.toString(16)}`, LogLevel.INFO);
 
         // change memory protections to r/w
         const PROT_READ = 0x1;
