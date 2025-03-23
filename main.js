@@ -681,51 +681,11 @@ async function main(userlandRW, wkOnly = false) {
             await log("Patched PS4 SDK version to 99.99", LogLevel.INFO);
         }
 
-            await kread(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_SECURITYFLAGS));
-    let security_flags = p.read4(read_buf_store);
-    security_flags |= 0x14;  // securityflags |= 0x14
-    p.write4(read_buf_store, security_flags);
-
-    await copyin(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_SECURITYFLAGS), read_buf_store, 0x4);
-
-    await kread(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_PS4SDK));
-    let ps4sdk = p.read4(read_buf_store);
-    ps4sdk = 0x99999999;  // max kern.ps4_sdk_version
-    p.write4(read_buf_store, ps4sdk);
-
-    await copyin(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_PS4SDK), read_buf_store, 0x4);
-    
-    await kread(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_PS5SDK));
-    let ps5sdk = p.read4(read_buf_store);
-    ps5sdk = 0x99999999;  // max ps5sdk version
-    p.write4(read_buf_store, ps5sdk);
-
-    await copyin(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_PS5SDK), read_buf_store, 0x4);
-/*  
-    await kread(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_PS5SDK_));
-    let ps5sdk_ = p.read4(read_buf_store);
-    ps5sdk_ = 0x99999999;  // max ps5sdk_ version
-    p.write4(read_buf_store, ps5sdk_);
-
-    await copyin(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_PS5SDK_), read_buf_store, 0x4);
-*/
-    await kread(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_TARGETID));
-    let target_id = p.read1(read_buf_store);
-    target_id = 0x82;  // target_id = 0x81 (DEV) / 0x82 (DEX) / 0x8X (CEX)
-    p.write1(read_buf_store, target_id);
-    await copyin(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_TARGETID), read_buf_store, 0x10);
-
-    await kread(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_QA_FLAGS));
-    let word1 = p.read2(read_buf_store.add32(0x1));
-    word1 |= 0x103; //qa_flags[1] |= 0x3 & qa_flags[2] |= 0x1
-    p.write2(read_buf_store.add32(0x2), word1);
-    await copyin(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_QA_FLAGS), read_buf_store, 0x10);
-
-    await kread(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_UTOKEN_FLAGS));
-    let byte1 = p.read1(read_buf_store);
-    byte1 |= 0x1; // utoken_flags[0] |= 0x1
-    p.write1(read_buf_store, byte1);
-    await copyin(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_UTOKEN_FLAGS), read_buf_store, 0x10);
+        // Patch PS5 SDK version
+        if (typeof OFFSET_KERNEL_PS5SDK != 'undefined') {
+            await krw.write4(get_kaddr(OFFSET_KERNEL_PS5SDK), 0x99999999);
+            await log("Patched PS5 SDK version to 99.99", LogLevel.INFO);
+        }
 
         ///////////////////////////////////////////////////////////////////////
         // Stage 6: loader
