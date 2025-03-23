@@ -941,7 +941,7 @@ async function main(userlandRW, wkOnly = false) {
             is_elfldr_running = true;
         } else {
             await log("elfldr exited with non-zero code, port 9021 will likely not work", LogLevel.ERROR);
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 2000));
         }
 
         // Esperar 4 segundos antes de lanzar el siguiente payload
@@ -952,7 +952,7 @@ async function main(userlandRW, wkOnly = false) {
             is_etaHEN_running = true;
         } else {
             await log("etaHEN exited with non-zero code, port 9021 will likely not work", LogLevel.ERROR);
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 5000));
         }
 
 
