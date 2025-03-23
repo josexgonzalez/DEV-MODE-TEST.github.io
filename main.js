@@ -679,18 +679,15 @@ async function main(userlandRW, wkOnly = false) {
         if (typeof OFFSET_KERNEL_PS4SDK != 'undefined') {
             await krw.write4(get_kaddr(OFFSET_KERNEL_PS4SDK), 0x99999999);
             await log("Patched PS4 SDK version to 99.99", LogLevel.INFO);
+            showTemporaryAlert("Patched PS4 SDK version to 99.99");
         }
-
-        await copyin(data_base_addr.add32(OFFSET_KERNEL_PS4SDK), read_buf_store, 0x4);
     
         // Patch PS4 SDK version
         if (typeof OFFSET_KERNEL_PS5SDK != 'undefined') {
             await krw.write4(get_kaddr(OFFSET_KERNEL_PS5SDK), 0x99999999);
             await log("Patched PS5 SDK version to 99.99", LogLevel.INFO);
+            showTemporaryAlert("Patched PS5 SDK version to 99.99");
         }
-
-        await copyin(data_base_addr.add32(OFFSET_KERNEL_PS5SDK), read_buf_store, 0x4);
-
 
         ///////////////////////////////////////////////////////////////////////
         // Stage 6: loader
