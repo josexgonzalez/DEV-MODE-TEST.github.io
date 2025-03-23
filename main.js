@@ -636,6 +636,18 @@ async function main(userlandRW, wkOnly = false) {
         await krw.write1(get_kaddr(OFFSET_KERNEL_UTOKEN_FLAGS), utoken_flags | 0x1);
         await log("Enabled debug menu", LogLevel.INFO);
 
+        // Patch PS4 SDK version
+    if (typeof OFFSET_KERNEL_PS4SDK != 'undefined') {
+            await krw.write4(get_kaddr(OFFSET_KERNEL_PS4SDK), 0x99999999);
+            await log("Patched PS4 SDK version to 99.99", LogLevel.INFO);
+        }
+
+        // Patch PS5 SDK version
+    if (typeof OFFSET_KERNEL_PS5SDK != 'undefined') {
+            await krw.write4(get_kaddr(OFFSET_KERNEL_PS5SDK), 0x99999999);
+            await log("Patched PS4 SDK version to 99.99", LogLevel.INFO);
+        }
+
         // Patch creds
         let cur_uid = await chain.syscall(SYS_GETUID);
         await log("Escalating creds... (current uid=0x" + cur_uid + ")", LogLevel.INFO);
@@ -674,26 +686,6 @@ async function main(userlandRW, wkOnly = false) {
 
         is_in_sandbox = await chain.syscall(SYS_IS_IN_SANDBOX);
         await log("We escaped now? in sandbox: " + is_in_sandbox, LogLevel.INFO);
-
-        if (is_in_sandbox) {
-        await log("Todavía estamos en sandbox", LogLevel.WARNING);
-        } else {
-        await log("Escapamos del sandbox", LogLevel.SUCCESS);
-        }
-
-       // Patch PS4 SDK version
-       if (typeof OFFSET_KERNEL_DATA_BASE_PS4SDK !== 'undefined' && OFFSET_KERNEL_DATA_BASE_PS4SDK !== null) {
-       await krw.write4(get_kaddr(OFFSET_KERNEL_DATA_BASE_PS4SDK), 0x99999999);
-       let ps4sdk_patched = await krw.read4(get_kaddr(OFFSET_KERNEL_DATA_BASE_PS4SDK));
-       await log("Patched PS4 SDK version to: " + ps4sdk_patched.toString(16), LogLevel.INFO);
-       }
-
-      // Patch PS5 SDK version
-      if (typeof OFFSET_KERNEL_DATA_BASE_PS5SDK !== 'undefined' && OFFSET_KERNEL_DATA_BASE_PS5SDK !== null) {
-      await krw.write4(get_kaddr(OFFSET_KERNEL_DATA_BASE_PS5SDK), 0x99999999);
-      let ps5sdk_patched = await krw.read4(get_kaddr(OFFSET_KERNEL_DATA_BASE_PS5SDK));
-      await log("Patched PS5 SDK version to: " + ps5sdk_patched.toString(16), LogLevel.INFO);
-      }
 
 
         ///////////////////////////////////////////////////////////////////////
