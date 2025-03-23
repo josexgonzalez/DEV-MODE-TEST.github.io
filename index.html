@@ -1,8 +1,7 @@
-<html>
-<!-- <html manifest="cache.appcache"> -->
+<div id="content-box">
 
 <head>
-    <title>PS5 UMTX2 Jailbreak</title>
+    <title>ResDev UMTX2</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="main.css">
 </head>
@@ -10,55 +9,38 @@
 <!-- body is set up as three rows: auto 1fr auto -->
 <body>
     <!-- Row 1 -->
-    <div class="p-2">
-        <h1 class="text-center">PS5 UMTX2 Jailbreak (1.xx-5.xx)</h1>
-        <p class="text-center" id="top-bar-text">Current firmware: <span class="fw-bold" id="current-fw"></span></p>
+    <div style="margin: 40px;">
+        <h1 style="text-align: center; position: absolute; top: 585;left: 10;"></h1>
+        <p class="text-secondary" id="top-bar-text"><span class="fw-bold" id="current-fw"></span></p>
+        <h1 style="text-align: center; position: absolute; top: 15;left: 10;"></h1>
+        <p class="text-secondary" id="top-bar-text"><span class="fw-bold" id="listening-ip"></span></p>
+        <h1 style="text-align: center; position: absolute; top: 611;left: 10;"></h1>
+        <p class="text-secondary" id="top-bar-text"><span class="fw-bold" id="current-ip"></span></p>
 
         <!-- This is absolute positioned to the body-->
         <div id="toast-container"></div>
     </div>
 
     <!-- Row 2 -->
-    <div id="main-content">
+    <div id="main-content"
+    style="display: flex; justify-content: center; align-items: center; position: absolute; top: -11110;left: -1110; width: 100%; height: 100%;">
         <div id="pre-jb-view" class="d-flex align-items-center justify-content-center flex-direction-column selected">
-            <a tabindex="0" class="btn fw-bold" id="run-jb" onclick="run()">Jailbreak</a>
-            <a tabindex="0" class="btn" style="padding: 0.5rem 2rem; font-size: 1rem;" id="run-wk-only"
-                onclick="run(true)">Webkit-only (sender)</a>
+            <a tabindex="0" class="btn fw-bold" id="run-jb" onclick="run()"></a>
+            
+                onclick="run(true)"></a>
         </div>
+
+        <script>
+            setTimeout(() => {
+                document.getElementById('run-jb').click();
+            }, 3000);
+        </script>
 
         <div id="console-view">
             <div id="console" class="log"></div>
         </div>
 
         <div id="payloads-view">
-        </div>
-    </div>
-
-    <!-- Row 3 -->
-    <div class="position-relative text-center p-2 mb-2">
-        <p class="text-secondary" id="version">v1.0</p>
-        <p class="text-secondary">creds & greetz</p>
-        <h3 class="text-secondary mt-2">
-            <a href="https://github.com/shahrilnet">@shahrilnet</a>,
-            <a href="https://github.com/n0llptr">@n0llptr</a>,
-            <a href="https://x.com/fail0verflow">@fail0verflow</a>,
-            <a href="https://twitter.com/flat_z">@flat_z</a>,
-            <a href="https://twitter.com/SpecterDev">@SpecterDev</a>,
-            ChendoChap,
-            SlidyBat,
-            abc/psfree,
-            <br />
-            idlesauce,
-            <a href="https://x.com/znullptr">@znullptr</a>,
-            <a href="https://twitter.com/notnotzecoxao">@notnotzecoxao</a>,
-            <a href="https://twitter.com/SocraticBliss">@SocraticBliss</a>,
-            <a href="https://github.com/john-tornblom">John Tornblom</a>,
-            <a href="https://discord.gg/kbrzGuH3F6">PS5 R&D Discord</a>
-        </h3>
-
-        <div class="position-absolute d-flex align-items-center bottom-0 left-0 m-4">
-            <div class="l2-redirect-box">L2</div>
-            <span class="ml-2">Redirect</span>
         </div>
     </div>
 
@@ -83,7 +65,8 @@
             );
             throw reason;
         });
-        document.getElementById("current-fw").innerHTML = fw_str;
+        document.getElementById("current-fw").innerHTML = "[/] System Software: " + fw_str;
+        document.getElementById("listening-ip").innerHTML = "[/] Address: " + window.location.hostname;
         registerAppCacheEventHandlers();
         registerL2ButtonHandler();
         window.onload = function () {
@@ -95,4 +78,39 @@
     </script>
 </body>
 
-</html>
+        </div>
+
+          </div>
+           <center style="position: fixed;bottom: 0;width: 26%;margin-bottom: 46px" class="info opacity-transition"
+            id="credits">
+            <h4>
+                <b></b>
+            <center style="position: fixed;bottom: 3;width: 17%;margin-bottom: 20px" class="info opacity-transition"
+            id="credits">
+             <h4>
+                 <b></b>
+             <center style="position: fixed;bottom: 0;width: 180%;margin-bottom: 0px" class="info opacity-transition"
+            id="credits">
+             <h4>
+                 <b>UPDATED [22/03/25]</b>
+    </script>
+</body>
+
+</div>
+
+<style>
+    #content-box {
+        width: 120%; /* Ajusta el tamaño según necesites */
+        max-width: 1008px;
+        height: 90vh; /* Ajusta la altura según necesites */
+        overflow: auto; /* Agrega scroll si el contenido es muy grande */
+        position: absolute;
+        top: 50%;
+        left: 65%;
+        transform: translate(-50%, -50%);
+        background-color: rgba(51, 51, 51, 0.2); /* Color de fondo semi-transparente */
+        border-radius: 5px;
+        padding: 20px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+    }
+</style>
