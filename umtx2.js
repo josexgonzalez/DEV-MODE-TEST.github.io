@@ -805,20 +805,14 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         const beforeRaceTime = performance.now();
         showTemporaryAlert("Triggering race...", LogLevel.LOG);
 
-        const logPromises = [];
-
         for (let i2 = 0; i2 < config.max_race_attempts; i2++) {
             if (i2 % 2 == 0) {
-                const message = debug
-                    ? `Race attempt ${i}-${i2} (mem access fail count: ${checkMemoryAccessFailCount})`
-                    : `Race attempt ${i}-${i2}`;
-
-                logPromises.push(log(message, LogLevel.INFO | LogLevel.FLAG_TEMP));
-
+                if (debug) {
+                    await log(`Race attempt ${i}-${i2} (mem access fail count: ${checkMemoryAccessFailCount})`, LogLevel.INFO | LogLevel.FLAG_TEMP);
+                } else {
+                    await log(`Race attempt ${i}-${i2}`, LogLevel.INFO | LogLevel.FLAG_TEMP);
+                }
             }
-        }
-
-        await Promise.all(logPromises);
 
             // const step1Start = performance.now();
             // umtx_shm_create
@@ -1478,7 +1472,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
 
     await chain.syscall(SYS_MUNMAP, bumpAllocatorBuffer, BUMP_ALLOCATOR_SIZE);
 
-    await log(`Done! Exploit took:   ${toHumanReadableTime(totalDuration)}`, LogLevel.SUCCESS);
+    showTemporaryAlert(`Done!:   ${toHumanReadableTime(totalDuration)}`, LogLevel.SUCCESS);
     if (debug) await log(`checkMemoryAccessFailCount: ${checkMemoryAccessFailCount}`, LogLevel.INFO);
 
     return {
