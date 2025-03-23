@@ -33,7 +33,6 @@ const payload_map = [
     // etaHEN is added twice so that on 1.xx-2.xx you can load it in webkit only mode too
     // but on 3.xx-4.xx it only shows in kernel exploit mode since it needs the 9020 elf loader for kstuff
     {
-        auto-loaded
         displayTitle: "etaHEN",
         description: "AIO HEN",
         fileName: "etaHEN.bin",
