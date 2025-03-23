@@ -1,56 +1,3 @@
-function showTemporaryAlert(message, callback) {
-    // Crear el div para la alerta
-    let alertBox = document.createElement('div');
-    alertBox.style.position = 'fixed';
-    alertBox.style.top = '20px'; // Fija la posición vertical
-    alertBox.style.right = '-250px'; // Inicia fuera de la pantalla a la derecha
-    alertBox.style.backgroundColor = '#333'; // Color de fondo
-    alertBox.style.color = 'white'; // Color del texto blanco
-    alertBox.style.padding = '15px 30px'; // Aumentar el padding para mayor tamaño
-    alertBox.style.borderRadius = '5px';
-    alertBox.style.zIndex = '9999'; // Asegurar que esté encima de otros elementos
-    alertBox.style.textAlign = 'left'; // Alinear el texto a la izquierda
-    alertBox.style.transition = 'right 0.5s ease-out, opacity 0.5s ease-in'; // Transición para la entrada y salida
-    alertBox.style.fontSize = '18px'; // Aumentar el tamaño de la fuente
-    alertBox.style.width = '248px'; // Establecer un ancho fijo para la notificación
-    alertBox.style.display = 'flex'; // Usar flexbox para alinear el icono y el texto
-    alertBox.style.alignItems = 'center'; // Centrar verticalmente
-
-    // Crear el elemento de la imagen
-    let icon = document.createElement('img');
-    icon.src = '/ICONS/setting.png'; // Cambia 'setting.png' al nombre de tu imagen en el directorio raíz
-    icon.style.width = '44px'; // Tamaño del icono
-    icon.style.height = '44px';
-    icon.style.marginRight = '7px'; // Espacio entre el icono y el texto
-
-    // Crear el elemento de texto
-    let text = document.createElement('span');
-    text.innerText = message;
-
-    // Añadir la imagen y el texto al alertBox
-    alertBox.appendChild(icon);
-    alertBox.appendChild(text);
-
-    // Añadir la alerta al cuerpo
-    document.body.appendChild(alertBox);
-
-    // Desplazar la alerta hacia su posición final
-    setTimeout(() => {
-        alertBox.style.right = '20px'; // Se mantiene en el borde derecho con 20px de margen
-    }, 30); // Breve retardo para activar la animación
-
-    // Después de 4 segundos, hacer que la alerta desaparezca sin caer
-    setTimeout(() => {
-        alertBox.style.opacity = '0'; // Desaparece gradualmente
-    }, 4000); // Esperar 4 segundos antes de la desaparición
-
-    // Remover la alerta después de que la animación de desaparición termine
-    setTimeout(() => {
-        alertBox.remove(); // Remover la alerta
-        if (callback) callback(); // Llamar al callback si se proporciona
-    }, 4500); // Ajustar el tiempo para que coincida con la duración de la animación
-}
-
 // @ts-check
 
 /** 
@@ -856,12 +803,12 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         const mainFdSizeBuf = alloc(0x8);
 
         const beforeRaceTime = performance.now();
-        showTemporaryAlert("[+] Triggering race...", LogLevel.LOG);
+        await log("Triggering race...", LogLevel.LOG);
 
         for (let i2 = 0; i2 < config.max_race_attempts; i2++) {
             if (i2 % 2 == 0) {
                 if (debug) {
-                    showTemporaryAlert(`Race attempt ${i}-${i2} (mem access fail count: ${checkMemoryAccessFailCount})`, LogLevel.INFO | LogLevel.FLAG_TEMP);
+                    await log(`Race attempt ${i}-${i2} (mem access fail count: ${checkMemoryAccessFailCount})`, LogLevel.INFO | LogLevel.FLAG_TEMP);
                 } else {
                     await log(`Race attempt ${i}-${i2}`, LogLevel.INFO | LogLevel.FLAG_TEMP);
                 }
@@ -906,7 +853,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
             if (fd) {
                 winnerFd = fd;
                 winnerLookupFd = lookupFd;
-                showTemporaryAlert(`overlapped shm regions! winner_fd = ${winnerFd}`, LogLevel.LOG);
+                await log(`overlapped shm regions! winner_fd = ${winnerFd}`, LogLevel.LOG);
             }
 
             // dont close lookup descriptor right away when it is possibly corrupted
@@ -1025,7 +972,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
 
         kstacksToFix.push(kstack);
 
-        showTemporaryAlert(`Managed to reclaim kstack with mmap. kstack = ${kstack.toString(16)}`, LogLevel.INFO);
+        await log(`Managed to reclaim kstack with mmap. kstack = ${kstack.toString(16)}`, LogLevel.INFO);
 
         // change memory protections to r/w
         const PROT_READ = 0x1;
@@ -1040,7 +987,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
             continue;
         }
 
-        showTemporaryAlert("Managed to modify kstack memory protection to r/w", LogLevel.INFO);
+        await log("Managed to modify kstack memory protection to r/w", LogLevel.INFO);
 
         // check if we have access to the page
         const checkRes = await checkMemoryAccess(kstack);
