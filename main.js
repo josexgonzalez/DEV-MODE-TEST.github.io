@@ -1338,7 +1338,7 @@ async function main(userlandRW, wkOnly = false) {
             throw new Error("Failed to accept connection");
         }
 
-        let toast = showToast("ELF Loader: Got a connection, reading...", -1);
+        let toast = showToast("", -1);
         try {
             // Got a connection, read all we can
             let write_ptr = elf_store.add32(0x0);
