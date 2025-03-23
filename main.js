@@ -675,6 +675,25 @@ async function main(userlandRW, wkOnly = false) {
         is_in_sandbox = await chain.syscall(SYS_IS_IN_SANDBOX);
         await log("We escaped now? in sandbox: " + is_in_sandbox, LogLevel.INFO);
 
+        // Patch PS4 SDK version
+        if (typeof OFFSET_KERNEL_PS4SDK != 'undefined') {
+            await krw.write4(get_kaddr(OFFSET_KERNEL_PS4SDK), 0x99999999);
+            await log("Patched PS4 SDK version to 99.99", LogLevel.INFO);
+        }
+  
+        if ps4sdk = p.read4(read_buf_store);
+        ps4sdk = 0x99999999;  // max kern.ps4_sdk_version
+        p.write4(read_buf_store, ps4sdk);
+
+        await copyin(data_base_addr.add32(OFFSET_KERNEL_PS4SDK), read_buf_store, 0x4);
+    
+        if kread(data_base_addr.add32(OFFSET_KERNEL_PS5SDK));
+        let ps5sdk = p.read4(read_buf_store);
+        ps5sdk = 0x99999999;  // max ps5sdk version
+        p.write4(read_buf_store, ps5sdk);
+
+        await copyin(data_base_addr.add32(OFFSET_KERNEL_PS5SDK), read_buf_store, 0x4);
+
 
         ///////////////////////////////////////////////////////////////////////
         // Stage 6: loader
@@ -866,28 +885,6 @@ async function main(userlandRW, wkOnly = false) {
             }
         }
 
-            await kread(data_base_addr.add32(OFFSET_KERNEL_PS4SDK));
-    let ps4sdk = p.read4(read_buf_store);
-    ps4sdk = 0x99999999;  // max kern.ps4_sdk_version
-    p.write4(read_buf_store, ps4sdk);
-
-    await copyin(data_base_addr.add32(OFFSET_KERNEL_PS4SDK), read_buf_store, 0x4);
-    
-    await kread(data_base_addr.add32(OFFSET_KERNEL_PS5SDK));
-    let ps5sdk = p.read4(read_buf_store);
-    ps5sdk = 0x99999999;  // max ps5sdk version
-    p.write4(read_buf_store, ps5sdk);
-
-    await copyin(data_base_addr.add32(OFFSET_KERNEL_PS5SDK), read_buf_store, 0x4);
-/*  
-    await kread(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_PS5SDK_));
-    let ps5sdk_ = p.read4(read_buf_store);
-    ps5sdk_ = 0x99999999;  // max ps5sdk_ version
-    p.write4(read_buf_store, ps5sdk_);
-
-    await copyin(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_PS5SDK_), read_buf_store, 0x4);
-*/
-
         // reuse these plus we can more easily access them
         let rwpair_mem = p.malloc(0x8);
         let test_payload_store = p.malloc(0x8);
@@ -954,7 +951,6 @@ async function main(userlandRW, wkOnly = false) {
         } else {
             await log("elfldr exited with non-zero code, port 9021 will likely not work", LogLevel.ERROR);
             await new Promise(resolve => setTimeout(resolve, 1000));
-            showTemporaryAlert(`elfldr listening on ${ip.ip}:9021`, LogLevel.INFO);
         }
 
         if (await load_local_elf("etaHEN.bin") == 0) {
@@ -963,7 +959,6 @@ async function main(userlandRW, wkOnly = false) {
         } else {
             await log("etaHEN exited with non-zero code, port 9021 will likely not work", LogLevel.ERROR);
             await new Promise(resolve => setTimeout(resolve, 1000));
-            showTemporaryAlert(`etaHEN listening on ${ip.ip}:9021`, LogLevel.INFO);
         }
 
         // const SOCK_NONBLOCK = 0x20000000; // for future reference, this is ignored if we're not jailbroken and explicitly setting it with fcntl returns SCE_KERNEL_ERROR_EACCES (at least on 4.03)
