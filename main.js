@@ -583,10 +583,10 @@ async function main(userlandRW, wkOnly = false) {
     populatePayloadsPage(wkOnly);
 
     var load_payload_into_elf_store_from_local_file = async function (filename) {
-        showTemporaryAlert("[+] Loading ELF file: " + filename + " ...", LogLevel.LOG);
         const response = await fetch('payloads/' + filename);
         if (!response.ok) {
             throw new Error(`Failed to fetch the binary file. Status: ${response.status}`);
+            showTemporaryAlert("[+] Loading ELF file: " + filename + " ...", LogLevel.LOG);
         }
 
         const data = await response.arrayBuffer();
