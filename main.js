@@ -937,7 +937,7 @@ async function main(userlandRW, wkOnly = false) {
         }
 
         if (await load_local_elf("elfldr.bin") == 0) {
-            await log(`elfldr listening on ${ip.ip}:9021`, LogLevel.INFO);
+            await log(`elfldr listening on ${ip.ip}:9020`, LogLevel.INFO);
             is_elfldr_running = true;
         } else {
             await log("elfldr exited with non-zero code, port 9021 will likely not work", LogLevel.ERROR);
@@ -949,7 +949,7 @@ async function main(userlandRW, wkOnly = false) {
             is_etaHEN_running = true;
         } else {
             await log("etaHEN exited with non-zero code, port 9021 will likely not work", LogLevel.ERROR);
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 4000));
         }
 
         // const SOCK_NONBLOCK = 0x20000000; // for future reference, this is ignored if we're not jailbroken and explicitly setting it with fcntl returns SCE_KERNEL_ERROR_EACCES (at least on 4.03)
