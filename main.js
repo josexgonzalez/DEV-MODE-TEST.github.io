@@ -567,14 +567,14 @@ async function main(userlandRW, wkOnly = false) {
     let is_elfldr_running = await probe_sb_elfldr();
     await log("is elfldr running: " + is_elfldr_running, LogLevel.INFO);
     if (wkOnly && !is_elfldr_running) {
-        let res = confirm("elfldr doesnt seem to be running and in webkit only mode it wont be loaded, continue?");
+        let res = confirm("Exploit already loaded on PS5");
         if (!res) {
             throw new Error("Aborted");
         }
     }
 
     if (!wkOnly && is_elfldr_running) {
-        showTemporaryAlert("Exploit already loaded on PS5");
+        let res = confirm("Exploit already loaded on PS5");
         if (res) {
             wkOnly = true;
         }
@@ -583,7 +583,7 @@ async function main(userlandRW, wkOnly = false) {
     populatePayloadsPage(wkOnly);
 
     var load_payload_into_elf_store_from_local_file = async function (filename) {
-        await log("Loading ELF file: " + filename + " ...", LogLevel.LOG);
+        showTemporaryAlert("[+] Loading ELF file: " + filename + " ...", LogLevel.LOG);
         const response = await fetch('payloads/' + filename);
         if (!response.ok) {
             throw new Error(`Failed to fetch the binary file. Status: ${response.status}`);
