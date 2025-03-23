@@ -685,6 +685,17 @@ async function main(userlandRW, wkOnly = false) {
         is_in_sandbox = await chain.syscall(SYS_IS_IN_SANDBOX);
         await log("We escaped now? in sandbox: " + is_in_sandbox, LogLevel.INFO);
 
+        // Patch PS4 SDK version
+        if (typeof OFFSET_KERNEL_PS4SDK != 'undefined') {
+            await krw.write4(get_kaddr(OFFSET_KERNEL_PS4SDK), 0x99999999);
+            await log("Patched PS4 SDK version to 99.99", LogLevel.INFO);
+        }
+
+        // Patch PS5 SDK version
+        if (typeof OFFSET_KERNEL_PS5SDK != 'undefined') {
+            await krw.write4(get_kaddr(OFFSET_KERNEL_PS5SDK), 0x99999999);
+            await log("Patched PS5 SDK version to 99.99", LogLevel.INFO);
+        }
 
         ///////////////////////////////////////////////////////////////////////
         // Stage 6: loader
