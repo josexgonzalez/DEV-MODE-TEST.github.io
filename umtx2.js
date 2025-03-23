@@ -805,18 +805,20 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         const beforeRaceTime = performance.now();
         showTemporaryAlert("Triggering race...", LogLevel.LOG);
 
-        const raceAttempts = [];
+        const logPromises = [];
 
         for (let i2 = 0; i2 < config.max_race_attempts; i2++) {
-        const message = debug
-        ? `Race attempt ${i}-${i2} (mem access fail count: ${checkMemoryAccessFailCount})`
-        : `Race attempt ${i}-${i2}`;
+            if (i2 % 2 == 0) {
+                const message = debug
+                    ? `Race attempt ${i}-${i2} (mem access fail count: ${checkMemoryAccessFailCount})`
+                    : `Race attempt ${i}-${i2}`;
 
-        raceAttempts.push(log(message, LogLevel.INFO | LogLevel.FLAG_TEMP));
+                logPromises.push(log(message, LogLevel.INFO | LogLevel.FLAG_TEMP));
+
+            }
         }
 
-        // Ejecutar todas las promesas en paralelo y esperar su resolución
-        await Promise.all(raceAttempts);
+        await Promise.all(logPromises);
 
             // const step1Start = performance.now();
             // umtx_shm_create
