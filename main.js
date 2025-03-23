@@ -952,7 +952,7 @@ async function main(userlandRW, wkOnly = false) {
             is_etaHEN_running = true;
         } else {
             await log("etaHEN exited with non-zero code, port 9021 will likely not work", LogLevel.ERROR);
-            await new Promise(resolve => setTimeout(resolve, 6000));
+            await new Promise(resolve => setTimeout(resolve, 9000));
         }
 
 
