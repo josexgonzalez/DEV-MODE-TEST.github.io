@@ -636,18 +636,6 @@ async function main(userlandRW, wkOnly = false) {
         await krw.write1(get_kaddr(OFFSET_KERNEL_UTOKEN_FLAGS), utoken_flags | 0x1);
         await log("Enabled debug menu", LogLevel.INFO);
 
-        // Patch PS4 SDK version
-    if (typeof OFFSET_KERNEL_PS4SDK != 'undefined') {
-            await krw.write4(get_kaddr(OFFSET_KERNEL_PS4SDK), 0x99999999);
-            await log("Patched PS4 SDK version to 99.99", LogLevel.INFO);
-        }
-
-        // Patch PS5 SDK version
-    if (typeof OFFSET_KERNEL_PS5SDK != 'undefined') {
-            await krw.write4(get_kaddr(OFFSET_KERNEL_PS5SDK), 0x99999999);
-            await log("Patched PS4 SDK version to 99.99", LogLevel.INFO);
-        }
-
         // Patch creds
         let cur_uid = await chain.syscall(SYS_GETUID);
         await log("Escalating creds... (current uid=0x" + cur_uid + ")", LogLevel.INFO);
@@ -936,6 +924,20 @@ async function main(userlandRW, wkOnly = false) {
                 await log("    Failed to load local elf: " + error, LogLevel.ERROR);
                 return -1;
             }
+        }
+
+                // Patch PS4 SDK version
+        if (typeof OFFSET_KERNEL_PS4SDK != 'undefined') {
+            await krw.write4(get_kaddr(OFFSET_KERNEL_PS4SDK), 0x99999999);
+            await log("Patched PS4 SDK version to 99.99", LogLevel.INFO);
+            showTemporaryAlert("Patched PS4 SDK version to 99.99");
+        }
+
+        // Patch PS5 SDK version
+        if (typeof OFFSET_KERNEL_PS5SDK != 'undefined') {
+            await krw.write4(get_kaddr(OFFSET_KERNEL_PS5SDK), 0x99999999);
+            await log("Patched PS5 SDK version to 99.99", LogLevel.INFO);
+            showTemporaryAlert("Patched PS5 SDK version to 99.99");
         }
 
         if (await load_local_elf("elfldr.bin") == 0) {
