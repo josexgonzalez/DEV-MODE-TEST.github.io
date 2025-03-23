@@ -196,6 +196,30 @@ function registerL2ButtonHandler() {
     });
 }
 
+const TOAST_SUCCESS_TIMEOUT = 0;
+const TOAST_ERROR_TIMEOUT = 0;
+
+function showToast(message, timeout = 0) {
+    const toastContainer = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+
+    toastContainer.appendChild(toast);
+
+    // Trigger reflow to enable animation
+    toast.offsetHeight;
+
+    toast.classList.add('show');
+
+    if (timeout > 0) {
+        setTimeout(() => {
+            removeToast(toast);
+        }, timeout);
+    }
+
+    return toast;
+}
 
 function updateToastMessage(toast, message) {
     if (!toast) {
@@ -213,6 +237,7 @@ async function removeToast(toast) {
         toast.remove();
     });
 }
+
 
 function populatePayloadsPage(wkOnlyMode = false) {
     const payloadsView = document.getElementById('payloads-view');
