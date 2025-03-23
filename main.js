@@ -621,16 +621,6 @@ async function main(userlandRW, wkOnly = false) {
             return krw.ktextBase.add32(offset);
         }
 
-        let ps4sdk = p.read4(read_buf_store);
-        ps4sdk = 0x99999999;  // max kern.ps4_sdk_version
-        p.write4(read_buf_store, ps4sdk);
-        await copyin(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_PS4SDK), read_buf_store, 0x4);
-    
-        let ps5sdk = p.read4(read_buf_store);
-        ps5sdk = 0x99999999;  // max ps5sdk version
-        p.write4(read_buf_store, ps5sdk);
-        await copyin(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_PS5SDK), read_buf_store, 0x4);
-
         // Set security flags
         let security_flags = await krw.read4(get_kaddr(OFFSET_KERNEL_SECURITY_FLAGS));
         await krw.write4(get_kaddr(OFFSET_KERNEL_SECURITY_FLAGS), security_flags | 0x14);
@@ -645,6 +635,16 @@ async function main(userlandRW, wkOnly = false) {
         let utoken_flags = await krw.read1(get_kaddr(OFFSET_KERNEL_UTOKEN_FLAGS));
         await krw.write1(get_kaddr(OFFSET_KERNEL_UTOKEN_FLAGS), utoken_flags | 0x1);
         await log("Enabled debug menu", LogLevel.INFO);
+
+        let ps4sdk = p.read4(read_buf_store);
+        ps4sdk = 0x99999999;  // max kern.ps4_sdk_version
+        p.write4(read_buf_store, ps4sdk);
+        await copyin(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_PS4SDK), read_buf_store, 0x4);
+    
+        let ps5sdk = p.read4(read_buf_store);
+        ps5sdk = 0x99999999;  // max ps5sdk version
+        p.write4(read_buf_store, ps5sdk);
+        await copyin(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_PS5SDK), read_buf_store, 0x4);
 
         // Patch creds
         let cur_uid = await chain.syscall(SYS_GETUID);
