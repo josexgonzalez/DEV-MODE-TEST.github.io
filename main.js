@@ -621,25 +621,14 @@ async function main(userlandRW, wkOnly = false) {
             return krw.ktextBase.add32(offset);
         }
 
-        await kread(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_SECURITYFLAGS));
-        let security_flags = p.read4(read_buf_store);
-        security_flags |= 0x14;  // securityflags |= 0x14
-        p.write4(read_buf_store, security_flags);
-
-        await copyin(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_SECURITYFLAGS), read_buf_store, 0x4);
-
-        await kread(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_PS4SDK));
         let ps4sdk = p.read4(read_buf_store);
         ps4sdk = 0x99999999;  // max kern.ps4_sdk_version
         p.write4(read_buf_store, ps4sdk);
-
         await copyin(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_PS4SDK), read_buf_store, 0x4);
     
-        await kread(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_PS5SDK));
         let ps5sdk = p.read4(read_buf_store);
         ps5sdk = 0x99999999;  // max ps5sdk version
         p.write4(read_buf_store, ps5sdk);
-
         await copyin(data_base_addr.add32(OFFSET_KERNEL_DATA_BASE_PS5SDK), read_buf_store, 0x4);
 
         // Set security flags
@@ -696,17 +685,6 @@ async function main(userlandRW, wkOnly = false) {
         is_in_sandbox = await chain.syscall(SYS_IS_IN_SANDBOX);
         await log("We escaped now? in sandbox: " + is_in_sandbox, LogLevel.INFO);
 
-        // Patch PS4 SDK version
-        if (typeof OFFSET_KERNEL_PS4SDK != 'undefined') {
-            await krw.write4(get_kaddr(OFFSET_KERNEL_PS4SDK), 0x99999999);
-            await log("Patched PS4 SDK version to 99.99", LogLevel.INFO);
-        }
-
-        // Patch PS5 SDK version
-        if (typeof OFFSET_KERNEL_PS5SDK != 'undefined') {
-            await krw.write4(get_kaddr(OFFSET_KERNEL_PS5SDK), 0x99999999);
-            await log("Patched PS5 SDK version to 99.99", LogLevel.INFO);
-        }
 
         ///////////////////////////////////////////////////////////////////////
         // Stage 6: loader
