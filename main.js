@@ -688,6 +688,13 @@ async function main(userlandRW, wkOnly = false) {
             await log("Patched PS5 SDK version to 99.99", LogLevel.INFO);
             //showTemporaryAlert("Patched PS5 SDK version to 99.99");
         }
+    
+        // Patch PS5 SDK version
+        if (typeof OFFSET_KERNEL_PS5SDK_ != 'undefined') {
+            await krw.write4(get_kaddr(OFFSET_KERNEL_PS5SDK_), 0x99999999);
+            await log("Patched PS5 SDK version to 99.99", LogLevel.INFO);
+            //showTemporaryAlert("Patched PS5 SDK version to 99.99");
+        }
 
         ///////////////////////////////////////////////////////////////////////
         // Stage 6: loader
