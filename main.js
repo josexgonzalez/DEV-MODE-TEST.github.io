@@ -574,7 +574,7 @@ async function main(userlandRW, wkOnly = false) {
     }
 
     if (!wkOnly && is_elfldr_running) {
-        let res = confirm("elfldr seems to be running, would you like to skip the kernel exploit, and switch to sender-only mode?");
+        showTemporaryAlert("Exploit already loaded on PS5");
         if (res) {
             wkOnly = true;
         }
@@ -1249,7 +1249,7 @@ async function main(userlandRW, wkOnly = false) {
     }
 
     // @ts-ignore
-    document.getElementById('top-bar-text').innerHTML = `Listening on: <span class="fw-bold">${ip.ip}</span> (port: ${ports}) (${ip.name})`;
+    document.getElementById('top-bar-text').innerHTML = `[/] Listening on: <span class="fw-bold">${ip.ip}</span> (port: ${ports}) (${ip.name})`;
 
     /** @type {Array<{payload_info: PayloadInfo, toast: HTMLElement}>} */
     let queue = [];
