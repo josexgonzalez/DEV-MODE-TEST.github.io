@@ -43,29 +43,7 @@ a:focus {
 }
 
 
-.btn {
-    padding: 1rem 2rem;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    margin: 0.2rem;
-    cursor: pointer;
-    line-height: 2.5rem;
-    min-width: 5rem;
-    border-radius: 1.25rem;
-    width: 50%;
-    background-color: var(--surface-color-primary);
-    border: none;
-    color: var(--text-color-primary);
-    font-size: 1.3rem;
-    transition: background-color 0.25s ease;
-    box-sizing: border-box;
-}
 
-.btn:hover {
-    background-color: var(--surface-color-hover);
-    color: var(--text-color-primary-hover);
-}
 
 
 #main-content{
