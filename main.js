@@ -1353,7 +1353,6 @@ async function main(userlandRW, wkOnly = false) {
                 total_sz += read_res;
             }
 
-            showTemporaryAlert("ELF Loader: Parsing ELF...");
             await parse_elf_store(total_sz);
 
             updateToastMessage(toast, "");
@@ -1364,7 +1363,6 @@ async function main(userlandRW, wkOnly = false) {
                 throw new Error('ELF Loader exited with non-zero code: 0x' + out.toString(16));
             }
 
-            showTemporaryAlert("ELF Loader: Payload exited with success code");
             setTimeout(removeToast, TOAST_SUCCESS_TIMEOUT, toast);
         } catch (error) {
             updateToastMessage(toast, `ELF Loader: Error: ${error}`);
