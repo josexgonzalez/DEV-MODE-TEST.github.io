@@ -931,16 +931,6 @@ async function main(userlandRW, wkOnly = false) {
         await log("elf loader listening on port 9020", LogLevel.INFO);
     }
 
-        if (ip_obj != undefined) {
-        ip_text = "[/]Listening on: " + ip_obj.ip + ":9020" + " (" + ip_obj.name + ")";
-        await sleep(1000);
-    document.getElementById('payload-1').click();
-
-        ip_text = "[/]Listening on: " + ip_obj.ip + ":9020" + " (" + ip_obj.name + ")";
-        await sleep(1200);
-    document.getElementById('payload-0').click();
-}
-
     async function fstat(fd, stat_buf) {
         if (stat_buf.backing.byteLength < 0x78) {
             throw new Error("Stat buffer size too small");
