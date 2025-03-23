@@ -926,26 +926,13 @@ async function main(userlandRW, wkOnly = false) {
             }
         }
 
-                // Patch PS4 SDK version
-        if (typeof OFFSET_KERNEL_PS4SDK != 'undefined') {
-            await krw.write4(get_kaddr(OFFSET_KERNEL_PS4SDK), 0x99999999);
-            await log("Patched PS4 SDK version to 99.99", LogLevel.INFO);
-            showTemporaryAlert("Patched PS4 SDK version to 99.99");
-        }
-
-        // Patch PS5 SDK version
-        if (typeof OFFSET_KERNEL_PS5SDK != 'undefined') {
-            await krw.write4(get_kaddr(OFFSET_KERNEL_PS5SDK), 0x99999999);
-            await log("Patched PS5 SDK version to 99.99", LogLevel.INFO);
-            showTemporaryAlert("Patched PS5 SDK version to 99.99");
-        }
-
         if (await load_local_elf("elfldr.bin") == 0) {
             await log(`elfldr listening on ${ip.ip}:9021`, LogLevel.INFO);
             is_elfldr_running = true;
         } else {
             await log("elfldr exited with non-zero code, port 9021 will likely not work", LogLevel.ERROR);
             await new Promise(resolve => setTimeout(resolve, 1000));
+            showTemporaryAlert(`elfldr listening on ${ip.ip}:9021`, LogLevel.INFO);
         }
 
         if (await load_local_elf("etaHEN.bin") == 0) {
@@ -954,6 +941,7 @@ async function main(userlandRW, wkOnly = false) {
         } else {
             await log("etaHEN exited with non-zero code, port 9021 will likely not work", LogLevel.ERROR);
             await new Promise(resolve => setTimeout(resolve, 1000));
+            showTemporaryAlert(`etaHEN listening on ${ip.ip}:9021`, LogLevel.INFO);
         }
 
         // const SOCK_NONBLOCK = 0x20000000; // for future reference, this is ignored if we're not jailbroken and explicitly setting it with fcntl returns SCE_KERNEL_ERROR_EACCES (at least on 4.03)
