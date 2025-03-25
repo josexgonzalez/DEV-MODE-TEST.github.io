@@ -565,7 +565,7 @@ async function main(userlandRW, wkOnly = false) {
     }
 
     let is_elfldr_running = await probe_sb_elfldr();
-    await log("is elfldr running: " + is_elfldr_running, LogLevel.INFO);
+    showTemporaryAlert("is elfldr running: " + is_elfldr_running, LogLevel.INFO);
     if (wkOnly && !is_elfldr_running) {
         let res = confirm("Exploit already loaded on PS5");
         if (!res) {
