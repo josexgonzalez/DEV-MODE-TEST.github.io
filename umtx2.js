@@ -805,8 +805,8 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         const beforeRaceTime = performance.now();
         showTemporaryAlert("Triggering race...", LogLevel.LOG);
 
-        for (let i5 = 0; i5 < config.max_race_attempts; i5++) {
-            if (i5 % 5 == 0) {
+        for (let i5 = 0; i2 < config.max_race_attempts; i2++) {
+            if (i2 % 15 == 0) {
                 if (debug) {
                     await log(`Race attempt ${i}-${i2} (mem access fail count: ${checkMemoryAccessFailCount})`, LogLevel.INFO | LogLevel.FLAG_TEMP);
                 } else {
