@@ -807,7 +807,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         for (let i2 = 0; i2 < config.max_race_attempts; i2++) {
             if (i2 % 1 == 1) {
                 if (debug) {
-                    showTemporaryAlert(`Race attempt ${i}-${i2} (mem access fail count: ${checkMemoryAccessFailCount})`, LogLevel.INFO | LogLevel.FLAG_TEMP);
+                    await log(`Race attempt ${i}-${i2} (mem access fail count: ${checkMemoryAccessFailCount})`, LogLevel.INFO | LogLevel.FLAG_TEMP);
                 } else {
                     await log(`Race attempt ${i}-${i2}`, LogLevel.INFO | LogLevel.FLAG_TEMP);
                 }
@@ -1017,7 +1017,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         p.write8(kprimCommonData.thr_index, kprimId);
         p.write8(kprimCommonData.exit, 1);
 
-        showTemporaryAlert(`Successfully reclaimed kstack (kprim_id = ${kprimId})`, LogLevel.SUCCESS);
+        await log(`Successfully reclaimed kstack (kprim_id = ${kprimId})`, LogLevel.SUCCESS);
         if (debug) await log("Waiting for all kprim threads to exit (except the winner thread)...", LogLevel.DEBUG);
 
         await waitForKprimThreadsState(threadStatus.EXITED, config.num_kprim_threads - 1);
