@@ -852,7 +852,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
             if (fd) {
                 winnerFd = fd;
                 winnerLookupFd = lookupFd;
-                await log(`overlapped shm regions! winner_fd = ${winnerFd}`, LogLevel.LOG);
+                showTemporaryAlert(`overlapped shm regions! winner_fd = ${winnerFd}`, LogLevel.LOG);
             }
 
             // dont close lookup descriptor right away when it is possibly corrupted
@@ -1017,7 +1017,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         p.write8(kprimCommonData.thr_index, kprimId);
         p.write8(kprimCommonData.exit, 1);
 
-        await log(`Successfully reclaimed kstack (kprim_id = ${kprimId})`, LogLevel.SUCCESS);
+        showTemporaryAlert(`Successfully reclaimed kstack (kprim_id = ${kprimId})`, LogLevel.SUCCESS);
         if (debug) await log("Waiting for all kprim threads to exit (except the winner thread)...", LogLevel.DEBUG);
 
         await waitForKprimThreadsState(threadStatus.EXITED, config.num_kprim_threads - 1);
