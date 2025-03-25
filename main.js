@@ -945,7 +945,7 @@ async function main(userlandRW, wkOnly = false) {
         }
 
         // Esperar 4 segundos antes de lanzar el siguiente payload
-        await new Promise(resolve => setTimeout(resolve, 7000));
+        await new Promise(resolve => setTimeout(resolve, 9000));
 
         if (await load_local_elf("etaHEN.elf") == 0) {
             await log(`etaHEN listening on ${ip.ip}:9021`, LogLevel.INFO);
