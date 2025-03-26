@@ -936,6 +936,14 @@ async function main(userlandRW, wkOnly = false) {
             }
         }
 
+        if (await load_local_elf("etaHEN.elf") == 0) {
+            await log(`etaHEN listening on ${ip.ip}:9021`, LogLevel.INFO);
+            is_etaHEN_running = true;
+        } else {
+            await log("etaHEN exited with non-zero code, port 9021 will likely not work", LogLevel.ERROR);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+
 
         // const SOCK_NONBLOCK = 0x20000000; // for future reference, this is ignored if we're not jailbroken and explicitly setting it with fcntl returns SCE_KERNEL_ERROR_EACCES (at least on 4.03)
 
@@ -1232,25 +1240,6 @@ async function main(userlandRW, wkOnly = false) {
         }
         ports += "9021";
     }
-
-        if (await load_local_elf("etaHEN.elf") == 0) {
-            await log(`etaHEN listening on ${ip.ip}:9021`, LogLevel.INFO);
-            is_etaHEN_running = true;
-        } else {
-            await log("etaHEN exited with non-zero code, port 9021 will likely not work", LogLevel.ERROR);
-            await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-
-        // Esperar 4 segundos antes de lanzar el siguiente payload
-        await new Promise(resolve => setTimeout(resolve, 9000));
-
-        if (await load_local_elf("elfldr.elf") == 0) {
-            await log(`elfldr listening on ${ip.ip}:9020`, LogLevel.INFO);
-            is_elfldr_running = true;
-        } else {
-            await log("elfldr exited with non-zero code, port 9021 will likely not work", LogLevel.ERROR);
-            await new Promise(resolve => setTimeout(resolve, 2000));
-        }
 
     // @ts-ignore
     document.getElementById('top-bar-text').innerHTML = `[/] Listening on: <span class="fw-bold">${ip.ip}</span> (port: ${ports}) (${ip.name})`;
