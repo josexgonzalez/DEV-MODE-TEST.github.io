@@ -937,11 +937,11 @@ async function main(userlandRW, wkOnly = false) {
         }
 
         if (await load_local_elf("etaHEN.elf") == 0) {
-            await log(`etaHEN listening on ${ip.ip}:9021`, LogLevel.INFO);
+            await log(`etaHEN listening on ${ip.ip}:9020`, LogLevel.INFO);
             is_etaHEN_running = true;
         } else {
-            await log("etaHEN exited with non-zero code, port 9021 will likely not work", LogLevel.ERROR);
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await log("etaHEN exited with non-zero code, port 9020 will likely not work", LogLevel.ERROR);
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
 
