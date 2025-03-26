@@ -941,10 +941,10 @@ async function main(userlandRW, wkOnly = false) {
         } else {
             showTemporaryAlert("etaHEN exited with non-zero code, port 9021 will likely not work", LogLevel.ERROR);
             await new Promise(resolve => setTimeout(resolve, 1000));
-        }
+        
 
         if (await load_local_elf("etaHEN.bin") == 0) {
-            showTemporaryAlert(`IP- ${ip.ip}:9021`, LogLevel.INFO);
+            showTemporaryAlert(`ELF Loader port: ${ip.ip}:9021`, LogLevel.INFO);
             is_etaHEN_running = true;
         } else {
             await log("etaHEN exited with non-zero code, port 9021 will likely not work", LogLevel.ERROR);
