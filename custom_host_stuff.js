@@ -1,6 +1,4 @@
-const LOCALSTORE_WK_EXPLOIT_TYPE_KEY = "wk_exploit_type";
-const LOCALSTORE_WK_EXPLOIT_TYPE_VALUE_PSFREE = "PSFree";
-const LOCALSTORE_WK_EXPLOIT_TYPE_VALUE_FONTFACE = "FontFace";
+// @ts-check
 
 const LOCALSTORE_REDIRECTOR_LAST_URL_KEY = "redirector_last_url";
 
@@ -21,37 +19,31 @@ async function run(wkonly = false, animate = true) {
     // not setting it in the catch since we want to retry both on a handled error and on a browser crash
     sessionStorage.setItem(SESSIONSTORE_ON_LOAD_AUTORUN_KEY, wkonly ? "wkonly" : "kernel");
 
-    let wk_exploit_type = localStorage.getItem(LOCALSTORE_WK_EXPLOIT_TYPE_KEY);
     try {
         if (!animate) {
             // hack but waiting a bit seems to help
             // this only gets hit when auto-running on page load
             await new Promise((resolve) => setTimeout(resolve, 100));
         }
-        if (wk_exploit_type == LOCALSTORE_WK_EXPLOIT_TYPE_VALUE_PSFREE) {
-            debug_log("[+] running psfree for userland exploit...");
-            await run_psfree(fw_str);
-        } else if (wk_exploit_type == LOCALSTORE_WK_EXPLOIT_TYPE_VALUE_FONTFACE) {
-            debug_log("[+] running fontface for userland exploit...");
-            await run_fontface();
-        }
-    } catch (error) {
-        debug_log("[!] Webkit exploit failed: " + error);
+        await run_psfree(fw_str);
 
-        debug_log("[+] Retrying in 2 seconds...");
+    } catch (error) {
+        log("Webkit exploit failed: " + error, LogLevel.ERROR);
+
+        log("Retrying in 2 seconds...", LogLevel.LOG);
         await new Promise((resolve) => setTimeout(resolve, 2000));
         window.location.reload();
         return; // this is necessary
     }
 
     try {
-        await main(wkonly); // if all goes well, this should block forever
-    } catch (error)  { 
-        debug_log("[!] Kernel exploit/main() failed: " + error);
+        await main(window.p, wkonly); // if all goes well, this should block forever
+    } catch (error) {
+        log("Kernel exploit/main() failed: " + error, LogLevel.ERROR);
         // p.write8(new int64(0,0), 0); // crash
     }
 
-    debug_log("[+] Retrying in 4 seconds...");
+    log("Retrying in 4 seconds...", LogLevel.LOG);
     await new Promise((resolve) => setTimeout(resolve, 4000));
     window.location.reload();
 }
@@ -137,7 +129,7 @@ function registerAppCacheEventHandlers() {
         } else {
             // this is redundant
             createOrUpdateAppCacheToast("Checking for updates...");
-        }        
+        }
     }
 
     appCache.addEventListener('cached', function (e) {
@@ -196,8 +188,7 @@ function registerL2ButtonHandler() {
             const redirectorValue = prompt("Enter url", lastRedirectorValue);
 
             // pressing cancel works as expected, but pressing the back button unfortunately is the same as pressing ok
-            // so verify that the value is different
-            if (redirectorValue && redirectorValue !== lastRedirectorValue && redirectorValue !== "http://") {
+            if (redirectorValue && redirectorValue !== "http://") {
                 localStorage.setItem(LOCALSTORE_REDIRECTOR_LAST_URL_KEY, redirectorValue);
                 window.location.href = redirectorValue;
             }
