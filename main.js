@@ -567,14 +567,14 @@ async function main(userlandRW, wkOnly = false) {
     let is_elfldr_running = await probe_sb_elfldr();
     await log("is elfldr running: " + is_elfldr_running, LogLevel.INFO);
     if (wkOnly && !is_elfldr_running) {
-        let res = confirm("Exploit already loaded on PS5");
+        let res = confirm("elfldr doesnt seem to be running and in webkit only mode it wont be loaded, continue?");
         if (!res) {
             throw new Error("Aborted");
         }
     }
 
     if (!wkOnly && is_elfldr_running) {
-        let res = confirm("Exploit already loaded on PS5");
+        let res = confirm("elfldr seems to be running, would you like to skip the kernel exploit, and switch to sender-only mode?");
         if (res) {
             wkOnly = true;
         }
@@ -583,8 +583,8 @@ async function main(userlandRW, wkOnly = false) {
     populatePayloadsPage(wkOnly);
 
     var load_payload_into_elf_store_from_local_file = async function (filename) {
+        await log("Loading ELF file: " + filename + " ...", LogLevel.LOG);
         const response = await fetch('payloads/' + filename);
-        showTemporaryAlert("[+] Loading ELF file: " + filename + " ...", LogLevel.LOG);
         if (!response.ok) {
             throw new Error(`Failed to fetch the binary file. Status: ${response.status}`);
         }
@@ -678,12 +678,29 @@ async function main(userlandRW, wkOnly = false) {
         // Patch PS4 SDK version
         if (typeof OFFSET_KERNEL_PS4SDK != 'undefined') {
             await krw.write4(get_kaddr(OFFSET_KERNEL_PS4SDK), 0x99999999);
+            await log("Patched PS4 SDK version to 99.99", LogLevel.INFO);
+            showTemporaryAlert("Patched PS4 SDK version to 99.99");
+        }
+
+        // Patch PS4 SDK version
+        if (typeof OFFSET_KERNEL_DATA_BASE_PS4SDK != 'undefined') {
+            await krw.write4(get_kaddr(OFFSET_KERNEL_DATA_BASE_PS4SDK), 0x99999999);
+            await log("Patched PS4 SDK version to 99.99", LogLevel.INFO);
+            showTemporaryAlert("Patched PS4 SDK version to 99.99");
         }
     
         // Patch PS5 SDK version
         if (typeof OFFSET_KERNEL_PS5SDK != 'undefined') {
             await krw.write4(get_kaddr(OFFSET_KERNEL_PS5SDK), 0x99999999);
             await log("Patched PS5 SDK version to 99.99", LogLevel.INFO);
+            showTemporaryAlert("Patched PS5 SDK version to 99.99");
+        }
+
+        // Patch PS5 SDK version
+        if (typeof OFFSET_KERNEL_DATA_BASE_PS5SDK != 'undefined') {
+            await krw.write4(get_kaddr(OFFSET_KERNEL_DATA_BASE_PS5SDK), 0x99999999);
+            await log("Patched PS5 SDK version to 99.99", LogLevel.INFO);
+            showTemporaryAlert("Patched PS5 SDK version to 99.99");
         }
 
         ///////////////////////////////////////////////////////////////////////
@@ -936,21 +953,21 @@ async function main(userlandRW, wkOnly = false) {
             }
         }
 
-        if (await load_local_elf("elfldr.elf") == 0) {
-            is_etaHEN_running = true;
+        if (await load_local_elf("elfldr.bin") == 0) {
+            await log(`elfldr listening on ${ip.ip}:9021`, LogLevel.INFO);
+            is_elfldr_running = true;
         } else {
-            showTemporaryAlert("etaHEN exited with non-zero code, port 9021 will likely not work", LogLevel.ERROR);
+            await log("elfldr exited with non-zero code, port 9021 will likely not work", LogLevel.ERROR);
             await new Promise(resolve => setTimeout(resolve, 1000));
-        
+        }
 
         if (await load_local_elf("etaHEN.bin") == 0) {
-            showTemporaryAlert(`ELF Loader port: ${ip.ip}:9021`, LogLevel.INFO);
+            await log(`etaHEN listening on ${ip.ip}:9021`, LogLevel.INFO);
             is_etaHEN_running = true;
         } else {
             await log("etaHEN exited with non-zero code, port 9021 will likely not work", LogLevel.ERROR);
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
-
 
         // const SOCK_NONBLOCK = 0x20000000; // for future reference, this is ignored if we're not jailbroken and explicitly setting it with fcntl returns SCE_KERNEL_ERROR_EACCES (at least on 4.03)
 
@@ -1249,7 +1266,7 @@ async function main(userlandRW, wkOnly = false) {
     }
 
     // @ts-ignore
-    document.getElementById('top-bar-text').innerHTML = `[/] Listening on: <span class="fw-bold">${ip.ip}</span> (port: ${ports}) (${ip.name})`;
+    document.getElementById('top-bar-text').innerHTML = `Listening on: <span class="fw-bold">${ip.ip}</span> (port: ${ports}) (${ip.name})`;
 
     /** @type {Array<{payload_info: PayloadInfo, toast: HTMLElement}>} */
     let queue = [];
@@ -1338,7 +1355,7 @@ async function main(userlandRW, wkOnly = false) {
             throw new Error("Failed to accept connection");
         }
 
-        let toast = showToast("", -1);
+        let toast = showToast("ELF Loader: Got a connection, reading...", -1);
         try {
             // Got a connection, read all we can
             let write_ptr = elf_store.add32(0x0);
@@ -1353,9 +1370,10 @@ async function main(userlandRW, wkOnly = false) {
                 total_sz += read_res;
             }
 
+            updateToastMessage(toast, "ELF Loader: Parsing ELF...");
             await parse_elf_store(total_sz);
 
-            updateToastMessage(toast, "");
+            updateToastMessage(toast, "ELF Loader: Executing ELF...");
             await execute_elf_store();
 
             let out = await wait_for_elf_to_exit();
@@ -1363,6 +1381,7 @@ async function main(userlandRW, wkOnly = false) {
                 throw new Error('ELF Loader exited with non-zero code: 0x' + out.toString(16));
             }
 
+            updateToastMessage(toast, "ELF Loader: Payload exited with success code");
             setTimeout(removeToast, TOAST_SUCCESS_TIMEOUT, toast);
         } catch (error) {
             updateToastMessage(toast, `ELF Loader: Error: ${error}`);
