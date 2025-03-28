@@ -33,10 +33,6 @@ let wk_gadgetmap = {
 
     "infloop": 0x000109E1,
 
-    "shl rax, 4"     : 0x0011BBB6,
-    // "shr rax, 3"     : 0x014F2BAC,
-    // "shr rax, 4"     : 0x01C41CD4,
-
     //branching specific gadgets
     "cmp [rcx], eax" : 0x00204122,
     "sete al"        : 0x00B7B735,
@@ -384,9 +380,6 @@ const OFFSET_KERNEL_STACK_COOKIE                = 0x00000930;
 const OFFSET_KERNEL_STACK_SYS_SCHED_YIELD_RET   = 0x00000808;
 
 // Kernel text-relative offsets
-const OFFSET_KERNEL_DATA_KQUEUE_LOW_WORD         = 0x8AD3;
-const OFFSET_KERNEL_DATA_KQUEUE_BASE_SLIDE       = 0x318AD3;
-const OFFSET_KERNEL_TEXT_KQUEUE_BASE_SLIDE       = 0xF18AD3;
 const OFFSET_KERNEL_DATA                        = 0x00C00000;
 const OFFSET_KERNEL_SYS_SCHED_YIELD_RET         = 0x0057D392;
 const OFFSET_KERNEL_ALLPROC                     = 0x033EDCB8;
@@ -397,7 +390,4 @@ const OFFSET_KERNEL_UTOKEN_FLAGS                = 0x07106500;
 const OFFSET_KERNEL_PRISON0                     = 0x02934D00;
 const OFFSET_KERNEL_ROOTVNODE                   = 0x072E74C0;
 
-const OFFSET_KERNEL_PS4SDK                      = 0x22ABE88;
-const OFFSET_KERNEL_DATA_BASE_PS4SDK            = 0x16ABE88;
-const OFFSET_KERNEL_PS5SDK                      = 0x7106598;
-const OFFSET_KERNEL_DATA_BASE_PS5SDK            = 0x6506598;
+const OFFSET_KERNEL_PS4SDK                      = 0x022ABE88;
