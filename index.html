@@ -8,31 +8,33 @@
 
 <!-- body is set up as three rows: auto 1fr auto -->
 <body>
-    <!-- Row 1 -->
-    <div style="margin: 40px;">
-        <h1 style="text-align: center; position: absolute; top: 15;left: 10;"></h1>
-        <p class="text-secondary" id="top-bar-text"><span class="fw-bold" id="ip"></span></p>
-        <h1 style="text-align: center; position: absolute; top: 15;left: 10;"></h1>
-        <p class="text-secondary" id="top-bar-text"><span class="fw-bold" id="listening-ip"></span></p>
-        <h1 style="text-align: center; position: absolute; top: 585;left: 10;"></h1>
-        <p class="text-secondary" id="top-bar-text"><span class="fw-bold" id="current-fw"></span></p>
+    <!-- Contenedor principal -->
+    <div style="margin: 40px; position: relative;">
+        <!-- Información de IP -->
+        <p class="text-secondary"><span class="fw-bold" id="ip"></span></p>
+        <p class="text-secondary"><span class="fw-bold" id="listening-ip"></span></p>
+        <p class="text-secondary"><span class="fw-bold" id="current-fw"></span></p>
 
-        <!-- This is absolute positioned to the body-->
-        <div id="toast-container"></div>
+        <!-- Contenedor de notificaciones -->
+        <div id="toast-container" style="position: absolute; top: 10px; right: 10px;"></div>
     </div>
 
-    <!-- Row 2 -->
+    <!-- Contenedor del botón -->
     <div id="main-content"
-        style="display: flex; justify-content: center; align-items: center; position: absolute; top: 100;left: 50; width: 91%; height: 10.5%;">
+        style="display: flex; justify-content: center; align-items: center; position: absolute; top: 100px; left: 50%; transform: translateX(-50%); width: 91%; height: 10.5%;">
         <div id="pre-jb-view" class="d-flex align-items-center justify-content-center flex-direction-column selected">
-            <a tabindex="0" class="btn fw-bold" id="run-jb" onclick="run()"></a>
+            <a tabindex="0" class="btn fw-bold" id="run-jb" onclick="run()">Ejecutar</a>
         </div>
+    </div>
 
-        <script>
-            setTimeout(() => {
-                document.getElementById('run-jb').click();
-            }, 3000);
-        </script>
+    <!-- Script para ejecutar el botón automáticamente -->
+    <script>
+        setTimeout(() => {
+            document.getElementById('run-jb').click();
+        }, 3000);
+    </script>
+</body>
+
 
         <div id="console-view">
             <div id="console" class="log"></div>
