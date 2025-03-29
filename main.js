@@ -1264,6 +1264,7 @@ async function main(userlandRW, wkOnly = false) {
 
     // @ts-ignore
     document.getElementById('Listening_on').innerHTML = `[/] Listening on: <span class="fw-bold">${ip.ip}</span>:${ports} (${ip.name})`;
+    document.getElementById('payload_info').innerHTML = `[/] ${payload_info.displayTitle}: Sent to port ${payload_info.toPort}`;
 
     /** @type {Array<{payload_info: PayloadInfo, toast: HTMLElement}>} */
     let queue = [];
@@ -1319,8 +1320,7 @@ async function main(userlandRW, wkOnly = false) {
                         updateToastMessage(toast, `${payload_info.displayTitle}: Sent to port ${payload_info.toPort}`);
                     }
                 }
-    document.getElementById('payload_info').innerHTML = `[/] ${payload_info.displayTitle}: Sent to port ${payload_info.toPort}`;
-    
+
             } catch (error) {
                 updateToastMessage(toast, `${payload_info.displayTitle}: Error: ${error}`);
                 setTimeout(removeToast, TOAST_ERROR_TIMEOUT, toast);
