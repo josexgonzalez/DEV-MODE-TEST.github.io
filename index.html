@@ -63,8 +63,6 @@
             );
             throw reason;
         });
-        document.getElementById("current-fw").innerHTML = "[/] System Software: " + fw_str;
-        document.getElementById("listening-ip").innerHTML = "[/] Address: " + window.location.hostname;
         registerAppCacheEventHandlers();
         registerL2ButtonHandler();
         window.onload = function () {

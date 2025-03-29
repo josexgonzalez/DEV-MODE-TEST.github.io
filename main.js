@@ -104,9 +104,9 @@ if (!navigator.userAgent.includes('PlayStation 5')) {
 
 const supportedFirmwares = ["1.00", "1.01", "1.02", "1.05", "1.10", "1.11", "1.12", "1.13", "1.14", "2.00", "2.20", "2.25", "2.26", "2.30", "2.50", "2.70", "3.00", "3.10", "3.20", "3.21", "4.00", "4.02", "4.03", "4.50", "4.51", "5.00", "5.02", "5.10", "5.50"];
 const fw_idx = navigator.userAgent.indexOf('PlayStation; PlayStation 5/') + 27;
-// @ts-ignore
 window.fw_str = navigator.userAgent.substring(fw_idx, fw_idx + 4);
-// @ts-ignore
+document.getElementById("current-fw").innerHTML = "[/] System Software: " + fw_str;
+document.getElementById("listening-ip").innerHTML = "[/] Address: " + window.location.hostname;
 window.fw_float = parseFloat(fw_str);
 
 // @ts-ignore
@@ -1263,7 +1263,7 @@ async function main(userlandRW, wkOnly = false) {
     }
 
     // @ts-ignore
-    document.getElementById('top-bar-text').innerHTML = `Listening on: <span class="fw-bold">${ip.ip}</span> (port: ${ports}) (${ip.name})`;
+    document.getElementById('top-bar-text').innerHTML = `[/]Listening on: <span class="fw-bold">${ip.ip}</span> (port: ${ports}) (${ip.name})`;
 
     /** @type {Array<{payload_info: PayloadInfo, toast: HTMLElement}>} */
     let queue = [];
