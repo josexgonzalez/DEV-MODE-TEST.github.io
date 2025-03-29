@@ -6,21 +6,6 @@
     <link rel="stylesheet" href="main.css">
 </head>
 
-<!-- body is set up as three rows: auto 1fr auto -->
-<body>
-    <!-- Row 1 -->
-    <div style="margin: 40px;">
-        <h1 style="text-align: center; position: absolute; top: 585;left: 10;"></h1>
-        <p class="text-secondary" id="top-bar-text"><span class="fw-bold" id="current-fw"></span></p>
-        <h1 style="text-align: center; position: absolute; top: 15;left: 10;"></h1>
-        <p class="text-secondary" id="top-bar-text"><span class="fw-bold" id="listening-ip"></span></p>
-        <h1 style="text-align: center; position: absolute; top: 611;left: 10;"></h1>
-        <p class="text-secondary" id="top-bar-text"><span class="fw-bold" id="current-ip"></span></p>
-
-        <!-- This is absolute positioned to the body-->
-        <div id="toast-container"></div>
-    </div>
-
     <!-- Row 2 -->
     <div id="main-content"
         style="display: flex; justify-content: center; align-items: center; position: absolute; top: 100;left: 50; width: 91%; height: 10.5%;">
@@ -40,6 +25,21 @@
 
         <div id="payloads-view">
         </div>
+    </div>
+
+<!-- body is set up as three rows: auto 1fr auto -->
+<body>
+    <!-- Row 1 -->
+    <div style="margin: 40px;">
+        <h1 style="text-align: center; position: absolute; top: 585;left: 10;"></h1>
+        <p class="text-secondary" id="top-bar-text"><span class="fw-bold" id="current-fw"></span></p>
+        <h1 style="text-align: center; position: absolute; top: 15;left: 10;"></h1>
+        <p class="text-secondary" id="top-bar-text"><span class="fw-bold" id="listening-ip"></span></p>
+        <h1 style="text-align: center; position: absolute; top: 611;left: 10;"></h1>
+        <p class="text-secondary" id="top-bar-text"><span class="fw-bold" id="current-ip"></span></p>
+
+        <!-- This is absolute positioned to the body-->
+        <div id="toast-container"></div>
     </div>
 
     <script src="int64.js"></script>
