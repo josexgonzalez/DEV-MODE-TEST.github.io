@@ -1317,10 +1317,10 @@ async function main(userlandRW, wkOnly = false) {
                         updateToastMessage(toast, `${payload_info.displayTitle}: Sending to port ${payload_info.toPort}...`);
                         await send_buffer_to_port(elf_store, total_sz, payload_info.toPort);
                         updateToastMessage(toast, `${payload_info.displayTitle}: Sent to port ${payload_info.toPort}`);
-                        document.getElementById('payload_info').innerHTML = `[/] ${payload_info.displayTitle}: Sent to port ${payload_info.toPort}`;
                     }
                 }
-
+    document.getElementById('payload_info').innerHTML = `[/] ${payload_info.displayTitle}: Sent to port ${payload_info.toPort}`;
+    
             } catch (error) {
                 updateToastMessage(toast, `${payload_info.displayTitle}: Error: ${error}`);
                 setTimeout(removeToast, TOAST_ERROR_TIMEOUT, toast);
