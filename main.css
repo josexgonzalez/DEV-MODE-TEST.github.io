@@ -44,21 +44,21 @@ a:focus {
 
 
 .btn {
-    padding: 1rem 2rem;
+    padding: 0rem 0rem;
     text-align: center;
     text-decoration: none;
     display: inline-block;
-    margin: 0.2rem;
+    margin: 0rem;
     cursor: pointer;
-    line-height: 2.5rem;
-    min-width: 5rem;
-    border-radius: 1.25rem;
-    width: 50%;
+    line-height: 0rem;
+    min-width: 0rem;
+    border-radius: 0rem;
+    width: 0%;
     background-color: var(--surface-color-primary);
     border: none;
     color: var(--text-color-primary);
-    font-size: 1.3rem;
-    transition: background-color 0.25s ease;
+    font-size: 0rem;
+    transition: background-color 0s ease;
     box-sizing: border-box;
 }
 
@@ -150,40 +150,6 @@ a:focus {
     opacity: 1 !important;
     pointer-events: auto !important;
 }
-
-
-#toast-container {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    z-index: 9999;
-}
-
-.toast {
-    background: var(--surface-color-secondary);
-    color: var(--text-color-primary);
-    padding: 20px 25px;
-    border-radius: 1rem;
-    margin-top: 10px;
-    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
-    max-width: 300px;
-    min-width: 300px;
-    opacity: 0;
-    transform: translateY(-100%);
-    transition: opacity 0.4s, transform 0.4s;
-    pointer-events: none;
-}
-
-.toast.show {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.toast.hide {
-    opacity: 0;
-    transform: translateY(-100%);
-}
-
 
 .l2-redirect-box {
     background: #bdc0c2;
