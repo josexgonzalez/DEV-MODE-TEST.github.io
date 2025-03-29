@@ -47,6 +47,11 @@
     <script type="module" src="psfree/psfree.js"></script>
     <script src="payload_map.js"></script>
 
+        <h1 style="text-align: center; position: absolute; top: 15;left: 10;"></h1>
+        <p class="text-secondary" id="top-bar-text"><span class="fw-bold" id="listening-ip"></span></p>
+        <h1 style="text-align: center; position: absolute; top: 585;left: 10;"></h1>
+        <p class="text-secondary" id="top-bar-text"><span class="fw-bold" id="current-fw"></span></p>
+
     <script>
         addEventListener('unhandledrejection', (event) => {
             const reason = event.reason;
@@ -74,10 +79,6 @@
 
           </div>
 
-        <h1 style="text-align: center; position: absolute; top: 15;left: 10;"></h1>
-        <p class="text-secondary" id="top-bar-text"><span class="fw-bold" id="listening-ip"></span></p>
-        <h1 style="text-align: center; position: absolute; top: 585;left: 10;"></h1>
-        <p class="text-secondary" id="top-bar-text"><span class="fw-bold" id="current-fw"></span></p>
            <center style="position: fixed;bottom: 0;width: 26%;margin-bottom: 46px" class="info opacity-transition"
             id="credits">
             <h4>
