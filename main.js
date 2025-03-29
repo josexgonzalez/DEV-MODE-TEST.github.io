@@ -107,7 +107,7 @@ const fw_idx = navigator.userAgent.indexOf('PlayStation; PlayStation 5/') + 27;
 window.fw_str = navigator.userAgent.substring(fw_idx, fw_idx + 4);
 document.getElementById("current-fw").innerHTML = "[/] System Software: " + fw_str;
 document.getElementById("listening-ip").innerHTML = "[/] Address: " + window.location.hostname;
-document.getElementById('top-bar-text').innerHTML = `[/] Listening on: `;
+document.getElementById('ip').innerHTML = `[/] Listening on: `;
 window.fw_float = parseFloat(fw_str);
 
 // @ts-ignore
