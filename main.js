@@ -107,7 +107,6 @@ const fw_idx = navigator.userAgent.indexOf('PlayStation; PlayStation 5/') + 27;
 window.fw_str = navigator.userAgent.substring(fw_idx, fw_idx + 4);
 document.getElementById("current-fw").innerHTML = "[/] System Software: " + fw_str;
 document.getElementById("listening-ip").innerHTML = "[/] Address: " + window.location.hostname;
-document.getElementById('ip').innerHTML = `[/] Listening on: `;
 window.fw_float = parseFloat(fw_str);
 
 // @ts-ignore
@@ -1265,6 +1264,7 @@ async function main(userlandRW, wkOnly = false) {
 
     // @ts-ignore
     document.getElementById('Listening_on').innerHTML = `[/] Listening on: <span class="fw-bold">${ip.ip}</span>:${ports} (${ip.name})`;
+    document.getElementById('payload_info').innerHTML = `[/] payload info: <span class="fw-bold">${payload_info.displayTitle})`;
 
     /** @type {Array<{payload_info: PayloadInfo, toast: HTMLElement}>} */
     let queue = [];
