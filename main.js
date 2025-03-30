@@ -573,7 +573,7 @@ async function main(userlandRW, wkOnly = false) {
         }
     }
 
-    document.getElementById('payload_info').innerHTML = `[/]  Payload cargado: ${loadedPayload}`;
+    document.getElementById('payload_info').innerHTML = `Payload cargado: ${is_elfldr_running ? "elfldr activo" : "elfldr no está corriendo"}`;
     
 
     if (!wkOnly && is_elfldr_running) {
