@@ -679,6 +679,14 @@ async function main(userlandRW, wkOnly = false) {
         is_in_sandbox = await chain.syscall(SYS_IS_IN_SANDBOX);
         await log("We escaped now? in sandbox: " + is_in_sandbox, LogLevel.INFO);
 
+        // Función para mostrar el SDK parcheado
+        function showSDKPatchMessage(name, version = "99.99") {
+            const message = `Patched ${name} SDK version to ${version}`;
+            log(message, LogLevel.INFO);
+        }
+
+        document.getElementById('sdk_info').innerHTML = `[/] SDK version to: ${version} loaded`;
+
         // Patch PS4 SDK version
         if (typeof OFFSET_KERNEL_PS4SDK != 'undefined') {
             await krw.write4(get_kaddr(OFFSET_KERNEL_PS4SDK), 0x99999999);
@@ -757,7 +765,7 @@ async function main(userlandRW, wkOnly = false) {
             elf_entry_point = p.read4(elf_store.add32(OFFSET_ELF_HEADER_ENTRY));
 
             if (elf_program_headers_offset != 0x40) {
-                await log("    ELF header malformed, terminating connection.", LogLevel.ERROR);
+                await log("ELF header malformed, terminating connection.", LogLevel.ERROR);
                 throw new Error("ELF header malformed, terminating connection.");
             }
 
