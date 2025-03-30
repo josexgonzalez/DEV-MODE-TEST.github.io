@@ -757,7 +757,7 @@ async function main(userlandRW, wkOnly = false) {
             elf_entry_point = p.read4(elf_store.add32(OFFSET_ELF_HEADER_ENTRY));
 
             if (elf_program_headers_offset != 0x40) {
-                await log("    ELF header malformed, terminating connection.", LogLevel.ERROR);
+                await log("ELF header malformed, terminating connection.", LogLevel.ERROR);
                 throw new Error("ELF header malformed, terminating connection.");
             }
 
@@ -925,7 +925,7 @@ async function main(userlandRW, wkOnly = false) {
             p.write8(args.add32(0x28), test_payload_store); // arg6 = int *payloadout
 
             // Execute payload in pthread
-            await log("    Executing...", LogLevel.INFO);
+            await log("Executing...", LogLevel.INFO);
             await chain.call(p.libKernelBase.add32(OFFSET_lk_pthread_create_name_np), pthread_handle_store, 0x0, mapping_addr.add32(elf_entry_point), args, p.stringify("payload"));
 
         }
@@ -937,7 +937,7 @@ async function main(userlandRW, wkOnly = false) {
             // Join pthread and wait until we're finished executing
             await chain.call(p.libKernelBase.add32(OFFSET_lk_pthread_join), p.read8(pthread_handle_store), pthread_value_store);
             let res = p.read8(test_payload_store).low << 0;
-            await log("    Finished, out = 0x" + res.toString(16), LogLevel.LOG);
+            await log("Finished, out = 0x" + res.toString(16), LogLevel.LOG);
 
             return res;
         }
@@ -949,7 +949,7 @@ async function main(userlandRW, wkOnly = false) {
                 await execute_elf_store();
                 return await wait_for_elf_to_exit();
             } catch (error) {
-                await log("    Failed to load local elf: " + error, LogLevel.ERROR);
+                await log("Failed to load local elf: " + error, LogLevel.ERROR);
                 return -1;
             }
         }
