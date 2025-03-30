@@ -574,7 +574,10 @@ async function main(userlandRW, wkOnly = false) {
     }
     
 
-
+    if (is_elfldr_running) {
+        console.log("elfldr ya está ejecutándose. No se continuará.");
+        return;
+    }
 
     populatePayloadsPage(wkOnly);
 
