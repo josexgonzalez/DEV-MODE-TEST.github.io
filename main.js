@@ -685,7 +685,12 @@ async function main(userlandRW, wkOnly = false) {
             log(message, LogLevel.INFO);
         }
 
-        document.getElementById('sdk_info').innerHTML = `[/] SDK version to: ${version} loaded`;
+        const sdkInfoElement = document.getElementById("sdk_info");
+        if (sdkInfoElement) {
+            sdkInfoElement.innerHTML = message;
+        } else {
+            console.warn("Elemento 'sdk_info' no encontrado.");
+        }
 
         // Patch PS4 SDK version
         if (typeof OFFSET_KERNEL_PS4SDK != 'undefined') {
