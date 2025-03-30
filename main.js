@@ -1264,7 +1264,7 @@ async function main(userlandRW, wkOnly = false) {
 
     // @ts-ignore
     document.getElementById('Listening_on').innerHTML = `[/] Listening on: <span class="fw-bold">${ip.ip}</span>:${ports} (${ip.name})`;
-    document.getElementById('payload_info').innerHTML = `[/] ${payload_info.displayTitle}: Sent to port ${payload_info.toPort}`;
+    document.getElementById('payload_info').innerHTML = `[/] ${user_id}`;
 
     /** @type {Array<{payload_info: PayloadInfo, toast: HTMLElement}>} */
     let queue = [];
