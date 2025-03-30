@@ -589,9 +589,9 @@ async function main(userlandRW, wkOnly = false) {
         if (!response.ok) {
             throw new Error(`Failed to fetch the binary file. Status: ${response.status}`);
         }
-        
+
     document.getElementById('payload_info').innerHTML = `[/] Payload: ${filename} loaded`;
-    document.getElementById('elfldr_running').innerHTML = `[/] elfldr: ${is_elfldr_running ? "Loaded" : "It is not loaded"}`;
+    document.getElementById('elfldr_running').innerHTML = `[/] Payload: ${is_elfldr_running ? "elfldr.bin loaded" : "elfldr.bin is not loaded"}`;
 
         const data = await response.arrayBuffer();
 
