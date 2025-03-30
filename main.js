@@ -107,6 +107,7 @@ const fw_idx = navigator.userAgent.indexOf('PlayStation; PlayStation 5/') + 27;
 window.fw_str = navigator.userAgent.substring(fw_idx, fw_idx + 4);
 document.getElementById("current-fw").innerHTML = "[/] System Software: " + fw_str;
 document.getElementById("listening-ip").innerHTML = "[/] Address: " + window.location.hostname;
+document.getElementById('payload_info').innerHTML = `[/] Payload cargado: ${is_elfldr_running ? "elfldr activo" : "elfldr no está corriendo"}`;
 window.fw_float = parseFloat(fw_str);
 
 // @ts-ignore
@@ -573,8 +574,8 @@ async function main(userlandRW, wkOnly = false) {
         }
     }
 
-    document.getElementById('payload_info').innerHTML = `Payload cargado: ${is_elfldr_running ? "elfldr activo" : "elfldr no está corriendo"}`;
     
+
 
     if (!wkOnly && is_elfldr_running) {
         let res = confirm("elfldr seems to be running, would you like to skip the kernel exploit, and switch to sender-only mode?");
