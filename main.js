@@ -107,6 +107,7 @@ const fw_idx = navigator.userAgent.indexOf('PlayStation; PlayStation 5/') + 27;
 window.fw_str = navigator.userAgent.substring(fw_idx, fw_idx + 4);
 document.getElementById("current-fw").innerHTML = "[/] System Software: " + fw_str;
 document.getElementById("listening-ip").innerHTML = "[/] Address: " + window.location.hostname;
+document.getElementById('sdk_info').innerHTML = `[/] `;
 window.fw_float = parseFloat(fw_str);
 
 // @ts-ignore
@@ -593,19 +594,6 @@ async function main(userlandRW, wkOnly = false) {
     document.getElementById('payload_info').innerHTML = `[/] Payload: ${filename} loaded`;
     document.getElementById('elfldr_running').innerHTML = `[/] Payload: ${is_elfldr_running ? "elfldr.bin loaded" : "elfldr.bin is not loaded"}`;
 
-                    // Función para mostrar el SDK parcheado
-        function showSDKPatchMessage(name, version = "99.99") {
-            const message = `Patched ${name} SDK version to ${version}`;
-            log(message, LogLevel.INFO);
-        }
-
-        const sdkInfoElement = document.getElementById("sdk_info");
-        if (sdkInfoElement) {
-            sdkInfoElement.innerHTML = message;
-        } else {
-            console.warn("Elemento 'sdk_info' no encontrado.");
-        }
-
         const data = await response.arrayBuffer();
 
         let byteArray;
@@ -691,6 +679,19 @@ async function main(userlandRW, wkOnly = false) {
 
         is_in_sandbox = await chain.syscall(SYS_IS_IN_SANDBOX);
         await log("We escaped now? in sandbox: " + is_in_sandbox, LogLevel.INFO);
+
+                            // Función para mostrar el SDK parcheado
+        function showSDKPatchMessage(name, version = "99.99") {
+            const message = `Patched ${name} SDK version to ${version}`;
+            log(message, LogLevel.INFO);
+        }
+
+        const sdkInfoElement = document.getElementById("sdk_info");
+        if (sdkInfoElement) {
+            sdkInfoElement.innerHTML = message;
+        } else {
+            console.warn("Elemento 'sdk_info' no encontrado.");
+        }
 
         // Patch PS4 SDK version
         if (typeof OFFSET_KERNEL_PS4SDK != 'undefined') {
