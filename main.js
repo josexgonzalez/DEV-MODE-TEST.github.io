@@ -567,7 +567,7 @@ async function main(userlandRW, wkOnly = false) {
     let is_elfldr_running = await probe_sb_elfldr();
     await log("is elfldr running: " + is_elfldr_running, LogLevel.INFO);
     if (wkOnly && !is_elfldr_running) {
-        let res = confirm("elfldr is running");
+        let res = confirm("elfldr doesnt seem to be running and in webkit only mode it wont be loaded, continue?");
         if (!res) {
             throw new Error("Aborted");
         }
@@ -576,23 +576,6 @@ async function main(userlandRW, wkOnly = false) {
 
     if (!wkOnly && is_elfldr_running) {
         let res = confirm("elfldr is running");
-        if (res) {
-            wkOnly = true;
-        }
-    }
-
-    let is_ETAhen_running = await probe_sb_elfldr();
-    await log("is ETAhen running: " + is_ETAhen_running, LogLevel.INFO);
-    if (wkOnly && !is_ETAhen_running) {
-        let res = confirm("elfldr is running");
-        if (!res) {
-            throw new Error("Aborted");
-        }
-    }
-    
-
-    if (!wkOnly && is_ETAhen_running) {
-        let res = confirm("ETAhen is running");
         if (res) {
             wkOnly = true;
         }
@@ -607,9 +590,8 @@ async function main(userlandRW, wkOnly = false) {
             throw new Error(`Failed to fetch the binary file. Status: ${response.status}`);
     }
 
+    document.getElementById('payload_info').innerHTML = `[/] Payload: ${filename} loaded`;
     document.getElementById('elfldr_running').innerHTML = `[/] Payload: ${is_elfldr_running ? "elfldr.bin loaded" : "elfldr.bin is not loaded"}`;
-    document.getElementById('payload_info').innerHTML = `[/] Payload: ${is_ETAhen_running ? "ETAhen.bin loaded" : "ETAhen.bin is not loaded"}`;
-    //document.getElementById('payload_info').innerHTML = `[/] Payload: ${filename} loaded`;
 
         const data = await response.arrayBuffer();
 
