@@ -575,8 +575,7 @@ async function main(userlandRW, wkOnly = false) {
     
 
     if (is_elfldr_running) {
-        console.log("elfldr ya está ejecutándose. No se continuará.");
-        return;
+        throw new Error("elfldr ya está ejecutándose. Deteniendo...");
     }
 
     populatePayloadsPage(wkOnly);
