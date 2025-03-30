@@ -679,19 +679,6 @@ async function main(userlandRW, wkOnly = false) {
         is_in_sandbox = await chain.syscall(SYS_IS_IN_SANDBOX);
         await log("We escaped now? in sandbox: " + is_in_sandbox, LogLevel.INFO);
 
-        // Función para mostrar el SDK parcheado
-        function showSDKPatchMessage(name, version = "99.99") {
-            const message = `Patched ${name} SDK version to ${version}`;
-            log(message, LogLevel.INFO);
-        }
-
-        const sdkInfoElement = document.getElementById("sdk_info");
-        if (sdkInfoElement) {
-            sdkInfoElement.innerHTML = message;
-        } else {
-            console.warn("Elemento 'sdk_info' no encontrado.");
-        }
-
         // Patch PS4 SDK version
         if (typeof OFFSET_KERNEL_PS4SDK != 'undefined') {
             await krw.write4(get_kaddr(OFFSET_KERNEL_PS4SDK), 0x99999999);
@@ -715,6 +702,19 @@ async function main(userlandRW, wkOnly = false) {
             await krw.write4(get_kaddr(OFFSET_KERNEL_DATA_BASE_PS5SDK), 0x99999999);
             await log("Patched PS5 SDK version to 99.99", LogLevel.INFO);
             showTemporaryAlert("Patched PS5 SDK version to 99.99");
+        }
+
+                // Función para mostrar el SDK parcheado
+        function showSDKPatchMessage(name, version = "99.99") {
+            const message = `Patched ${name} SDK version to ${version}`;
+            log(message, LogLevel.INFO);
+        }
+
+        const sdkInfoElement = document.getElementById("sdk_info");
+        if (sdkInfoElement) {
+            sdkInfoElement.innerHTML = message;
+        } else {
+            console.warn("Elemento 'sdk_info' no encontrado.");
         }
 
         ///////////////////////////////////////////////////////////////////////
