@@ -574,12 +574,7 @@ async function main(userlandRW, wkOnly = false) {
     }
     
 
-    if (!wkOnly && is_elfldr_running) {
-        let res = confirm("elfldr seems to be running, would you like to skip the kernel exploit, and switch to sender-only mode?");
-        if (res) {
-            wkOnly = true;
-        }
-    }
+
 
     populatePayloadsPage(wkOnly);
 
