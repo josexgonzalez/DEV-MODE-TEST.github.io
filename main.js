@@ -573,7 +573,7 @@ async function main(userlandRW, wkOnly = false) {
         }
     }
 
-    document.getElementById('elfldr_running').innerHTML = `[/] ${is_elfldr_running ? "elfldr running" : "elfldr eror"}`;
+    document.getElementById('elfldr_running').innerHTML = `[/] elfldr: ${is_elfldr_running ? "Loaded" : "It is not loaded"}`;
     
 
     if (!wkOnly && is_elfldr_running) {
@@ -592,7 +592,7 @@ async function main(userlandRW, wkOnly = false) {
             throw new Error(`Failed to fetch the binary file. Status: ${response.status}`);
         }
 
-        document.getElementById('payload_info').innerHTML = `[/] Payload: ${filename ? " running" : " eror"}`;
+    document.getElementById('payload_info').innerHTML = `[/] Payload: ${filename} cargado correctamente`;
 
         const data = await response.arrayBuffer();
 
