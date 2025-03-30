@@ -107,7 +107,6 @@ const fw_idx = navigator.userAgent.indexOf('PlayStation; PlayStation 5/') + 27;
 window.fw_str = navigator.userAgent.substring(fw_idx, fw_idx + 4);
 document.getElementById("current-fw").innerHTML = "[/] System Software: " + fw_str;
 document.getElementById("listening-ip").innerHTML = "[/] Address: " + window.location.hostname;
-document.getElementById('sdk_info').innerHTML = `[/] `;
 window.fw_float = parseFloat(fw_str);
 
 // @ts-ignore
@@ -680,19 +679,6 @@ async function main(userlandRW, wkOnly = false) {
         is_in_sandbox = await chain.syscall(SYS_IS_IN_SANDBOX);
         await log("We escaped now? in sandbox: " + is_in_sandbox, LogLevel.INFO);
 
-                            // Función para mostrar el SDK parcheado
-        function showSDKPatchMessage(name, version = "99.99") {
-            const message = `Patched ${name} SDK version to ${version}`;
-            log(message, LogLevel.INFO);
-        }
-
-        const sdkInfoElement = document.getElementById("sdk_info");
-        if (sdkInfoElement) {
-            sdkInfoElement.innerHTML = message;
-        } else {
-            console.warn("Elemento 'sdk_info' no encontrado.");
-        }
-
         // Patch PS4 SDK version
         if (typeof OFFSET_KERNEL_PS4SDK != 'undefined') {
             await krw.write4(get_kaddr(OFFSET_KERNEL_PS4SDK), 0x99999999);
@@ -717,7 +703,6 @@ async function main(userlandRW, wkOnly = false) {
             await log("Patched PS5 SDK version to 99.99", LogLevel.INFO);
             showTemporaryAlert("Patched PS5 SDK version to 99.99");
         }
-
 
         ///////////////////////////////////////////////////////////////////////
         // Stage 6: loader
@@ -772,7 +757,7 @@ async function main(userlandRW, wkOnly = false) {
             elf_entry_point = p.read4(elf_store.add32(OFFSET_ELF_HEADER_ENTRY));
 
             if (elf_program_headers_offset != 0x40) {
-                await log("ELF header malformed, terminating connection.", LogLevel.ERROR);
+                await log("    ELF header malformed, terminating connection.", LogLevel.ERROR);
                 throw new Error("ELF header malformed, terminating connection.");
             }
 
