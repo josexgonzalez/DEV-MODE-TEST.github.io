@@ -573,6 +573,9 @@ async function main(userlandRW, wkOnly = false) {
         }
     }
 
+    document.getElementById('payload_info').innerHTML = `[/]  Payload cargado: ${loadedPayload}`;
+    
+
     if (!wkOnly && is_elfldr_running) {
         let res = confirm("elfldr seems to be running, would you like to skip the kernel exploit, and switch to sender-only mode?");
         if (res) {
@@ -1328,8 +1331,6 @@ async function main(userlandRW, wkOnly = false) {
 
             setTimeout(removeToast, TOAST_SUCCESS_TIMEOUT, toast);
         }
-
-        document.getElementById('payload_info').innerHTML = `[/] ${payload_info.displayTitle}`;
 
         if (queue.length > 0) {
             continue; // prioritize actions before handling port 9020 stuff
