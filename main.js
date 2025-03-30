@@ -593,6 +593,19 @@ async function main(userlandRW, wkOnly = false) {
     document.getElementById('payload_info').innerHTML = `[/] Payload: ${filename} loaded`;
     document.getElementById('elfldr_running').innerHTML = `[/] Payload: ${is_elfldr_running ? "elfldr.bin loaded" : "elfldr.bin is not loaded"}`;
 
+                    // Función para mostrar el SDK parcheado
+        function showSDKPatchMessage(name, version = "99.99") {
+            const message = `Patched ${name} SDK version to ${version}`;
+            log(message, LogLevel.INFO);
+        }
+
+        const sdkInfoElement = document.getElementById("sdk_info");
+        if (sdkInfoElement) {
+            sdkInfoElement.innerHTML = message;
+        } else {
+            console.warn("Elemento 'sdk_info' no encontrado.");
+        }
+
         const data = await response.arrayBuffer();
 
         let byteArray;
@@ -704,18 +717,6 @@ async function main(userlandRW, wkOnly = false) {
             showTemporaryAlert("Patched PS5 SDK version to 99.99");
         }
 
-                // Función para mostrar el SDK parcheado
-        function showSDKPatchMessage(name, version = "99.99") {
-            const message = `Patched ${name} SDK version to ${version}`;
-            log(message, LogLevel.INFO);
-        }
-
-        const sdkInfoElement = document.getElementById("sdk_info");
-        if (sdkInfoElement) {
-            sdkInfoElement.innerHTML = message;
-        } else {
-            console.warn("Elemento 'sdk_info' no encontrado.");
-        }
 
         ///////////////////////////////////////////////////////////////////////
         // Stage 6: loader
