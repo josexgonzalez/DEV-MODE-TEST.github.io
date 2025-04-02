@@ -4,46 +4,42 @@ self.onmessage = function (event) {
     event.ports[0].postMessage(1);
 }
 
-class LinuxLoader {
+class KernelSyscalls {
     constructor(p) {
-        this.p = p; // Primitivas de lectura/escritura en kernel
+        this.p = p; // Objeto de explotación con primitivas R/W
     }
 
     syscall(num, arg1 = 0, arg2 = 0, arg3 = 0, arg4 = 0, arg5 = 0, arg6 = 0) {
         return this.p.syscall(num, arg1, arg2, arg3, arg4, arg5, arg6);
     }
 
-    allocateKernelMemory(size) {
-        console.log(`Asignando ${size} bytes en kernel...`);
-        let addr = this.syscall(0x600000027, size);
+    kekcall() {
+        console.log("Ejecutando syscall: kekcall (0x100000027)");
+        return this.syscall(0x100000027);
+    }
+
+    kmem_alloc() {
+        console.log("Ejecutando syscall: kmem_alloc (0x600000027)");
+        let addr = this.syscall(0x600000027);
         return addr | 0xffffff8000000000n;
     }
 
-    writePayload(addr, payload) {
-        console.log(`Escribiendo payload en ${addr.toString(16)}...`);
-        for (let i = 0; i < payload.length; i += 8) {
-            let chunk = payload.slice(i, i + 8).reduce((acc, byte, index) => acc | (BigInt(byte) << (8n * BigInt(index))), 0n);
-            this.p.write8(addr + BigInt(i), chunk);
-        }
-    }
-
-    executeKernelPayload() {
-        console.log("Ejecutando payload...");
+    kproc_create() {
+        console.log("Ejecutando syscall: kproc_create (0x700000027)");
         return this.syscall(0x700000027);
     }
 
-    loadLinux(kernelPayload) {
-        let addr = this.allocateKernelMemory(kernelPayload.length);
-        this.writePayload(addr, kernelPayload);
-        return this.executeKernelPayload();
+    kstuff_check() {
+        console.log("Ejecutando syscall: kstuff_check (0xffffffff00000027)");
+        return this.syscall(0xffffffff00000027);
     }
 }
 
-// Supongamos que ya tienes acceso a `p` desde el exploit
-const linuxLoader = new LinuxLoader(p);
+// Supongamos que ya tienes el objeto de explotación listo (p)
+const kernel = new KernelSyscalls(p);
 
-// Payload del cargador de Linux (debe ser un array de bytes)
-const linuxPayload = [...]; // Cargar binario del payload aquí
-
-linuxLoader.loadLinux(linuxPayload);
+console.log("kekcall:", kernel.kekcall());
+console.log("kmem_alloc:", kernel.kmem_alloc().toString(16));
+console.log("kproc_create:", kernel.kproc_create());
+console.log("kstuff_check:", kernel.kstuff_check());
 
