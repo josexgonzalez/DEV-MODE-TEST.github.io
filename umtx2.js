@@ -941,7 +941,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         // @ts-ignore
         kstack = await chain.syscall(SYS_MMAP, 0, 0x4500, PROT_NONE, MAP_SHARED, winnerLookupFd, 0);
         if ((kstack.low << 0) == -1) {
-            await log("Failed to mmap kstack", LogLevel.WARN);
+            showTemporaryAlert("Failed to mmap kstack", LogLevel.WARN);
             continue;
         }
 
