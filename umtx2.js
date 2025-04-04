@@ -904,7 +904,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         }
 
         if (count != config.max_race_attempts) {
-            await log(`Race won after ${count} attempts`, LogLevel.INFO);
+            showTemporaryAlert(`Race won after ${count} attempts`, LogLevel.INFO);
         } else {
             await log("Race max attempts reached, retrying...", LogLevel.INFO);
         }
