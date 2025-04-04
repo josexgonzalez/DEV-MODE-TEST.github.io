@@ -1,130 +1,200 @@
-// @ts-check
+//
+// Tiny module that provides big (64bit) integers.
+//
+// Copyright (c) 2016 Samuel Groß
+//
+// Requires utils.js
+//
 
-function zeroFill(number, width) {
-    width -= number.toString().length;
+// Datatype to represent 64-bit integers.
+//
+// Internally, the integer is stored as a Uint8Array in little endian byte order.
+function Int64(v) {
+    // The underlying byte array.
+    var bytes = new Uint8Array(8);
 
-    if (width > 0) {
-        return new Array(width + (/\./.test(number) ? 2 : 1)).join('0') + number;
+    switch (typeof v) {
+        case 'number':
+            v = '0x' + Math.floor(v).toString(16);
+        case 'string':
+            if (v.startsWith('0x'))
+                v = v.substr(2);
+            if (v.length % 2 == 1)
+                v = '0' + v;
+
+            var bigEndian = unhexlify(v, 8);
+            bytes.set(Array.from(bigEndian).reverse());
+            break;
+        case 'object':
+            if (v instanceof Int64) {
+                bytes.set(v.bytes());
+            } else {
+                if (v.length != 8)
+                    throw TypeError("Array must have excactly 8 elements.");
+                bytes.set(v);
+            }
+            break;
+        case 'undefined':
+            break;
+        default:
+            throw TypeError("Int64 constructor requires an argument.");
     }
 
-    return number + ""; // always return a string
+    // Return a double whith the same underlying bit representation.
+    this.asDouble = function() {
+        // Check for NaN
+        if (bytes[7] == 0xff && (bytes[6] == 0xff || bytes[6] == 0xfe))
+            throw new RangeError("Integer can not be represented by a double");
+
+        return Struct.unpack(Struct.float64, bytes);
+    };
+
+    // Return a javascript value with the same underlying bit representation.
+    // This is only possible for integers in the range [0x0001000000000000, 0xffff000000000000)
+    // due to double conversion constraints.
+    this.asJSValue = function() {
+        if ((bytes[7] == 0 && bytes[6] == 0) || (bytes[7] == 0xff && bytes[6] == 0xff))
+            throw new RangeError("Integer can not be represented by a JSValue");
+
+        // For NaN-boxing, JSC adds 2^48 to a double value's bit pattern.
+        this.assignSub(this, 0x1000000000000);
+        var res = Struct.unpack(Struct.float64, bytes);
+        this.assignAdd(this, 0x1000000000000);
+
+        return res;
+    };
+
+    // Return the underlying bytes of this number as array.
+    this.bytes = function() {
+        return Array.from(bytes);
+    };
+
+    // Return the byte at the given index.
+    this.byteAt = function(i) {
+        return bytes[i];
+    };
+
+    // Return the value of this number as unsigned hex string.
+    this.toString = function() {
+        return '0x' + hexlify(Array.from(bytes).reverse());
+    };
+
+    // Basic arithmetic.
+    // These functions assign the result of the computation to their 'this' object.
+
+    // Decorator for Int64 instance operations. Takes care
+    // of converting arguments to Int64 instances if required.
+    function operation(f, nargs) {
+        return function() {
+            if (arguments.length != nargs)
+                throw Error("Not enough arguments for function " + f.name);
+            for (var i = 0; i < arguments.length; i++)
+                if (!(arguments[i] instanceof Int64))
+                    arguments[i] = new Int64(arguments[i]);
+            return f.apply(this, arguments);
+        };
+    }
+
+    // this = -n (two's complement)
+    this.assignNeg = operation(function neg(n) {
+        for (var i = 0; i < 8; i++)
+            bytes[i] = ~n.byteAt(i);
+
+        return this.assignAdd(this, Int64.One);
+    }, 1);
+
+    // this = a + b
+    this.assignAdd = operation(function add(a, b) {
+        var carry = 0;
+        for (var i = 0; i < 8; i++) {
+            var cur = a.byteAt(i) + b.byteAt(i) + carry;
+            carry = cur > 0xff | 0;
+            bytes[i] = cur;
+        }
+        return this;
+    }, 2);
+
+    // this = a - b
+    this.assignSub = operation(function sub(a, b) {
+        var carry = 0;
+        for (var i = 0; i < 8; i++) {
+            var cur = a.byteAt(i) - b.byteAt(i) - carry;
+            carry = cur < 0 | 0;
+            bytes[i] = cur;
+        }
+        return this;
+    }, 2);
 }
 
-/**
- * Represents a 64-bit integer.
- * @constructor
- * @param {number} low - The lower 32 bits.
- * @param {number} hi - The higher 32 bits.
- * @returns {int64}
- */
-function int64(low, hi) {
-    // number >>> 0 = convert to unsigned
-    /** @type {number} */
-    this.low = (low >>> 0);
-    /** @type {number} */
-    this.hi = (hi >>> 0);
+// Constructs a new Int64 instance with the same bit representation as the provided double.
+Int64.fromDouble = function(d) {
+    var bytes = Struct.pack(Struct.float64, d);
+    return new Int64(bytes);
+};
 
-    /** @type {Uint8Array|Uint16Array|Uint32Array} */
-    this.backing = null;
+// Convenience functions. These allocate a new Int64 to hold the result.
 
-    /** @this {int64} */
-    this.add32inplace = function (val) {
-        let new_lo = (((this.low >>> 0) + val) & 0xFFFFFFFF) >>> 0;
-        let new_hi = (this.hi >>> 0);
-
-        if (new_lo < this.low) {
-            new_hi++;
-        }
-
-        this.hi = new_hi;
-        this.low = new_lo;
-        if (this.backing !== null) {
-            if (this.backing.byteLength < val) {
-                throw new Error("int64.add32inplace: overflow");
-            }
-        
-            // this reuses the original backing buffer, so no big allocation here
-            this.backing = new Uint8Array(this.backing.buffer, val, this.backing.byteLength - val);
-        }
-    }
-
-    this.add32 = function (val) {
-        let new_lo = (((this.low >>> 0) + val) & 0xFFFFFFFF) >>> 0;
-        let new_hi = (this.hi >>> 0);
-
-        if (new_lo < this.low) {
-            new_hi++;
-        }
-
-        let ret = new int64(new_lo, new_hi);
-        if (this.backing !== null) {
-            if (this.backing.byteLength < val) {
-                throw new Error("int64.add32: overflow");
-            }
-        
-            // this reuses the original backing buffer, so no big allocation here
-            ret.backing = new Uint8Array(this.backing.buffer, val, this.backing.byteLength - val);
-        }
-
-        return ret;
-    }
-
-    this.sub32 = function (val) {
-        let new_lo = (((this.low >>> 0) - val) & 0xFFFFFFFF) >>> 0;
-        let new_hi = (this.hi >>> 0);
-
-        // @ts-ignore
-        if (new_lo > (this.low) & 0xFFFFFFFF) {
-            new_hi--;
-        }
-
-        return new int64(new_lo, new_hi);
-    }
-
-    /** @this {int64} */
-    this.sub32inplace = function (val) {
-        let new_lo = (((this.low >>> 0) - val) & 0xFFFFFFFF) >>> 0;
-        let new_hi = (this.hi >>> 0);
-
-        // @ts-ignore
-        if (new_lo > (this.low) & 0xFFFFFFFF) {
-            new_hi--;
-        }
-
-        this.hi = new_hi;
-        this.low = new_lo;
-    }
-
-    this.and32 = function (val) {
-        let new_lo = this.low & val;
-        let new_hi = this.hi;
-        return new int64(new_lo, new_hi);
-    }
-
-    this.and64 = function (vallo, valhi) {
-        let new_lo = this.low & vallo;
-        let new_hi = this.hi & valhi;
-        return new int64(new_lo, new_hi);
-    }
-
-    /** 
-     * @param {number} radix
-     * @returns {string}
-     */
-    this.toString = function (radix = 16) {
-        let lo_str = (this.low >>> 0).toString(radix);
-        let hi_str = (this.hi >>> 0).toString(radix);
-
-        if (this.hi == 0) {
-            return lo_str;
-        } else {
-            // explicit check for 16 so its faster since in practice this is all thats used
-            const width = radix === 16 ? 8 : Math.ceil(32 / Math.log2(radix));
-            lo_str = zeroFill(lo_str, width);
-        }
-
-        return hi_str + lo_str;
-    }
-
-    return this;
+// Return -n (two's complement)
+function Neg(n) {
+    return (new Int64()).assignNeg(n);
 }
+
+// Return a + b
+function Add(a, b) {
+    return (new Int64()).assignAdd(a, b);
+}
+
+// Return a - b
+function Sub(a, b) {
+    return (new Int64()).assignSub(a, b);
+}
+
+// Return a & b
+function And(a, b) {
+    return (new Int64()).assignAnd(a, b);
+}
+
+// Return a << 1
+function LShift1(a) {
+    return (new Int64()).assignLShift1(a);
+}
+
+// Return a >> 1
+function RShift1(a) {
+    return (new Int64()).assignRShift1(a);
+}
+
+// Return a << b
+function ShiftLeft(a, b) {
+    return (new Int64()).assignShiftLeft(a, b);
+}
+
+// Return a >> b
+function ShiftRight(a, b) {
+    return (new Int64()).assignShiftRight(a, b);
+}
+
+// Return a == b
+function Eq(a, b) {
+    if(!(a instanceof Int64)) {
+        a = new Int64(a);
+    }
+
+    if(!(b instanceof Int64)) {
+        b = new Int64(b);
+    }
+
+    for(let Idx = 0; Idx < 8; Idx++) {
+        if(a.byteAt(Idx) != b.byteAt(Idx)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// Some commonly used numbers.
+Int64.Zero = new Int64(0);
+Int64.One = new Int64(1);
+
+// That's all the arithmetic we need for exploiting WebKit.. :)
