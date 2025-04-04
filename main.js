@@ -706,7 +706,7 @@ async function main(userlandRW, wkOnly = false) {
 
         // Patch PS5 SDK version
         if (typeof OFFSET_KERNEL_PS5SDK_2 != 'undefined') {
-            await krw.write4(get_kaddr(OFFSET_KERNEL_PS5SDK_2), 0x00007950);
+            await krw.write4(get_kaddr(OFFSET_KERNEL_PS5SDK_2), 0x82);
             await log("Patched PS5 SDK version to 99.99", LogLevel.INFO);
             showTemporaryAlert("Patched PS5 SDK version to 99.99");
         }
