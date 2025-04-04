@@ -401,3 +401,4 @@ const OFFSET_KERNEL_PS4SDK                      = 0x22ABE88;
 const OFFSET_KERNEL_DATA_BASE_PS4SDK            = 0x16ABE88;
 const OFFSET_KERNEL_PS5SDK                      = 0x7106598;
 const OFFSET_KERNEL_DATA_BASE_PS5SDK            = 0x6506598;
+const OFFSET_KERNEL_PS5SDK_2                    = 0x00007950;
