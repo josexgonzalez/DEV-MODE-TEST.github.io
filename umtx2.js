@@ -910,17 +910,17 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         }
 
         const afterRaceTime = performance.now();
-        if (debug) await log(`Race took ${toHumanReadableTime(afterRaceTime - beforeRaceTime)}`, LogLevel.INFO);
+        if (debug) showTemporaryAlert(`Race took ${toHumanReadableTime(afterRaceTime - beforeRaceTime)}`, LogLevel.INFO);
 
         // signal all threads to exit
         p.write8(commonThreadData.exit, 1);
         p.write8(commonThreadData.resume, 1);
 
-        if (debug) await log("Waiting for all threads to exit...", LogLevel.DEBUG);
+        if (debug) showTemporaryAlert("Waiting for all threads to exit...", LogLevel.DEBUG);
 
         await waitForRaceThreadsState(threadStatus.EXITED);
 
-        if (debug) await log("All threads exited", LogLevel.DEBUG);
+        if (debug) showTemporaryAlert("All threads exited", LogLevel.DEBUG);
 
         if (!winnerFd) {
             if (debug) await log("Loser", LogLevel.ERROR);
