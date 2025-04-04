@@ -704,9 +704,10 @@ async function main(userlandRW, wkOnly = false) {
             showTemporaryAlert("Patched PS5 SDK version to 99.99");
         }
 
-        // Set targetid to DEX
-        await krw.write1(get_kaddr(OFFSET_KERNEL_PS5SDK_2), 0x82);
-
+        const value = await krw.read1(get_kaddr(OFFSET_KERNEL_PS5_KERNELOFFSET));
+            console.log("Valor leído desde la memoria:", value);
+        }
+        
         ///////////////////////////////////////////////////////////////////////
         // Stage 6: loader
         ///////////////////////////////////////////////////////////////////////
