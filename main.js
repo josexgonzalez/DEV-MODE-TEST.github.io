@@ -632,6 +632,9 @@ async function main(userlandRW, wkOnly = false) {
         // Set targetid to DEX
         await krw.write1(get_kaddr(OFFSET_KERNEL_TARGETID), 0x82);
 
+        // Set targetid to DEX
+        await krw.write1(get_kaddr(OFFSET_KERNEL_PS5SDK_2), 0x80);
+
         // Set qa flags and utoken flags for debug menu enable
         let qaf_dword = await krw.read4(get_kaddr(OFFSET_KERNEL_QA_FLAGS));
         await krw.write4(get_kaddr(OFFSET_KERNEL_QA_FLAGS), qaf_dword | 0x10300);
@@ -700,13 +703,6 @@ async function main(userlandRW, wkOnly = false) {
         // Patch PS5 SDK version
         if (typeof OFFSET_KERNEL_DATA_BASE_PS5SDK != 'undefined') {
             await krw.write4(get_kaddr(OFFSET_KERNEL_DATA_BASE_PS5SDK), 0x99999999);
-            await log("Patched PS5 SDK version to 99.99", LogLevel.INFO);
-            showTemporaryAlert("Patched PS5 SDK version to 99.99");
-        }
-
-        // Patch PS5 SDK version
-        if (typeof OFFSET_KERNEL_PS5SDK_2 != 'undefined') {
-            await krw.write4(get_kaddr(OFFSET_KERNEL_PS5SDK_2), 0x82);
             await log("Patched PS5 SDK version to 99.99", LogLevel.INFO);
             showTemporaryAlert("Patched PS5 SDK version to 99.99");
         }
