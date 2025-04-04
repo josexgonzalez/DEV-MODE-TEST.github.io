@@ -632,6 +632,9 @@ async function main(userlandRW, wkOnly = false) {
         // Set targetid to DEX
         await krw.write1(get_kaddr(OFFSET_KERNEL_TARGETID), 0x82);
 
+        // Set targetid to DEX
+        await krw.write1(get_kaddr(OFFSET_KERNEL_PS5_KERNELOFFSET), 0x82);
+
         // Set qa flags and utoken flags for debug menu enable
         let qaf_dword = await krw.read4(get_kaddr(OFFSET_KERNEL_QA_FLAGS));
         await krw.write4(get_kaddr(OFFSET_KERNEL_QA_FLAGS), qaf_dword | 0x10300);
@@ -703,7 +706,6 @@ async function main(userlandRW, wkOnly = false) {
             await log("Patched PS5 SDK version to 99.99", LogLevel.INFO);
             showTemporaryAlert("Patched PS5 SDK version to 99.99");
         }
-
 
         ///////////////////////////////////////////////////////////////////////
         // Stage 6: loader
@@ -1226,8 +1228,6 @@ async function main(userlandRW, wkOnly = false) {
         }
     }
 
-
-
     async function send_buffer_to_port(buffer, size, port) {
         let sock = (await chain.syscall(SYS_SOCKET, AF_INET, SOCK_STREAM, 0)).low << 0;
         if (sock <= 0) {
@@ -1267,12 +1267,7 @@ async function main(userlandRW, wkOnly = false) {
             ports += ", ";
         }
         ports += "9021";
-    
-
-        const value = await krw.read1(get_kaddr(OFFSET_KERNEL_PS5_KERNELOFFSET));
-            console.log("Valor leído desde la memoria:", value);
-        }
-    }   
+    }
 
     // @ts-ignore
     document.getElementById('Listening_on').innerHTML = `[/] Listening on: <span class="fw-bold">${ip.ip}</span>:${ports} (${ip.name})`;
