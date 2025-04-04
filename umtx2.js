@@ -808,9 +808,9 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         for (let i2 = 1; i2 < config.max_race_attempts; i2++) {
             if (i2 % 200 == 100) {
                 if (debug) {
-                    await log(`Race attempt ${i}-${i2} (mem access fail count: ${checkMemoryAccessFailCount})`, LogLevel.INFO | LogLevel.FLAG_TEMP);
+                    showTemporaryAlert(`Race attempt ${i}-${i2} (mem access fail count: ${checkMemoryAccessFailCount})`, LogLevel.INFO | LogLevel.FLAG_TEMP);
                 } else {
-                    await log(`Race attempt ${i}-${i2}`, LogLevel.INFO | LogLevel.FLAG_TEMP);
+                    showTemporaryAlert(`Race attempt ${i}-${i2}`, LogLevel.INFO | LogLevel.FLAG_TEMP);
                 }
             }
 
