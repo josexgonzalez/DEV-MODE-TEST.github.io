@@ -704,10 +704,7 @@ async function main(userlandRW, wkOnly = false) {
             showTemporaryAlert("Patched PS5 SDK version to 99.99");
         }
 
-        const value = await krw.read1(get_kaddr(OFFSET_KERNEL_PS5_KERNELOFFSET));
-            console.log("Valor leído desde la memoria:", value);
-        }
-        
+
         ///////////////////////////////////////////////////////////////////////
         // Stage 6: loader
         ///////////////////////////////////////////////////////////////////////
@@ -1229,6 +1226,8 @@ async function main(userlandRW, wkOnly = false) {
         }
     }
 
+
+
     async function send_buffer_to_port(buffer, size, port) {
         let sock = (await chain.syscall(SYS_SOCKET, AF_INET, SOCK_STREAM, 0)).low << 0;
         if (sock <= 0) {
@@ -1268,7 +1267,12 @@ async function main(userlandRW, wkOnly = false) {
             ports += ", ";
         }
         ports += "9021";
-    }
+    
+
+        const value = await krw.read1(get_kaddr(OFFSET_KERNEL_PS5_KERNELOFFSET));
+            console.log("Valor leído desde la memoria:", value);
+        }
+    }   
 
     // @ts-ignore
     document.getElementById('Listening_on').innerHTML = `[/] Listening on: <span class="fw-bold">${ip.ip}</span>:${ports} (${ip.name})`;
