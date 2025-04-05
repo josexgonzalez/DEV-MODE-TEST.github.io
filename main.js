@@ -632,9 +632,6 @@ async function main(userlandRW, wkOnly = false) {
         // Set targetid to DEX
         await krw.write1(get_kaddr(OFFSET_KERNEL_TARGETID), 0x82);
 
-        // Set targetid to DEX
-        await krw.write1(get_kaddr(OFFSET_KERNEL_PS5_KERNELOFFSET), 0x82);
-
         // Set qa flags and utoken flags for debug menu enable
         let qaf_dword = await krw.read4(get_kaddr(OFFSET_KERNEL_QA_FLAGS));
         await krw.write4(get_kaddr(OFFSET_KERNEL_QA_FLAGS), qaf_dword | 0x10300);
