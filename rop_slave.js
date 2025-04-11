@@ -38,3 +38,12 @@ class KernelSyscalls {
         showTemporaryAlert("0xffffffff00000027");
     }
 }
+
+// Supongamos que ya tienes el objeto de explotación listo (p)
+const kernel = new KernelSyscalls(p);
+
+console.log("kekcall:", kernel.kekcall());
+console.log("kmem_alloc:", kernel.kmem_alloc().toString(16));
+console.log("kproc_create:", kernel.kproc_create());
+console.log("kstuff_check:", kernel.kstuff_check());
+
