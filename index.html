@@ -3,39 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verificar WebAssembly en PS5</title>
+    <title>Verificar WebAssembly Básico</title>
 </head>
 <body>
-    <h1>Verificación de soporte WebAssembly en PS5</h1>
+    <h1>Verificación de WebAssembly</h1>
     <p id="result">Comprobando...</p>
 
     <script>
-        // Verifica si WebAssembly está disponible
-        function checkWebAssemblySupport() {
-            // Verifica si WebAssembly es soportado
-            if (typeof WebAssembly === "object" && typeof WebAssembly.instantiate === "function") {
-                try {
-                    // Intenta crear un módulo WebAssembly simple
-                    const wasmCode = new Uint8Array([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x01, 0x0a, 0x02, 0x60, 0x00, 0x01, 0x7f, 0x60, 0x01, 0x7f, 0x01, 0x7f, 0x03, 0x03, 0x02, 0x00, 0x01, 0x07, 0x11, 0x02, 0x08, 0x6d, 0x65, 0x6d, 0x6f, 0x72, 0x79, 0x00, 0x00, 0x06, 0x77, 0x72, 0x69, 0x74, 0x65, 0x00, 0x01, 0x0a, 0x09, 0x02, 0x02, 0x00, 0x0b, 0x04, 0x00, 0x41, 0x2a, 0x0b]);
-                    WebAssembly.instantiate(wasmCode).then((result) => {
-                        // Si se instancia correctamente, WebAssembly está soportado
-                        document.getElementById("result").textContent = "WebAssembly está disponible y funciona correctamente.";
-                    }).catch((e) => {
-                        // Si ocurre un error al intentar instanciar el código WASM
-                        document.getElementById("result").textContent = "WebAssembly está disponible pero ocurrió un error al instanciar el código.";
-                    });
-                } catch (e) {
-                    // Si WebAssembly no está disponible
-                    document.getElementById("result").textContent = "WebAssembly no está disponible en este entorno.";
-                }
-            } else {
-                // Si WebAssembly no está soportado
-                document.getElementById("result").textContent = "WebAssembly no está soportado en este entorno.";
-            }
+        if (typeof WebAssembly === "object" && typeof WebAssembly.instantiate === "function") {
+            document.getElementById("result").textContent = "WebAssembly está soportado en este entorno.";
+        } else {
+            document.getElementById("result").textContent = "WebAssembly no está soportado en este entorno.";
         }
-
-        // Llamar a la función para verificar el soporte
-        checkWebAssemblySupport();
     </script>
 </body>
 </html>
