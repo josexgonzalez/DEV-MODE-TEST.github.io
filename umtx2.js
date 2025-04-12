@@ -284,6 +284,29 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         EXITED: 3
     };
 
+
+    const destroyerThread0Data = {
+        status: alloc(0x4),
+        cpu: alloc(0x8),
+        counter: alloc(0x8),
+        destroyCount: alloc(0x8),
+        shmOpCount: alloc(0x8),
+
+        resStore: alloc(0x8),
+        ftruncateSize: alloc(0x8)
+    };
+
+    const destroyerThread1Data = {
+        status: alloc(0x4),
+        cpu: alloc(0x8),
+        counter: alloc(0x8),
+        destroyCount: alloc(0x8),
+        shmOpCount: alloc(0x8),
+
+        resStore: alloc(0x8),
+        ftruncateSize: alloc(0x8)
+    };
+
     const lookupThreadData = {
         status: alloc(0x4),
         cpu: alloc(0x8),
