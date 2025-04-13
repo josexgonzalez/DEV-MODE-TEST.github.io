@@ -83,27 +83,29 @@
     }
 
     try {
+      console.log("Iniciando primitivas...");
       let { read64, write64 } = setup_rw();
+      console.log("Primitivas configuradas correctamente.");
+
       let obj = { test: 1337 };
       let addr = addrof(obj);
 
       let val = read64(addr);
+      console.log("Dirección del objeto:", hex(addr));
+      console.log("Valor leído:", hex(val));
+
       document.getElementById("output").innerHTML =
         "✅ Lectura OK<br>📍 Dirección de objeto: " + hex(addr) +
         "<br>📖 Valor leído: " + hex(val);
 
-      console.log("[+] addrof:", hex(addr));
-      console.log("[+] read64:", hex(val));
-
-      // Ejemplo de escritura
+      // Prueba de escritura
       let newVal = 0xDEADBEEF;
       write64(addr, newVal);
-      console.log("[+] write64:", hex(newVal));
-
+      console.log("Nuevo valor escrito:", hex(newVal));
     } catch (e) {
       document.getElementById("output").textContent = "❌ Error: " + e;
+      console.error("Error en la ejecución:", e);
     }
   </script>
 </body>
 </html>
-
