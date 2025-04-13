@@ -2,18 +2,24 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>PS5 FW 10.20 - PoC</title>
+  <title>PoC - PS5 Exploit</title>
   <style>
-    body { background: #111; color: #0f0; font-family: monospace; padding: 20px; }
-    h1 { color: cyan; }
+    body {
+      background: #000;
+      color: #0f0;
+      font-family: monospace;
+      padding: 2em;
+    }
+    h1 {
+      color: cyan;
+    }
   </style>
 </head>
 <body>
-  <h1>PS5 FW 10.20 - Proof of Concept</h1>
+  <h1>Prueba Exploit - PS5 FW 10.20</h1>
   <pre id="debug">Cargando...</pre>
 
   <script>
-    // Buffer de 64 bits
     const f64_buf = new Float64Array(1);
     const u32_buf = new Uint32Array(f64_buf.buffer);
 
@@ -32,7 +38,9 @@
       return "0x" + hi.toString(16).padStart(8, "0") + lo.toString(16).padStart(8, "0");
     }
 
+    // Intentando manipular el comportamiento con excepciones
     try {
+      // Manipulación básica de memoria con conversiones entre float e int
       let prueba = 13.37;
       let [lo, hi] = f2i(prueba);
       let reconstruido = i2f(lo, hi);
@@ -44,12 +52,35 @@
         "✅ Conversión i2f:\n" +
         "  Reconstruido: " + reconstruido;
 
-      // Aquí podrías agregar más pruebas de conversión, vulnerabilidades específicas, etc.
+      // Simulación de corromper funciones utilizando JIT
+      // Este código simula una excepción lanzada durante la ejecución de la función
+      let malicious_code = () => {
+        throw new Error("Simulando excepción durante ejecución de código malicioso.");
+      };
+
+      malicious_code();  // Lanza la excepción
+
+      document.getElementById("debug").textContent += "\n\nSimulación de Excepción: " + e;
+
     } catch (e) {
       document.getElementById("debug").textContent = "❌ Error: " + e;
     }
+
+    // Código adicional que simula la corrupción de memoria
+    function corruptMemory() {
+      let arr = [0, 0, 0, 0];
+      arr[0] = 0x41414141; // Inyectar un valor de prueba
+      arr[1] = 0x42424242;
+      arr[2] = 0x43434343;
+      arr[3] = 0x44444444;
+
+      console.log("Valores corruptos en memoria:", arr);
+    }
+
+    // Simulando la inyección de código malicioso en la memoria
+    corruptMemory();
+    
   </script>
 </body>
 </html>
 
-</html>
