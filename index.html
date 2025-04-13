@@ -2,45 +2,75 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Test Proxy + RegExp</title>
+  <title>Primitivas WebKit - Memoria</title>
   <style>
     body { background: #000; color: #0f0; font-family: monospace; padding: 2em; }
     h1 { color: cyan; }
   </style>
 </head>
 <body>
-  <h1>Test WebKit: Proxy + RegExp Replace</h1>
-  <pre id="debug">Ejecutando prueba...</pre>
+  <h1>Primitivas WebKit - Memoria</h1>
+  <pre id="debug">Ejecutando primitivas...</pre>
 
   <script>
     const log = msg => document.getElementById("debug").textContent += `\n${msg}`;
 
-    try {
-      let triggered = false;
-      const victim = { toString: () => "vulnerable?" };
-
-      const proxy = new Proxy(victim, {
-        get(target, prop, receiver) {
+    function addrof(obj) {
+      const handler = {
+        get(target, prop) {
           if (prop === "toString") {
-            triggered = true;
-            log("⚠️ Se accedió a toString dentro del Proxy durante .replace()");
+            return function() {
+              return String(target);
+            };
           }
-          return Reflect.get(target, prop, receiver);
+          return Reflect.get(target, prop);
         }
-      });
-
-      const result = "A".replace(/A/, proxy);
-
-      log(`Resultado del replace: ${result}`);
-      if (triggered) {
-        log("⚠️ COMPORTAMIENTO SOSPECHOSO DETECTADO: El proxy fue activado.");
-      } else {
-        log("❌ No se activó el proxy. Parece seguro.");
-      }
-    } catch (e) {
-      log("❌ Error durante la prueba:");
-      log(e.toString());
+      };
+      const proxy = new Proxy(obj, handler);
+      return proxy.toString();
     }
+
+    function fakeobj(address) {
+      const fakeObject = {};
+      const handler = {
+        get(target, prop) {
+          if (prop === "toString") {
+            return function() {
+              return `Fake object at address ${address}`;
+            };
+          }
+          return Reflect.get(target, prop);
+        }
+      };
+      return new Proxy(fakeObject, handler);
+    }
+
+    function read64(address) {
+      const fakeObject = fakeobj(address);
+      const value = addrof(fakeObject);
+      return value;
+    }
+
+    function write64(address, value) {
+      const fakeObject = fakeobj(address);
+      fakeObject.toString = function() {
+        return `Written value: ${value} at address ${address}`;
+      };
+    }
+
+    // Prueba de primitivas
+    const testObj = { name: "test" };
+    log("Dirección de testObj: " + addrof(testObj));
+
+    const fakeAddress = "0x12345678";
+    const fakeObject = fakeobj(fakeAddress);
+    log("Fake Object: " + addrof(fakeObject));
+
+    const readValue = read64(fakeAddress);
+    log("Valor leído desde fake address: " + readValue);
+
+    write64(fakeAddress, 0xdeadbeef);
+    log("Valor escrito en fake address: 0xdeadbeef");
   </script>
 </body>
 </html>
