@@ -2,48 +2,36 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>PS5 10.20 - Preparación Exploit</title>
+  <title>Exploit PS5 - call_indirect</title>
   <style>
     body { background:#000; color:#0f0; font-family:monospace; padding:2em; }
     h1 { color: cyan; }
   </style>
 </head>
 <body>
-  <h1>Entorno listo - esperando OOB</h1>
-  <pre id="debug">Sin OOB todavía...</pre>
+  <h1>PS5 FW 10.20 - WebAssembly Confusión de Tipo</h1>
+  <pre id="debug">Cargando WebAssembly...</pre>
 
   <script>
-    const f64_buf = new Float64Array(1);
-    const u32_buf = new Uint32Array(f64_buf.buffer);
+    const log = msg => document.getElementById("debug").textContent += `\n${msg}`;
 
-    function f2i(f) {
-      f64_buf[0] = f;
-      return [u32_buf[0], u32_buf[1]];
-    }
+    // Módulo WebAssembly embebido (con call_indirect vulnerable a confusión de tipo)
+    const wasmBase64 = `
+AGFzbQEAAAABCAJgAX8AYAAAAwEBAQcBAgMABQcDAAECCAEBAAAABQEDAgM=
+    `.trim();
 
-    function i2f(lo, hi) {
-      u32_buf[0] = lo;
-      u32_buf[1] = hi;
-      return f64_buf[0];
-    }
+    const wasmCode = Uint8Array.from(atob(wasmBase64), c => c.charCodeAt(0));
 
-    function hex(lo, hi) {
-      return "0x" + hi.toString(16).padStart(8, "0") + lo.toString(16).padStart(8, "0");
-    }
+    WebAssembly.instantiate(wasmCode, {}).then(({ instance }) => {
+      log("✅ Módulo WebAssembly cargado");
 
-    try {
-      const obj = {test: 1337};
-      const arr = [1.1, 2.2, 3.3];
-      const objs = [obj];
+      // Aquí normalmente se construyen tablas manipulables, o se desencadena call_indirect mal formado
+      log("⚠️ Falta implementar la confusión con tabla indirecta");
 
-      document.getElementById("debug").textContent =
-        "✅ Entorno listo\n" +
-        "- Objeto de prueba creado\n" +
-        "- Array float y objeto inicializados\n\n" +
-        "⚠️ Aún falta obtener primitiva OOB (out of bounds) para continuar.";
-    } catch (e) {
-      document.getElementById("debug").textContent = "❌ Error: " + e;
-    }
+    }).catch(err => {
+      log("❌ Error al cargar WebAssembly:");
+      log(err.message);
+    });
   </script>
 </body>
 </html>
