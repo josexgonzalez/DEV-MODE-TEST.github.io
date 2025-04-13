@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Prueba de Manipulación de Funciones</title>
+  <title>Prueba de Manipulación de Funciones en PS5</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -24,7 +24,7 @@
 </head>
 <body>
 
-  <h1>Prueba de Manipulación de Funciones en el Navegador</h1>
+  <h1>Manipulación Avanzada en PS5</h1>
   <div id="log"></div>
 
   <script>
@@ -37,77 +37,82 @@
       logContainer.appendChild(newMessage);
     }
 
-    // Sobrescribir setTimeout
-    const originalSetTimeout = setTimeout;
-    window.setTimeout = function(callback, delay) {
-      log("¡Código arbitrario ejecutado desde setTimeout!");
-      log("Código que se ejecutará en " + delay + " ms");
-      return originalSetTimeout(callback, delay); // Ejecuta el código original después
+    // Sobrescribir XMLHttpRequest para monitorear peticiones
+    const originalXMLHttpRequest = XMLHttpRequest;
+    XMLHttpRequest = function() {
+      const xhr = new originalXMLHttpRequest();
+      log("¡Se ha creado un nuevo XMLHttpRequest!");
+      const originalOpen = xhr.open;
+      xhr.open = function(method, url) {
+        log("Peticiones interceptadas: " + method + " " + url);
+        originalOpen.apply(this, arguments);
+      };
+      return xhr;
     };
 
-    // Sobrescribir setInterval
-    const originalSetInterval = setInterval;
-    window.setInterval = function(callback, interval) {
-      log("¡Código arbitrario ejecutado desde setInterval!");
-      log("Código que se ejecutará cada " + interval + " ms");
-      return originalSetInterval(callback, interval); // Ejecuta el código original después
+    // Sobrescribir document.write para monitorear escritura en el documento
+    const originalWrite = document.write;
+    document.write = function(content) {
+      log("¡Escritura interceptada con document.write!");
+      log("Contenido escrito: " + content);
+      originalWrite.apply(this, arguments);
     };
 
-    // Sobrescribir innerHTML
-    const originalInnerHTML = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML').set;
-    Object.defineProperty(Element.prototype, 'innerHTML', {
-      set: function(value) {
-        log("¡Código arbitrario ejecutado al modificar innerHTML!");
-        log("Contenido inyectado: " + value);
-        originalInnerHTML.apply(this, arguments); // Llamamos al set original
-      }
-    });
+    // Sobrescribir console.log para capturar logs
+    const originalConsoleLog = console.log;
+    console.log = function(message) {
+      log("¡console.log interceptado!");
+      log("Mensaje: " + message);
+      originalConsoleLog.apply(this, arguments);
+    };
 
-    // Sobrescribir eval
+    // Sobrescribir eval para monitorear ejecución de código
     const originalEval = eval;
     window.eval = function(code) {
-      log("¡Ejecutando código arbitrario con eval!");
-      log("Código a ejecutar: " + code);
-      originalEval(code); // Llamamos al eval original
+      log("¡Código ejecutado con eval!");
+      log("Código: " + code);
+      return originalEval(code);
     };
 
-    // Manipular navigator (ejemplo de manipulación del userAgent)
+    // Manipular función de alert
+    const originalAlert = window.alert;
+    window.alert = function(message) {
+      log("¡Alerta interceptada!");
+      log("Mensaje: " + message);
+      return originalAlert(message);
+    };
+
+    // Ejecutar código arbitrario con setTimeout
+    setTimeout(function() {
+      log("¡Código arbitrario ejecutado con setTimeout!");
+      alert("¡Hola desde el código de prueba!");
+    }, 2000);
+
+    // Modificar el userAgent de navigator
     const originalNavigator = Object.getOwnPropertyDescriptor(window, 'navigator').get;
     Object.defineProperty(window, 'navigator', {
       get: function() {
-        log("¡Accediendo al objeto 'navigator'!");
         const original = originalNavigator.apply(this);
-        original.userAgent = "Malicious User Agent"; // Cambiamos el userAgent
+        original.userAgent = "PS5 Exploit User Agent"; // Cambiamos el userAgent
+        log("¡Manipulando userAgent!");
         return original;
       }
     });
 
-    // Redirigir fetch a un servidor malicioso
+    // Inyectar código HTML dinámicamente
+    document.body.innerHTML += "<p><a href='#' onclick='alert(\"¡Cuidado! Este es un mensaje de alerta.\")'>Haz clic para alertar</a></p>";
+
+    // Sobrescribir función de redirección de solicitudes fetch
     const originalFetch = window.fetch;
     window.fetch = function(input, init) {
-      log("Redirigiendo la solicitud fetch a un servidor malicioso...");
+      log("Redirigiendo solicitud fetch...");
       log("URL solicitada: " + input);
-      return originalFetch.call(this, input, init); // Llamamos al fetch original
+      return originalFetch.call(this, input, init);
     };
 
-    // Ejemplo de uso de setTimeout
-    setTimeout(function() {
-      alert("¡Código ejecutado con setTimeout!");
-    }, 2000);
-
-    // Ejemplo de uso de setInterval
-    setInterval(function() {
-      console.log("Código ejecutado cada 1 segundo.");
-    }, 1000);
-
-    // Modificar innerHTML de un elemento
-    document.body.innerHTML = "<div onclick='alert(\"¡Cuidado!\")'>Haz clic aquí</div>";
-
-    // Ejemplo de uso de eval
-    eval("alert('¡Código ejecutado con eval!')");
-
-    // Ejemplo de manipulación de navigator
-    log(navigator.userAgent); // Mostramos el userAgent manipulado
+    // Ejemplo de log
+    log("Prueba de manipulación de funciones en PS5.");
   </script>
+
 </body>
 </html>
