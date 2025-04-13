@@ -2,91 +2,106 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Explotación de WebKit - PS5</title>
+  <title>PS5 10.20 - Interfaz de Depuración Exploit</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
+      background: #000;
+      color: #0f0;
+      font-family: monospace;
+      padding: 2em;
     }
-    .log {
-      background-color: #f0f0f0;
-      padding: 10px;
-      margin: 10px 0;
-      border: 1px solid #ccc;
-      max-width: 600px;
-      overflow-wrap: break-word;
+    h1 {
+      color: cyan;
     }
-    .log span {
+    #log {
+      white-space: pre-wrap;
+      background: #111;
+      border: 1px solid #0f0;
+      padding: 1em;
+      margin-top: 1em;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    button {
+      background: #0f0;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      margin-top: 20px;
       font-weight: bold;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <h1>Explotación de WebKit en PS5</h1>
-  <div id="log"></div>
+  <h1>🧠 PS5 10.20 - Consola Exploit WebKit</h1>
+  <div id="log">Inicializando entorno...</div>
+  <button onclick="ejecutarPayload()">▶ Ejecutar Payload</button>
 
   <script>
-    // Función para registrar mensajes
-    function log(message) {
-      const logContainer = document.getElementById("log");
-      const newMessage = document.createElement("div");
-      newMessage.classList.add("log");
-      newMessage.textContent = message;
-      logContainer.appendChild(newMessage);
+    const logArea = document.getElementById("log");
+    function log(msg) {
+      logArea.textContent += "\n" + msg;
+      logArea.scrollTop = logArea.scrollHeight;
     }
 
-    // Primitivas para manipular objetos
-    function addrof(obj) {
-      // Aquí iría el código real para obtener la dirección de un objeto
-      log("addrof ejecutado: Objeto: " + obj);
-      return 0x12345678;  // Dirección simulada
+    // Conversión float <-> int
+    const f64_buf = new Float64Array(1);
+    const u32_buf = new Uint32Array(f64_buf.buffer);
+
+    function f2i(f) {
+      f64_buf[0] = f;
+      return [u32_buf[0], u32_buf[1]];
     }
 
-    function fakeobj(addr) {
-      // Aquí se crearía un "objeto falso" en una dirección dada
-      log("fakeobj ejecutado: Dirección: " + addr);
-      return { __fakeobj: addr };  // Objeto falso simulado
+    function i2f(lo, hi) {
+      u32_buf[0] = lo;
+      u32_buf[1] = hi;
+      return f64_buf[0];
     }
 
-    function write32(addr, value) {
-      // Escribir 32 bits en una dirección
-      log("write32 ejecutado: Dirección: " + addr + " Valor: " + value);
-      // Manipular directamente la memoria en esa dirección (simulado)
+    function hex(lo, hi) {
+      return "0x" + hi.toString(16).padStart(8, "0") + lo.toString(16).padStart(8, "0");
     }
 
-    function read64(addr) {
-      // Leer 64 bits desde una dirección
-      log("read64 ejecutado: Dirección: " + addr);
-      return 0xabcdef12345678;  // Valor simulado
+    // Inicialización de prueba
+    function iniciarExploit() {
+      try {
+        log("✔️ Conversión float → int:");
+        let f = 13.37;
+        let [lo, hi] = f2i(f);
+        log("  Float: " + f + " → Int: " + hex(lo, hi));
+
+        log("✔️ Reconversión int → float:");
+        let reconvertido = i2f(lo, hi);
+        log("  Reconstruido: " + reconvertido);
+
+        log("🔍 Primitiva f2i/i2f funcionando.");
+
+        // Comprobación extra para ver si WebAssembly está disponible
+        if (typeof WebAssembly === "object") {
+          log("✅ WebAssembly disponible.");
+        } else {
+          log("❌ WebAssembly no disponible.");
+        }
+      } catch (e) {
+        log("❌ Error al inicializar: " + e.message);
+      }
     }
 
-    // Manipulaciones básicas
-    function manipulateMemory() {
-      // Crear un objeto de prueba
-      let obj = { prop: "valor" };
-
-      // Obtener dirección del objeto
-      let objAddr = addrof(obj);
-      log("Dirección del objeto: " + objAddr.toString(16));
-
-      // Escribir en memoria usando write32
-      write32(objAddr, 0xdeadbeef);
-
-      // Leer la dirección usando read64
-      let value = read64(objAddr);
-      log("Valor leído: " + value.toString(16));
-
-      // Manipular objetos para ejecutar código arbitrario
-      let fakeObj = fakeobj(0xdeadbeef);
-      log("Objeto falso creado: " + JSON.stringify(fakeObj));
+    // Simulación de ejecución de payload real
+    function ejecutarPayload() {
+      try {
+        log("⚙️ Ejecutando payload...");
+        // Aquí pondrías la lógica RW real o simulada
+        alert("🚀 Payload activado. (Simulado)\nPuedes reemplazar este bloque con tu exploit RW.");
+        log("✅ Payload ejecutado correctamente.");
+      } catch (e) {
+        log("❌ Error en payload: " + e.message);
+      }
     }
 
-    // Inicializar ataque
-    window.onload = function() {
-      log("Iniciando ataque...");
-      manipulateMemory();
-    };
+    iniciarExploit();
   </script>
 </body>
 </html>
