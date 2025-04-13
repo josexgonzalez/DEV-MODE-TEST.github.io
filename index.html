@@ -52,23 +52,21 @@
       };
     }
 
-    // Corrupting XMLHttpRequest function
-    log("Intentando corromper la función 'XMLHttpRequest'...");
-    const xhrAddress = addrof(XMLHttpRequest);
-    log(`Dirección de 'XMLHttpRequest': ${xhrAddress}`);
+    // Redirigir la función 'send' de XMLHttpRequest
+    const originalSend = XMLHttpRequest.prototype.send;
 
-    const fakeCode = function() {
-      log("Código arbitrario ejecutado: ¡Hola desde el exploit!");
+    XMLHttpRequest.prototype.send = function() {
+      log("¡Código arbitrario ejecutado desde XMLHttpRequest!");
+      // Ejecutamos el código arbitrario aquí, puede ser cualquier función
+      log("Ejecutando código personalizado...");
+      // Puedes poner cualquier código que quieras ejecutar aquí
+      originalSend.apply(this, arguments); // Llamada original a 'send' después de ejecutar el código
     };
 
-    // Sobrescribimos 'XMLHttpRequest' con nuestra función
-    write64(xhrAddress, addrof(fakeCode));
-    log("Función 'XMLHttpRequest' corrompida.");
-
-    // Intentamos realizar una petición HTTP que ahora debería ejecutar código arbitrario
+    // Intentamos realizar una petición HTTP para activar la función
     const xhr = new XMLHttpRequest();
     xhr.open('GET', 'https://example.com');
-    xhr.send();
+    xhr.send(); // Esto debería ejecutar nuestro código dentro del 'send'
   </script>
 </body>
 </html>
