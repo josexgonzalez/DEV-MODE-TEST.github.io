@@ -2,30 +2,30 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>PoC - PS5 Exploit</title>
+  <title>Exploit PS5 FW 10.20 - Primitivas RW</title>
   <style>
-    body {
-      background: #000;
-      color: #0f0;
-      font-family: monospace;
-      padding: 2em;
-    }
-    h1 {
-      color: cyan;
-    }
+    body { background:#000; color:#0f0; font-family:monospace; padding:1em; }
+    h1 { color:cyan; }
+    #log { white-space:pre-wrap; background:#111; padding:1em; border:1px solid #444; max-height: 80vh; overflow-y: auto; }
   </style>
 </head>
 <body>
-  <h1>Prueba Exploit - PS5 FW 10.20</h1>
-  <pre id="debug">Cargando...</pre>
+  <h1>Exploit PS5 10.20</h1>
+  <div id="log">[+] Iniciando...</div>
 
   <script>
+    const log = msg => {
+      console.log(msg);
+      document.getElementById("log").textContent += `\n${msg}`;
+    };
+
+    // Conversión float <-> int
     const f64_buf = new Float64Array(1);
     const u32_buf = new Uint32Array(f64_buf.buffer);
 
     function f2i(f) {
       f64_buf[0] = f;
-      return [u32_buf[0], u32_buf[1]]; // [low, high]
+      return [u32_buf[0], u32_buf[1]];
     }
 
     function i2f(lo, hi) {
@@ -38,49 +38,41 @@
       return "0x" + hi.toString(16).padStart(8, "0") + lo.toString(16).padStart(8, "0");
     }
 
-    // Intentando manipular el comportamiento con excepciones
-    try {
-      // Manipulación básica de memoria con conversiones entre float e int
-      let prueba = 13.37;
-      let [lo, hi] = f2i(prueba);
-      let reconstruido = i2f(lo, hi);
+    log("[+] Prueba de conversión:");
+    let prueba = 13.37;
+    let [lo, hi] = f2i(prueba);
+    log(`  Float: ${prueba}`);
+    log(`  Int: ${hex(lo, hi)}`);
+    log(`  Reconstruido: ${i2f(lo, hi)}`);
 
-      document.getElementById("debug").textContent =
-        "✅ Conversión f2i:\n" +
-        "  Float: " + prueba + "\n" +
-        "  Int:   " + hex(lo, hi) + "\n" +
-        "✅ Conversión i2f:\n" +
-        "  Reconstruido: " + reconstruido;
+    // Preparar estructuras para tipo confusión
+    const obj_arr = [ {}, {}, {} ]; // Array de objetos
+    const dbl_arr = [ 1.1, 2.2, 3.3 ]; // Array de doubles
 
-      // Simulación de corromper funciones utilizando JIT
-      // Este código simula una excepción lanzada durante la ejecución de la función
-      let malicious_code = () => {
-        throw new Error("Simulando excepción durante ejecución de código malicioso.");
-      };
+    log("[+] Arrays preparados:");
+    log("  - obj_arr = [ {}, {}, {} ]");
+    log("  - dbl_arr = [ 1.1, 2.2, 3.3 ]");
 
-      malicious_code();  // Lanza la excepción
+    // Placeholder: Exploit setup
+    function setupPrimitiveExploit() {
+      log("\n[⚠️] Inserta aquí tu bug de tipo confusión o UAF...");
 
-      document.getElementById("debug").textContent += "\n\nSimulación de Excepción: " + e;
+      // Por ejemplo: corromper el mapa de tipo de `dbl_arr` para acceder como objetos
 
-    } catch (e) {
-      document.getElementById("debug").textContent = "❌ Error: " + e;
+      /*
+      // Pseudocódigo:
+      let corrupted_arr = trigger_bug(obj_arr, dbl_arr);
+      let addrof = (obj) => { ... };
+      let fakeobj = (addr) => { ... };
+      let read64 = (addr) => { ... };
+      let write64 = (addr, val) => { ... };
+
+      log(`[+] Dirección de objeto: ${hex(...f2i(addrof(someObj)))}`);
+      log(`[+] Valor leído en dirección X: ${read64(addr)}`);
+      */
     }
 
-    // Código adicional que simula la corrupción de memoria
-    function corruptMemory() {
-      let arr = [0, 0, 0, 0];
-      arr[0] = 0x41414141; // Inyectar un valor de prueba
-      arr[1] = 0x42424242;
-      arr[2] = 0x43434343;
-      arr[3] = 0x44444444;
-
-      console.log("Valores corruptos en memoria:", arr);
-    }
-
-    // Simulando la inyección de código malicioso en la memoria
-    corruptMemory();
-    
+    setupPrimitiveExploit();
   </script>
 </body>
 </html>
-
