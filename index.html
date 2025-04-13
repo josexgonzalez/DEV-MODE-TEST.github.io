@@ -11,6 +11,7 @@
 <body>
   <h1>Test de Vulnerabilidad Wasm RTT (PS5 FW 4.03)</h1>
   <p id="status">Cargando prueba...</p>
+  <p id="debug"></p>
 
   <script>
     async function loadWasm() {
@@ -25,15 +26,23 @@
         0x0A,0x06,0x01,0x04,0x00,0x41,0x00,0x11,0x00  // code[0]: i32.const 0; call_indirect 0
       ]);
 
-      const module = await WebAssembly.compile(wasmCode);
-      const instance = await WebAssembly.instantiate(module);
-
-      document.getElementById("status").textContent = "call_indirect ejecutado con éxito.";
-
       try {
-        instance.exports.main?.(); // puede que no exista, depende del diseño
+        document.getElementById("debug").textContent = "Compilando módulo WebAssembly...";
+        const module = await WebAssembly.compile(wasmCode);
+        document.getElementById("debug").textContent = "Módulo WebAssembly compilado correctamente.";
+        const instance = await WebAssembly.instantiate(module);
+        document.getElementById("status").textContent = "call_indirect ejecutado con éxito.";
+
+        try {
+          document.getElementById("debug").textContent = "Ejecutando función main...";
+          instance.exports.main?.(); // puede que no exista, depende del diseño
+        } catch (e) {
+          document.getElementById("debug").textContent = "Error al ejecutar: " + e;
+          document.getElementById("status").textContent = "Error al ejecutar la función.";
+        }
       } catch (e) {
-        document.getElementById("status").textContent = "Error al ejecutar: " + e;
+        document.getElementById("debug").textContent = "Error al compilar o cargar el módulo WebAssembly: " + e;
+        document.getElementById("status").textContent = "Error al cargar WebAssembly.";
       }
     }
 
