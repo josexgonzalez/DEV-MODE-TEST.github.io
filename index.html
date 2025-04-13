@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Primitivas de Explotación de Memoria</title>
+  <title>Explotación de Funciones y Memoria en PS5</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -24,7 +24,7 @@
 </head>
 <body>
 
-  <h1>Primitivas de Explotación de Memoria</h1>
+  <h1>Prueba de Manipulación de Funciones y Memoria</h1>
   <div id="log"></div>
 
   <script>
@@ -37,57 +37,95 @@
       logContainer.appendChild(newMessage);
     }
 
-    // Primitiva addrof - Obtener la dirección de un objeto
-    function addrof(obj) {
-      // Representación conceptual
-      log(`Dirección de memoria de 'obj': ${obj.address}`);
-      return obj.address;  // Esto simula la obtención de la dirección real del objeto.
-    }
+    // Manipulación de funciones del sistema (setTimeout)
+    const originalSetTimeout = setTimeout;
+    window.setTimeout = function(callback, delay) {
+      log("¡Código arbitrario ejecutado desde setTimeout!");
+      log("Código que se ejecutará en " + delay + " ms");
+      return originalSetTimeout(callback, delay); // Ejecuta el código original después
+    };
 
-    // Primitiva fakeobj - Crear un objeto falso
-    function fakeobj(address, type) {
-      let fake = {};
-      fake.address = address;
-      fake.type = type;
-      log(`Objeto falso creado en la dirección: ${address}`);
-      return fake;
-    }
+    // Manipulación de funciones de sistema (setInterval)
+    const originalSetInterval = setInterval;
+    window.setInterval = function(callback, interval) {
+      log("¡Código arbitrario ejecutado desde setInterval!");
+      log("Código que se ejecutará cada " + interval + " ms");
+      return originalSetInterval(callback, interval); // Ejecuta el código original después
+    };
 
-    // Primitiva read64 - Leer 64 bits de memoria
-    function read64(address) {
-      // Simulación de lectura desde la memoria
-      log(`Leyendo 64 bits de la dirección: ${address}`);
-      return "0xDEADBEEFDEADBEEF";  // Valor simulado de lectura
-    }
+    // Manipulación de innerHTML
+    const originalInnerHTML = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML').set;
+    Object.defineProperty(Element.prototype, 'innerHTML', {
+      set: function(value) {
+        log("¡Código arbitrario ejecutado al modificar innerHTML!");
+        log("Contenido inyectado: " + value);
+        originalInnerHTML.apply(this, arguments); // Llamamos al set original
+      }
+    });
 
-    // Primitiva write32 - Escribir 32 bits en una dirección
-    function write32(address, value) {
-      // Simulación de escritura en memoria
-      log(`Escribiendo 32 bits en la dirección: ${address}`);
-      log(`Valor escrito: 0x${value.toString(16)}`);
-    }
+    // Manipulación de eval
+    const originalEval = eval;
+    window.eval = function(code) {
+      log("¡Ejecutando código arbitrario con eval!");
+      log("Código a ejecutar: " + code);
+      originalEval(code); // Llamamos al eval original
+    };
 
-    // Ejemplo de uso
-    function demo() {
-      // Supongamos que tenemos un objeto en memoria
-      let victimObject = { name: "Objeto vulnerable", address: 0x12345678 };
+    // Manipulación de navigator (ejemplo de manipulación del userAgent)
+    const originalNavigator = Object.getOwnPropertyDescriptor(window, 'navigator').get;
+    Object.defineProperty(window, 'navigator', {
+      get: function() {
+        log("¡Accediendo al objeto 'navigator'!");
+        const original = originalNavigator.apply(this);
+        original.userAgent = "Malicious User Agent"; // Cambiamos el userAgent
+        return original;
+      }
+    });
 
-      // Obtener la dirección del objeto (addrof)
-      let address = addrof(victimObject);
+    // Redirigir fetch a un servidor malicioso
+    const originalFetch = window.fetch;
+    window.fetch = function(input, init) {
+      log("Redirigiendo la solicitud fetch a un servidor malicioso...");
+      log("URL solicitada: " + input);
+      return originalFetch.call(this, input, init); // Llamamos al fetch original
+    };
 
-      // Crear un objeto falso (fakeobj)
-      let fake = fakeobj(address, "FakeObjectType");
+    // Crear un proxy para manipular acceso a memoria (simulado)
+    const memoryProxy = new Proxy({}, {
+      get: function(target, prop) {
+        log(`Accediendo a la propiedad: ${prop}`);
+        return target[prop];
+      },
+      set: function(target, prop, value) {
+        log(`Escribiendo en la propiedad: ${prop} con valor: ${value}`);
+        target[prop] = value;
+        return true;
+      }
+    });
 
-      // Leer 64 bits de la memoria (read64)
-      let value = read64(address);
-      log(`Valor leído de la memoria: ${value}`);
+    // Ejemplo de manipulación de memoria usando Proxy
+    memoryProxy.someMemoryAddress = 0x12345678;
+    log(`Dirección de memoria: ${memoryProxy.someMemoryAddress}`);
 
-      // Escribir 32 bits de memoria (write32)
-      write32(address, 0xBAADF00D);  // Escribimos un valor arbitrario
-    }
+    // Ejemplo de uso de setTimeout
+    setTimeout(function() {
+      alert("¡Código ejecutado con setTimeout!");
+    }, 2000);
 
-    // Ejecutar la demo de primitivas
-    demo();
+    // Ejemplo de uso de setInterval
+    setInterval(function() {
+      console.log("Código ejecutado cada 1 segundo.");
+    }, 1000);
+
+    // Modificar innerHTML de un elemento
+    document.body.innerHTML = "<div onclick='alert(\"¡Cuidado!\")'>Haz clic aquí</div>";
+
+    // Ejemplo de uso de eval
+    eval("alert('¡Código ejecutado con eval!')");
+
+    // Ejemplo de manipulación de navigator
+    log(navigator.userAgent); // Mostramos el userAgent manipulado
+
   </script>
 </body>
 </html>
