@@ -2,14 +2,14 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Exploit PS5 10.20 - AAR/AAW</title>
+  <title>Exploit PS5 4.03 - AAR/AAW</title>
   <style>
     body { background:#111; color:#0f0; font-family:monospace; padding:2em; }
     h1 { color: cyan; }
   </style>
 </head>
 <body>
-  <h1>PS5 10.20 - Primitivas AAR / AAW</h1>
+  <h1>PS5 4.03 - Primitivas AAR / AAW</h1>
   <div id="output">Inicializando...</div>
 
   <script>
@@ -94,9 +94,16 @@
 
       console.log("[+] addrof:", hex(addr));
       console.log("[+] read64:", hex(val));
+
+      // Ejemplo de escritura
+      let newVal = 0xDEADBEEF;
+      write64(addr, newVal);
+      console.log("[+] write64:", hex(newVal));
+
     } catch (e) {
       document.getElementById("output").textContent = "❌ Error: " + e;
     }
   </script>
 </body>
 </html>
+
