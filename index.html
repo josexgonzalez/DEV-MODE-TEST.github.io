@@ -2,71 +2,112 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Corromper XMLHttpRequest</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prueba de Manipulación de Funciones</title>
   <style>
-    body { background: #000; color: #0f0; font-family: monospace; padding: 2em; }
-    h1 { color: cyan; }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    .log {
+      background-color: #f0f0f0;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      max-width: 600px;
+      overflow-wrap: break-word;
+    }
+    .log span {
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
-  <h1>Corromper XMLHttpRequest con Proxy</h1>
-  <pre id="debug">Ejecutando ataque...</pre>
+
+  <h1>Prueba de Manipulación de Funciones en el Navegador</h1>
+  <div id="log"></div>
 
   <script>
-    const log = msg => document.getElementById("debug").textContent += `\n${msg}`;
-
-    function addrof(obj) {
-      const handler = {
-        get(target, prop) {
-          if (prop === "toString") {
-            return function() {
-              return String(target);
-            };
-          }
-          return Reflect.get(target, prop);
-        }
-      };
-      const proxy = new Proxy(obj, handler);
-      return proxy.toString();
+    // Función de logging para mostrar los resultados
+    function log(message) {
+      const logContainer = document.getElementById("log");
+      const newMessage = document.createElement("div");
+      newMessage.classList.add("log");
+      newMessage.textContent = message;
+      logContainer.appendChild(newMessage);
     }
 
-    function fakeobj(address) {
-      const fakeObject = {};
-      const handler = {
-        get(target, prop) {
-          if (prop === "toString") {
-            return function() {
-              return `Fake object at address ${address}`;
-            };
-          }
-          return Reflect.get(target, prop);
-        }
-      };
-      return new Proxy(fakeObject, handler);
-    }
-
-    function write64(address, value) {
-      const fakeObject = fakeobj(address);
-      fakeObject.toString = function() {
-        return `Written value: ${value} at address ${address}`;
-      };
-    }
-
-    // Redirigir la función 'send' de XMLHttpRequest
-    const originalSend = XMLHttpRequest.prototype.send;
-
-    XMLHttpRequest.prototype.send = function() {
-      log("¡Código arbitrario ejecutado desde XMLHttpRequest!");
-      // Ejecutamos el código arbitrario aquí, puede ser cualquier función
-      log("Ejecutando código personalizado...");
-      // Puedes poner cualquier código que quieras ejecutar aquí
-      originalSend.apply(this, arguments); // Llamada original a 'send' después de ejecutar el código
+    // Sobrescribir setTimeout
+    const originalSetTimeout = setTimeout;
+    window.setTimeout = function(callback, delay) {
+      log("¡Código arbitrario ejecutado desde setTimeout!");
+      log("Código que se ejecutará en " + delay + " ms");
+      return originalSetTimeout(callback, delay); // Ejecuta el código original después
     };
 
-    // Intentamos realizar una petición HTTP para activar la función
-    const xhr = new XMLHttpRequest();
-    xhr.open('GET', 'https://example.com');
-    xhr.send(); // Esto debería ejecutar nuestro código dentro del 'send'
+    // Sobrescribir setInterval
+    const originalSetInterval = setInterval;
+    window.setInterval = function(callback, interval) {
+      log("¡Código arbitrario ejecutado desde setInterval!");
+      log("Código que se ejecutará cada " + interval + " ms");
+      return originalSetInterval(callback, interval); // Ejecuta el código original después
+    };
+
+    // Sobrescribir innerHTML
+    const originalInnerHTML = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML').set;
+    Object.defineProperty(Element.prototype, 'innerHTML', {
+      set: function(value) {
+        log("¡Código arbitrario ejecutado al modificar innerHTML!");
+        log("Contenido inyectado: " + value);
+        originalInnerHTML.apply(this, arguments); // Llamamos al set original
+      }
+    });
+
+    // Sobrescribir eval
+    const originalEval = eval;
+    window.eval = function(code) {
+      log("¡Ejecutando código arbitrario con eval!");
+      log("Código a ejecutar: " + code);
+      originalEval(code); // Llamamos al eval original
+    };
+
+    // Manipular navigator (ejemplo de manipulación del userAgent)
+    const originalNavigator = Object.getOwnPropertyDescriptor(window, 'navigator').get;
+    Object.defineProperty(window, 'navigator', {
+      get: function() {
+        log("¡Accediendo al objeto 'navigator'!");
+        const original = originalNavigator.apply(this);
+        original.userAgent = "Malicious User Agent"; // Cambiamos el userAgent
+        return original;
+      }
+    });
+
+    // Redirigir fetch a un servidor malicioso
+    const originalFetch = window.fetch;
+    window.fetch = function(input, init) {
+      log("Redirigiendo la solicitud fetch a un servidor malicioso...");
+      log("URL solicitada: " + input);
+      return originalFetch.call(this, input, init); // Llamamos al fetch original
+    };
+
+    // Ejemplo de uso de setTimeout
+    setTimeout(function() {
+      alert("¡Código ejecutado con setTimeout!");
+    }, 2000);
+
+    // Ejemplo de uso de setInterval
+    setInterval(function() {
+      console.log("Código ejecutado cada 1 segundo.");
+    }, 1000);
+
+    // Modificar innerHTML de un elemento
+    document.body.innerHTML = "<div onclick='alert(\"¡Cuidado!\")'>Haz clic aquí</div>";
+
+    // Ejemplo de uso de eval
+    eval("alert('¡Código ejecutado con eval!')");
+
+    // Ejemplo de manipulación de navigator
+    log(navigator.userAgent); // Mostramos el userAgent manipulado
   </script>
 </body>
 </html>
