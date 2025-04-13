@@ -2,15 +2,15 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>PS5 10.20 - addrof test</title>
+  <title>PS5 10.20 - Preparación Exploit</title>
   <style>
     body { background:#000; color:#0f0; font-family:monospace; padding:2em; }
     h1 { color: cyan; }
   </style>
 </head>
 <body>
-  <h1>Test addrof() - PS5 FW 10.20</h1>
-  <pre id="debug">Inicializando...</pre>
+  <h1>Entorno listo - esperando OOB</h1>
+  <pre id="debug">Sin OOB todavía...</pre>
 
   <script>
     const f64_buf = new Float64Array(1);
@@ -31,31 +31,16 @@
       return "0x" + hi.toString(16).padStart(8, "0") + lo.toString(16).padStart(8, "0");
     }
 
-    // Esta será la víctima de la conversión
-    let float_array = [1.1, 2.2, 3.3];
-    let obj_array = [{}];
-    let float_map = float_array.oob(); // TRUCO: requiere OOB para funcionar (lo simularemos)
-
-    function fake_oob() {
-      // Simula el exploit tipo confusión (si ya tienes OOB real, reemplace esto)
-      let corrupted = float_array;
-      corrupted.length = 100; // Expandimos artificialmente
-      return corrupted;
-    }
-
-    function addrof(obj) {
-      let oob = fake_oob();
-      obj_array[0] = obj;
-      oob[10] = obj_array; // manipulamos tipo
-      return f2i(oob[10][0]);
-    }
-
     try {
-      let test_obj = { pwn: true };
-      let [lo, hi] = addrof(test_obj);
+      const obj = {test: 1337};
+      const arr = [1.1, 2.2, 3.3];
+      const objs = [obj];
 
       document.getElementById("debug").textContent =
-        "✅ Dirección del objeto:\n" + hex(lo, hi);
+        "✅ Entorno listo\n" +
+        "- Objeto de prueba creado\n" +
+        "- Array float y objeto inicializados\n\n" +
+        "⚠️ Aún falta obtener primitiva OOB (out of bounds) para continuar.";
     } catch (e) {
       document.getElementById("debug").textContent = "❌ Error: " + e;
     }
