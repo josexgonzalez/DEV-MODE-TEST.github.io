@@ -3,129 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Explotación de Funciones y Memoria en PS5</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    .log {
-      background-color: #f0f0f0;
-      padding: 10px;
-      margin: 10px 0;
-      border: 1px solid #ccc;
-      max-width: 600px;
-      overflow-wrap: break-word;
-    }
-    .log span {
-      font-weight: bold;
-    }
-  </style>
+  <title>Adaptación UMTX Exploit</title>
 </head>
 <body>
-
-  <h1>Prueba de Manipulación de Funciones y Memoria</h1>
-  <div id="log"></div>
-
+  <h1>Adaptación de UMTX Exploit en PS5 WebKit</h1>
   <script>
-    // Función de logging para mostrar los resultados
-    function log(message) {
-      const logContainer = document.getElementById("log");
-      const newMessage = document.createElement("div");
-      newMessage.classList.add("log");
-      newMessage.textContent = message;
-      logContainer.appendChild(newMessage);
+    // Función para manipular objetos en memoria
+    function manipulateMemory() {
+      // Inicialización de primitivas
+      const primitiveAddrof = (obj) => {
+        // Crear un "fakeobj" o "addrof" para obtener dirección de objetos
+      };
+
+      const primitiveWrite32 = (address, value) => {
+        // Escribir 32 bits en una dirección
+      };
+
+      // Manipulación básica con el heap
+      let maliciousFunction = () => {
+        console.log("Código ejecutado arbitrariamente");
+        // Aquí iría el código para ejecutar el exploit
+      };
+
+      // Corruptor de punteros o tabla
+      let corruptPointer = () => {
+        // Aquí se usaría un desbordamiento para sobrescribir punteros
+      };
+
+      // Inyectando código
+      maliciousFunction();
     }
 
-    // Manipulación de funciones del sistema (setTimeout)
-    const originalSetTimeout = setTimeout;
-    window.setTimeout = function(callback, delay) {
-      log("¡Código arbitrario ejecutado desde setTimeout!");
-      log("Código que se ejecutará en " + delay + " ms");
-      return originalSetTimeout(callback, delay); // Ejecuta el código original después
-    };
-
-    // Manipulación de funciones de sistema (setInterval)
-    const originalSetInterval = setInterval;
-    window.setInterval = function(callback, interval) {
-      log("¡Código arbitrario ejecutado desde setInterval!");
-      log("Código que se ejecutará cada " + interval + " ms");
-      return originalSetInterval(callback, interval); // Ejecuta el código original después
-    };
-
-    // Manipulación de innerHTML
-    const originalInnerHTML = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML').set;
-    Object.defineProperty(Element.prototype, 'innerHTML', {
-      set: function(value) {
-        log("¡Código arbitrario ejecutado al modificar innerHTML!");
-        log("Contenido inyectado: " + value);
-        originalInnerHTML.apply(this, arguments); // Llamamos al set original
-      }
-    });
-
-    // Manipulación de eval
-    const originalEval = eval;
-    window.eval = function(code) {
-      log("¡Ejecutando código arbitrario con eval!");
-      log("Código a ejecutar: " + code);
-      originalEval(code); // Llamamos al eval original
-    };
-
-    // Manipulación de navigator (ejemplo de manipulación del userAgent)
-    const originalNavigator = Object.getOwnPropertyDescriptor(window, 'navigator').get;
-    Object.defineProperty(window, 'navigator', {
-      get: function() {
-        log("¡Accediendo al objeto 'navigator'!");
-        const original = originalNavigator.apply(this);
-        original.userAgent = "Malicious User Agent"; // Cambiamos el userAgent
-        return original;
-      }
-    });
-
-    // Redirigir fetch a un servidor malicioso
-    const originalFetch = window.fetch;
-    window.fetch = function(input, init) {
-      log("Redirigiendo la solicitud fetch a un servidor malicioso...");
-      log("URL solicitada: " + input);
-      return originalFetch.call(this, input, init); // Llamamos al fetch original
-    };
-
-    // Crear un proxy para manipular acceso a memoria (simulado)
-    const memoryProxy = new Proxy({}, {
-      get: function(target, prop) {
-        log(`Accediendo a la propiedad: ${prop}`);
-        return target[prop];
-      },
-      set: function(target, prop, value) {
-        log(`Escribiendo en la propiedad: ${prop} con valor: ${value}`);
-        target[prop] = value;
-        return true;
-      }
-    });
-
-    // Ejemplo de manipulación de memoria usando Proxy
-    memoryProxy.someMemoryAddress = 0x12345678;
-    log(`Dirección de memoria: ${memoryProxy.someMemoryAddress}`);
-
-    // Ejemplo de uso de setTimeout
-    setTimeout(function() {
-      alert("¡Código ejecutado con setTimeout!");
-    }, 2000);
-
-    // Ejemplo de uso de setInterval
-    setInterval(function() {
-      console.log("Código ejecutado cada 1 segundo.");
-    }, 1000);
-
-    // Modificar innerHTML de un elemento
-    document.body.innerHTML = "<div onclick='alert(\"¡Cuidado!\")'>Haz clic aquí</div>";
-
-    // Ejemplo de uso de eval
-    eval("alert('¡Código ejecutado con eval!')");
-
-    // Ejemplo de manipulación de navigator
-    log(navigator.userAgent); // Mostramos el userAgent manipulado
-
+    // Ejecutar la manipulación de memoria al cargar el documento
+    window.onload = manipulateMemory;
   </script>
 </body>
 </html>
