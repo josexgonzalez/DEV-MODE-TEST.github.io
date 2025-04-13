@@ -2,77 +2,74 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Exploit PS5 FW 10.20 - Primitivas RW</title>
+  <title>Exploit WebKit PS5 10.20 - RW Primitives</title>
   <style>
-    body { background:#000; color:#0f0; font-family:monospace; padding:1em; }
-    h1 { color:cyan; }
-    #log { white-space:pre-wrap; background:#111; padding:1em; border:1px solid #444; max-height: 80vh; overflow-y: auto; }
+    body { background: #000; color: #0f0; font-family: monospace; padding: 20px; }
+    h1 { color: cyan; }
+    #log { white-space: pre-wrap; }
   </style>
 </head>
 <body>
-  <h1>Exploit PS5 10.20</h1>
-  <div id="log">[+] Iniciando...</div>
-
+  <h1>Exploit WebKit - PS5 10.20</h1>
+  <div id="log">Iniciando...</div>
   <script>
-    const log = msg => {
-      console.log(msg);
-      document.getElementById("log").textContent += `\n${msg}`;
-    };
+    const log = msg => document.getElementById("log").textContent += msg + "\n";
 
-    // Conversión float <-> int
-    const f64_buf = new Float64Array(1);
-    const u32_buf = new Uint32Array(f64_buf.buffer);
+    const f64 = new Float64Array(1);
+    const u32 = new Uint32Array(f64.buffer);
 
     function f2i(f) {
-      f64_buf[0] = f;
-      return [u32_buf[0], u32_buf[1]];
+      f64[0] = f;
+      return u32[0] + u32[1] * 0x100000000;
     }
 
-    function i2f(lo, hi) {
-      u32_buf[0] = lo;
-      u32_buf[1] = hi;
-      return f64_buf[0];
+    function i2f(i) {
+      u32[0] = i % 0x100000000;
+      u32[1] = i / 0x100000000;
+      return f64[0];
     }
 
-    function hex(lo, hi) {
-      return "0x" + hi.toString(16).padStart(8, "0") + lo.toString(16).padStart(8, "0");
+    function hex(i) {
+      return "0x" + i.toString(16).padStart(16, '0');
     }
 
-    log("[+] Prueba de conversión:");
-    let prueba = 13.37;
-    let [lo, hi] = f2i(prueba);
-    log(`  Float: ${prueba}`);
-    log(`  Int: ${hex(lo, hi)}`);
-    log(`  Reconstruido: ${i2f(lo, hi)}`);
+    log("✅ Primitivas de conversión listas");
 
-    // Preparar estructuras para tipo confusión
-    const obj_arr = [ {}, {}, {} ]; // Array de objetos
-    const dbl_arr = [ 1.1, 2.2, 3.3 ]; // Array de doubles
+    let obj_arr = [{}];
+    let float_arr = [1.1, 2.2, 3.3];
 
-    log("[+] Arrays preparados:");
-    log("  - obj_arr = [ {}, {}, {} ]");
-    log("  - dbl_arr = [ 1.1, 2.2, 3.3 ]");
+    let obj = { marker: 1337 };
+    let wasm_instance = null;
+    let rw = {
+      addrof(obj) {
+        obj_arr[0] = obj;
+        return f2i(float_arr[0]);
+      },
+      fakeobj(addr) {
+        float_arr[0] = i2f(addr);
+        return obj_arr[0];
+      },
+      read64(addr) {
+        // Implementación completa depende del exploit, se simula por ahora
+        log("🔍 Leyendo 64 bits desde: " + hex(addr));
+        return 0x4141414141414141;
+      },
+      write64(addr, value) {
+        log("✍️ Escribiendo " + hex(value) + " en " + hex(addr));
+        // Simulado
+      }
+    };
 
-    // Placeholder: Exploit setup
-    function setupPrimitiveExploit() {
-      log("\n[⚠️] Inserta aquí tu bug de tipo confusión o UAF...");
+    log("⚙️ Inicializando primitivas RW...");
+    let obj_addr = rw.addrof(obj);
+    log("📍 Dirección de obj: " + hex(obj_addr));
 
-      // Por ejemplo: corromper el mapa de tipo de `dbl_arr` para acceder como objetos
+    let fake = rw.fakeobj(obj_addr);
+    log("🧪 Objeto falso creado: " + JSON.stringify(fake));
 
-      /*
-      // Pseudocódigo:
-      let corrupted_arr = trigger_bug(obj_arr, dbl_arr);
-      let addrof = (obj) => { ... };
-      let fakeobj = (addr) => { ... };
-      let read64 = (addr) => { ... };
-      let write64 = (addr, val) => { ... };
-
-      log(`[+] Dirección de objeto: ${hex(...f2i(addrof(someObj)))}`);
-      log(`[+] Valor leído en dirección X: ${read64(addr)}`);
-      */
-    }
-
-    setupPrimitiveExploit();
+    rw.write64(obj_addr, 0x4142434445464748);
+    let leak = rw.read64(obj_addr);
+    log("📖 Lectura simulada: " + hex(leak));
   </script>
 </body>
 </html>
