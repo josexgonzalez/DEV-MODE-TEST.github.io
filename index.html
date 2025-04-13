@@ -1,117 +1,43 @@
-<div id="content-box">
 
+<!DOCTYPE html>
+<html lang="en">
 <head>
-    <title>ResDev UMTX2</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="main.css">
-
-        <h1 style="text-align: center; position: absolute; top: 15;left: 10;"></h1>
-        <p class="text-secondary" id="top-bar-text"><span class="fw-bold" id="elfldr_running"></span></p>
-        <h1 style="text-align: center; position: absolute; top: 15;left: 10;"></h1>
-        <p class="text-secondary" id="top-bar-text"><span class="fw-bold" id="payload_info"></span></p>
-        <h1 style="text-align: center; position: absolute; top: 15;left: 10;"></h1>
-        <p class="text-secondary" id="top-bar-text"><span class="fw-bold" id="Listening_on"></span></p>
-
+  <meta charset="UTF-8">
+  <title>PS5 Wasm RTT Bypass Test</title>
+  <style>
+    body { background-color: #111; color: #eee; font-family: monospace; text-align: center; padding-top: 4em; }
+  </style>
 </head>
-<div style="margin: 40px;">
+<body>
+  <h1>Test de Vulnerabilidad Wasm RTT (PS5 FW 10.20)</h1>
+  <p id="status">Cargando prueba...</p>
 
-    <div id="main-content"
+  <script>
+    async function loadWasm() {
+      const wasmCode = new Uint8Array([
+        0x00,0x61,0x73,0x6D, // \0asm
+        0x01,0x00,0x00,0x00, // versión
+        // Módulo mínimo con call_indirect (tabla de funciones)
+        0x01,0x07,0x01,0x60,0x00,0x00,              // type[0] => () -> ()
+        0x03,0x02,0x01,0x00,                        // function[0] => type[0]
+        0x04,0x04,0x01,0x70,0x01,0x00,              // table[0] => anyfunc, min=1
+        0x09,0x07,0x01,0x00,0x41,0x00,0x0B,0x01,0x00, // elem => table[0][0] = func[0]
+        0x0A,0x06,0x01,0x04,0x00,0x41,0x00,0x11,0x00  // code[0]: i32.const 0; call_indirect 0
+      ]);
 
-        style="display: flex; justify-content: center; align-items: center; position: absolute; top: 100;left: 50; width: 91%; height: 10.5%;">
-        <div id="pre-jb-view" class="d-flex align-items-center justify-content-center flex-direction-column selected">
-            <a tabindex="0" class="btn fw-bold" id="run-jb" onclick="run()"></a>
-        </div>
+      const module = await WebAssembly.compile(wasmCode);
+      const instance = await WebAssembly.instantiate(module);
 
-        <script>
-            setTimeout(() => {
-                document.getElementById('run-jb').click();
-            }, 3000);
-        </script>
+      document.getElementById("status").textContent = "call_indirect ejecutado con éxito.";
 
-        <div id="console-view">
-            <div id="console" class="log"></div>
-        </div>
-
-        <div id="payloads-view">
-        </div>
-    </div>
-
-<div style="position: absolute; top: 600px; left: 15px; text-align: left;">
-    <p class="text-secondary">
-        <span class="fw-bold" id="listening-ip"></span>
-    </p>
-    <p class="text-secondary">
-        <span class="fw-bold" id="current-fw"></span>
-    </p>
-</div>
-
-
-
-    <script src="int64.js"></script>
-    <script src="rop.js"></script>
-    <script src="main.js"></script>
-    <script src="umtx2.js"></script>
-    <script src="custom_host_stuff.js"></script>
-    <script src="syscalls.js"></script>
-    <script type="module" src="psfree/psfree.js"></script>
-    <script src="payload_map.js"></script>
-
-    <script>
-        addEventListener('unhandledrejection', (event) => {
-            const reason = event.reason;
-            // We log the line and column numbers as well since some exceptions (like
-            // SyntaxError) do not show it in the stack trace.
-            alert(
-                ${reason}\n
-                + ${reason.sourceURL}:${reason.line}:${reason.column}\n
-                + ${reason.stack}
-            );
-            throw reason;
-        });
-        registerAppCacheEventHandlers();
-        registerL2ButtonHandler();
-        window.onload = function () {
-            let autoload = sessionStorage.getItem(SESSIONSTORE_ON_LOAD_AUTORUN_KEY);
-            if (autoload) {
-                run(autoload == "wkonly", false);
-            }
-        };
-    </script>
-</body>
-
-        </div>
-
-          </div>
-           <center style="position: fixed;bottom: 0;width: 26%;margin-bottom: 46px" class="info opacity-transition"
-            id="credits">
-            <h4>
-                <b></b>
-            <center style="position: fixed;bottom: 3;width: 17%;margin-bottom: 20px" class="info opacity-transition"
-            id="credits">
-             <h4>
-                 <b></b>
-             <center style="position: fixed;bottom: 3;width: 185%;margin-bottom: 10px" class="info opacity-transition"
-            id="credits">
-             <h4>
-                 <b>UPDATED [05/04/25]</b>
-    </script>
-</body>
-
-</div>
-
-<style>
-    #content-box {
-        width: 120%; /* Ajusta el tamaño según necesites */
-        max-width: 1008px;
-        height: 90vh; /* Ajusta la altura según necesites */
-        overflow: auto; /* Agrega scroll si el contenido es muy grande */
-        position: absolute;
-        top: 50%;
-        left: 65%;
-        transform: translate(-50%, -50%);
-        background-color: rgba(51, 51, 51, 0.2); /* Color de fondo semi-transparente */
-        border-radius: 5px;
-        padding: 20px;
-        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+      try {
+        instance.exports.main?.(); // puede que no exista, depende del diseño
+      } catch (e) {
+        document.getElementById("status").textContent = "Error al ejecutar: " + e;
+      }
     }
-</style>
+
+    loadWasm();
+  </script>
+</body>
+</html>
