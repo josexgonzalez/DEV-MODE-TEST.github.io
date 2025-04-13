@@ -3,39 +3,90 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Adaptación UMTX Exploit</title>
+  <title>Explotación de WebKit - PS5</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    .log {
+      background-color: #f0f0f0;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      max-width: 600px;
+      overflow-wrap: break-word;
+    }
+    .log span {
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-  <h1>Adaptación de UMTX Exploit en PS5 WebKit</h1>
+  <h1>Explotación de WebKit en PS5</h1>
+  <div id="log"></div>
+
   <script>
-    // Función para manipular objetos en memoria
-    function manipulateMemory() {
-      // Inicialización de primitivas
-      const primitiveAddrof = (obj) => {
-        // Crear un "fakeobj" o "addrof" para obtener dirección de objetos
-      };
-
-      const primitiveWrite32 = (address, value) => {
-        // Escribir 32 bits en una dirección
-      };
-
-      // Manipulación básica con el heap
-      let maliciousFunction = () => {
-        console.log("Código ejecutado arbitrariamente");
-        // Aquí iría el código para ejecutar el exploit
-      };
-
-      // Corruptor de punteros o tabla
-      let corruptPointer = () => {
-        // Aquí se usaría un desbordamiento para sobrescribir punteros
-      };
-
-      // Inyectando código
-      maliciousFunction();
+    // Función para registrar mensajes
+    function log(message) {
+      const logContainer = document.getElementById("log");
+      const newMessage = document.createElement("div");
+      newMessage.classList.add("log");
+      newMessage.textContent = message;
+      logContainer.appendChild(newMessage);
     }
 
-    // Ejecutar la manipulación de memoria al cargar el documento
-    window.onload = manipulateMemory;
+    // Primitivas para manipular objetos
+    function addrof(obj) {
+      // Aquí iría el código real para obtener la dirección de un objeto
+      log("addrof ejecutado: Objeto: " + obj);
+      return 0x12345678;  // Dirección simulada
+    }
+
+    function fakeobj(addr) {
+      // Aquí se crearía un "objeto falso" en una dirección dada
+      log("fakeobj ejecutado: Dirección: " + addr);
+      return { __fakeobj: addr };  // Objeto falso simulado
+    }
+
+    function write32(addr, value) {
+      // Escribir 32 bits en una dirección
+      log("write32 ejecutado: Dirección: " + addr + " Valor: " + value);
+      // Manipular directamente la memoria en esa dirección (simulado)
+    }
+
+    function read64(addr) {
+      // Leer 64 bits desde una dirección
+      log("read64 ejecutado: Dirección: " + addr);
+      return 0xabcdef12345678;  // Valor simulado
+    }
+
+    // Manipulaciones básicas
+    function manipulateMemory() {
+      // Crear un objeto de prueba
+      let obj = { prop: "valor" };
+
+      // Obtener dirección del objeto
+      let objAddr = addrof(obj);
+      log("Dirección del objeto: " + objAddr.toString(16));
+
+      // Escribir en memoria usando write32
+      write32(objAddr, 0xdeadbeef);
+
+      // Leer la dirección usando read64
+      let value = read64(objAddr);
+      log("Valor leído: " + value.toString(16));
+
+      // Manipular objetos para ejecutar código arbitrario
+      let fakeObj = fakeobj(0xdeadbeef);
+      log("Objeto falso creado: " + JSON.stringify(fakeObj));
+    }
+
+    // Inicializar ataque
+    window.onload = function() {
+      log("Iniciando ataque...");
+      manipulateMemory();
+    };
   </script>
 </body>
 </html>
