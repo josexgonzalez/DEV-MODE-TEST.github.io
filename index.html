@@ -2,56 +2,37 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>PS5 10.20 - Interfaz de Depuración Exploit</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exploit PS5 - FW 10.20</title>
   <style>
-    body {
-      background: #000;
-      color: #0f0;
-      font-family: monospace;
-      padding: 2em;
-    }
-    h1 {
-      color: cyan;
-    }
-    #log {
-      white-space: pre-wrap;
-      background: #111;
-      border: 1px solid #0f0;
-      padding: 1em;
-      margin-top: 1em;
-      max-height: 400px;
-      overflow-y: auto;
-    }
-    button {
-      background: #0f0;
-      color: #000;
-      border: none;
-      padding: 10px 20px;
-      margin-top: 20px;
-      font-weight: bold;
-      cursor: pointer;
-    }
+    body { background:#000; color:#0f0; font-family:monospace; padding:2em; }
+    h1 { color: cyan; }
+    .log { background-color: #222; padding: 10px; margin: 10px 0; border: 1px solid #ccc; }
   </style>
 </head>
 <body>
-  <h1>🧠 PS5 10.20 - Consola Exploit WebKit</h1>
-  <div id="log">Inicializando entorno...</div>
-  <button onclick="ejecutarPayload()">▶ Ejecutar Payload</button>
+  <h1>Exploit PS5 - FW 10.20</h1>
+  <pre id="debug">Cargando...</pre>
+
+  <div id="log"></div>
 
   <script>
-    const logArea = document.getElementById("log");
-    function log(msg) {
-      logArea.textContent += "\n" + msg;
-      logArea.scrollTop = logArea.scrollHeight;
+    // Función para mostrar logs
+    function log(message) {
+      const logContainer = document.getElementById("log");
+      const newMessage = document.createElement("div");
+      newMessage.classList.add("log");
+      newMessage.textContent = message;
+      logContainer.appendChild(newMessage);
     }
 
-    // Conversión float <-> int
+    // Conversión Float ↔ Int
     const f64_buf = new Float64Array(1);
     const u32_buf = new Uint32Array(f64_buf.buffer);
 
     function f2i(f) {
       f64_buf[0] = f;
-      return [u32_buf[0], u32_buf[1]];
+      return [u32_buf[0], u32_buf[1]]; // [low, high]
     }
 
     function i2f(lo, hi) {
@@ -64,44 +45,83 @@
       return "0x" + hi.toString(16).padStart(8, "0") + lo.toString(16).padStart(8, "0");
     }
 
-    // Inicialización de prueba
-    function iniciarExploit() {
-      try {
-        log("✔️ Conversión float → int:");
-        let f = 13.37;
-        let [lo, hi] = f2i(f);
-        log("  Float: " + f + " → Int: " + hex(lo, hi));
+    try {
+      let prueba = 13.37;
+      let [lo, hi] = f2i(prueba);
+      let reconstruido = i2f(lo, hi);
 
-        log("✔️ Reconversión int → float:");
-        let reconvertido = i2f(lo, hi);
-        log("  Reconstruido: " + reconvertido);
+      document.getElementById("debug").textContent =
+        "✅ Conversión f2i:\n" +
+        "  Float: " + prueba + "\n" +
+        "  Int:   " + hex(lo, hi) + "\n" +
+        "✅ Conversión i2f:\n" +
+        "  Reconstruido: " + reconstruido;
 
-        log("🔍 Primitiva f2i/i2f funcionando.");
-
-        // Comprobación extra para ver si WebAssembly está disponible
-        if (typeof WebAssembly === "object") {
-          log("✅ WebAssembly disponible.");
-        } else {
-          log("❌ WebAssembly no disponible.");
-        }
-      } catch (e) {
-        log("❌ Error al inicializar: " + e.message);
-      }
+    } catch (e) {
+      document.getElementById("debug").textContent = "❌ Error: " + e;
     }
 
-    // Simulación de ejecución de payload real
-    function ejecutarPayload() {
-      try {
-        log("⚙️ Ejecutando payload...");
-        // Aquí pondrías la lógica RW real o simulada
-        alert("🚀 Payload activado. (Simulado)\nPuedes reemplazar este bloque con tu exploit RW.");
-        log("✅ Payload ejecutado correctamente.");
-      } catch (e) {
-        log("❌ Error en payload: " + e.message);
-      }
-    }
+    // Sobrescribir setTimeout para prueba
+    const originalSetTimeout = setTimeout;
+    window.setTimeout = function(callback, delay) {
+      log("¡Código arbitrario ejecutado desde setTimeout!");
+      log("Código que se ejecutará en " + delay + " ms");
+      return originalSetTimeout(callback, delay); // Ejecuta el código original después
+    };
 
-    iniciarExploit();
+    // Sobrescribir setInterval para prueba
+    const originalSetInterval = setInterval;
+    window.setInterval = function(callback, interval) {
+      log("¡Código arbitrario ejecutado desde setInterval!");
+      log("Código que se ejecutará cada " + interval + " ms");
+      return originalSetInterval(callback, interval); // Ejecuta el código original después
+    };
+
+    // Sobrescribir innerHTML
+    const originalInnerHTML = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML').set;
+    Object.defineProperty(Element.prototype, 'innerHTML', {
+      set: function(value) {
+        log("¡Código arbitrario ejecutado al modificar innerHTML!");
+        log("Contenido inyectado: " + value);
+        originalInnerHTML.apply(this, arguments); // Llamamos al set original
+      }
+    });
+
+    // Sobrescribir eval
+    const originalEval = eval;
+    window.eval = function(code) {
+      log("¡Ejecutando código arbitrario con eval!");
+      log("Código a ejecutar: " + code);
+      originalEval(code); // Llamamos al eval original
+    };
+
+    // Ejemplo de uso de setTimeout
+    setTimeout(function() {
+      alert("¡Código ejecutado con setTimeout!");
+    }, 2000);
+
+    // Ejemplo de uso de setInterval
+    setInterval(function() {
+      console.log("Código ejecutado cada 1 segundo.");
+    }, 1000);
+
+    // Modificar innerHTML de un elemento
+    document.body.innerHTML = "<div onclick='alert(\"¡Cuidado!\")'>Haz clic aquí</div>";
+
+    // Ejemplo de uso de eval
+    eval("alert('¡Código ejecutado con eval!')");
+
+    // Ejemplo de manipulación de navigator
+    log(navigator.userAgent); // Mostramos el userAgent manipulado
+
+    // Manipulación de XMLHttpRequest para pruebas
+    const originalXMLHttpRequest = window.XMLHttpRequest;
+    window.XMLHttpRequest = function() {
+      log("¡XMLHttpRequest interceptado!");
+      const xhr = new originalXMLHttpRequest();
+      return xhr;
+    };
   </script>
+
 </body>
 </html>
