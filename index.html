@@ -2,15 +2,15 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>PS5 10.20 - Prueba Exploit</title>
+  <title>PS5 10.20 - addrof test</title>
   <style>
     body { background:#000; color:#0f0; font-family:monospace; padding:2em; }
     h1 { color: cyan; }
   </style>
 </head>
 <body>
-  <h1>Test Exploit - PS5 FW 10.20</h1>
-  <pre id="debug">Cargando...</pre>
+  <h1>Test addrof() - PS5 FW 10.20</h1>
+  <pre id="debug">Inicializando...</pre>
 
   <script>
     const f64_buf = new Float64Array(1);
@@ -18,7 +18,7 @@
 
     function f2i(f) {
       f64_buf[0] = f;
-      return [u32_buf[0], u32_buf[1]]; // [low, high]
+      return [u32_buf[0], u32_buf[1]];
     }
 
     function i2f(lo, hi) {
@@ -31,18 +31,31 @@
       return "0x" + hi.toString(16).padStart(8, "0") + lo.toString(16).padStart(8, "0");
     }
 
+    // Esta será la víctima de la conversión
+    let float_array = [1.1, 2.2, 3.3];
+    let obj_array = [{}];
+    let float_map = float_array.oob(); // TRUCO: requiere OOB para funcionar (lo simularemos)
+
+    function fake_oob() {
+      // Simula el exploit tipo confusión (si ya tienes OOB real, reemplace esto)
+      let corrupted = float_array;
+      corrupted.length = 100; // Expandimos artificialmente
+      return corrupted;
+    }
+
+    function addrof(obj) {
+      let oob = fake_oob();
+      obj_array[0] = obj;
+      oob[10] = obj_array; // manipulamos tipo
+      return f2i(oob[10][0]);
+    }
+
     try {
-      let prueba = 13.37;
-      let [lo, hi] = f2i(prueba);
-      let reconstruido = i2f(lo, hi);
+      let test_obj = { pwn: true };
+      let [lo, hi] = addrof(test_obj);
 
       document.getElementById("debug").textContent =
-        "✅ Conversión f2i:\n" +
-        "  Float: " + prueba + "\n" +
-        "  Int:   " + hex(lo, hi) + "\n" +
-        "✅ Conversión i2f:\n" +
-        "  Reconstruido: " + reconstruido;
-
+        "✅ Dirección del objeto:\n" + hex(lo, hi);
     } catch (e) {
       document.getElementById("debug").textContent = "❌ Error: " + e;
     }
