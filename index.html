@@ -2,32 +2,40 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Test Exploit - WebKit sin WASM</title>
+  <title>Test Proxy + RegExp</title>
   <style>
     body { background: #000; color: #0f0; font-family: monospace; padding: 2em; }
     h1 { color: cyan; }
   </style>
 </head>
 <body>
-  <h1>PS5 FW 10.20 - Test WebKit sin WebAssembly</h1>
+  <h1>Test WebKit: Proxy + RegExp Replace</h1>
   <pre id="debug">Ejecutando prueba...</pre>
 
   <script>
     const log = msg => document.getElementById("debug").textContent += `\n${msg}`;
 
     try {
-      let corrupted = false;
-      const arr = [1.1, 2.2, 3.3];
-      arr.sort(function(a, b) {
-        arr.length = 1; // Esto es un "trigger" clásico
-        corrupted = true;
-        return 0;
+      let triggered = false;
+      const victim = { toString: () => "vulnerable?" };
+
+      const proxy = new Proxy(victim, {
+        get(target, prop, receiver) {
+          if (prop === "toString") {
+            triggered = true;
+            log("⚠️ Se accedió a toString dentro del Proxy durante .replace()");
+          }
+          return Reflect.get(target, prop, receiver);
+        }
       });
 
-      if (corrupted && arr.length !== 3) {
-        log("⚠️ POSIBLE COMPORTAMIENTO VULNERABLE DETECTADO");
+      const result = "A".replace(/A/, proxy);
+
+      log(`Resultado del replace: ${result}`);
+      if (triggered) {
+        log("⚠️ COMPORTAMIENTO SOSPECHOSO DETECTADO: El proxy fue activado.");
       } else {
-        log("❌ No se detectó comportamiento vulnerable.");
+        log("❌ No se activó el proxy. Parece seguro.");
       }
     } catch (e) {
       log("❌ Error durante la prueba:");
