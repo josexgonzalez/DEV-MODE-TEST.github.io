@@ -1,15 +1,20 @@
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>PS5 FW 4.03 Wasm RTT Bypass Test</title>
+  <title>WASM Test PS5 FW 10.20</title>
   <style>
-    body { background-color: #111; color: #eee; font-family: monospace; text-align: center; padding-top: 4em; }
+    body {
+      background-color: #111;
+      color: #eee;
+      font-family: monospace;
+      text-align: center;
+      padding-top: 4em;
+    }
   </style>
 </head>
 <body>
-  <h1>Test de Vulnerabilidad Wasm RTT (PS5 FW 4.03)</h1>
+  <h1>Test WebAssembly PS5 FW 10.20</h1>
   <p id="status">Cargando prueba...</p>
   <p id="debug"></p>
 
@@ -17,32 +22,29 @@
     async function loadWasm() {
       const wasmCode = new Uint8Array([
         0x00,0x61,0x73,0x6D, // \0asm
-        0x01,0x00,0x00,0x00, // versión
-        // Módulo mínimo con call_indirect (tabla de funciones)
-        0x01,0x07,0x01,0x60,0x00,0x00,              // type[0] => () -> ()
-        0x03,0x02,0x01,0x00,                        // function[0] => type[0]
-        0x04,0x04,0x01,0x70,0x01,0x00,              // table[0] => anyfunc, min=1
-        0x09,0x07,0x01,0x00,0x41,0x00,0x0B,0x01,0x00, // elem => table[0][0] = func[0]
-        0x0A,0x06,0x01,0x04,0x00,0x41,0x00,0x11,0x00  // code[0]: i32.const 0; call_indirect 0
+        0x01,0x00,0x00,0x00, // version
+        // Type section: 1 type (no params, one i32 result)
+        0x01,0x07,0x01,0x60,0x00,0x01,0x7F,
+        // Function section: 1 function of type 0
+        0x03,0x02,0x01,0x00,
+        // Export section: export as "main"
+        0x07,0x07,0x01,0x04,0x6D,0x61,0x69,0x6E,0x00,0x00,
+        // Code section: 1 function body
+        0x0A,0x09,0x01,0x07,0x00,0x41,0x2A,0x41,0x03,0x6A,0x0B
+        // Func: return 42 + 3 = 45
       ]);
 
       try {
-        document.getElementById("debug").textContent = "Compilando módulo WebAssembly...";
+        document.getElementById("debug").textContent = "Compilando WebAssembly...";
         const module = await WebAssembly.compile(wasmCode);
-        document.getElementById("debug").textContent = "Módulo WebAssembly compilado correctamente.";
         const instance = await WebAssembly.instantiate(module);
-        document.getElementById("status").textContent = "call_indirect ejecutado con éxito.";
+        const result = instance.exports.main();
 
-        try {
-          document.getElementById("debug").textContent = "Ejecutando función main...";
-          instance.exports.main?.(); // puede que no exista, depende del diseño
-        } catch (e) {
-          document.getElementById("debug").textContent = "Error al ejecutar: " + e;
-          document.getElementById("status").textContent = "Error al ejecutar la función.";
-        }
+        document.getElementById("status").textContent = "WebAssembly ejecutado correctamente.";
+        document.getElementById("debug").textContent = "Resultado de 'main': " + result;
       } catch (e) {
-        document.getElementById("debug").textContent = "Error al compilar o cargar el módulo WebAssembly: " + e;
-        document.getElementById("status").textContent = "Error al cargar WebAssembly.";
+        document.getElementById("debug").textContent = "Error: " + e;
+        document.getElementById("status").textContent = "Falló la ejecución.";
       }
     }
 
