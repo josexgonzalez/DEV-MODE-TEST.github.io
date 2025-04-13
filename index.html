@@ -2,31 +2,18 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Exploit PS5 - FW 10.20</title>
+  <title>PS5 FW 10.20 - PoC</title>
   <style>
-    body { background:#000; color:#0f0; font-family:monospace; padding:2em; }
+    body { background: #111; color: #0f0; font-family: monospace; padding: 20px; }
     h1 { color: cyan; }
-    .log { background-color: #222; padding: 10px; margin: 10px 0; border: 1px solid #ccc; }
   </style>
 </head>
 <body>
-  <h1>Exploit PS5 - FW 10.20</h1>
+  <h1>PS5 FW 10.20 - Proof of Concept</h1>
   <pre id="debug">Cargando...</pre>
 
-  <div id="log"></div>
-
   <script>
-    // Función para mostrar logs
-    function log(message) {
-      const logContainer = document.getElementById("log");
-      const newMessage = document.createElement("div");
-      newMessage.classList.add("log");
-      newMessage.textContent = message;
-      logContainer.appendChild(newMessage);
-    }
-
-    // Conversión Float ↔ Int
+    // Buffer de 64 bits
     const f64_buf = new Float64Array(1);
     const u32_buf = new Uint32Array(f64_buf.buffer);
 
@@ -57,71 +44,12 @@
         "✅ Conversión i2f:\n" +
         "  Reconstruido: " + reconstruido;
 
+      // Aquí podrías agregar más pruebas de conversión, vulnerabilidades específicas, etc.
     } catch (e) {
       document.getElementById("debug").textContent = "❌ Error: " + e;
     }
-
-    // Sobrescribir setTimeout para prueba
-    const originalSetTimeout = setTimeout;
-    window.setTimeout = function(callback, delay) {
-      log("¡Código arbitrario ejecutado desde setTimeout!");
-      log("Código que se ejecutará en " + delay + " ms");
-      return originalSetTimeout(callback, delay); // Ejecuta el código original después
-    };
-
-    // Sobrescribir setInterval para prueba
-    const originalSetInterval = setInterval;
-    window.setInterval = function(callback, interval) {
-      log("¡Código arbitrario ejecutado desde setInterval!");
-      log("Código que se ejecutará cada " + interval + " ms");
-      return originalSetInterval(callback, interval); // Ejecuta el código original después
-    };
-
-    // Sobrescribir innerHTML
-    const originalInnerHTML = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML').set;
-    Object.defineProperty(Element.prototype, 'innerHTML', {
-      set: function(value) {
-        log("¡Código arbitrario ejecutado al modificar innerHTML!");
-        log("Contenido inyectado: " + value);
-        originalInnerHTML.apply(this, arguments); // Llamamos al set original
-      }
-    });
-
-    // Sobrescribir eval
-    const originalEval = eval;
-    window.eval = function(code) {
-      log("¡Ejecutando código arbitrario con eval!");
-      log("Código a ejecutar: " + code);
-      originalEval(code); // Llamamos al eval original
-    };
-
-    // Ejemplo de uso de setTimeout
-    setTimeout(function() {
-      alert("¡Código ejecutado con setTimeout!");
-    }, 2000);
-
-    // Ejemplo de uso de setInterval
-    setInterval(function() {
-      console.log("Código ejecutado cada 1 segundo.");
-    }, 1000);
-
-    // Modificar innerHTML de un elemento
-    document.body.innerHTML = "<div onclick='alert(\"¡Cuidado!\")'>Haz clic aquí</div>";
-
-    // Ejemplo de uso de eval
-    eval("alert('¡Código ejecutado con eval!')");
-
-    // Ejemplo de manipulación de navigator
-    log(navigator.userAgent); // Mostramos el userAgent manipulado
-
-    // Manipulación de XMLHttpRequest para pruebas
-    const originalXMLHttpRequest = window.XMLHttpRequest;
-    window.XMLHttpRequest = function() {
-      log("¡XMLHttpRequest interceptado!");
-      const xhr = new originalXMLHttpRequest();
-      return xhr;
-    };
   </script>
-
 </body>
+</html>
+
 </html>
