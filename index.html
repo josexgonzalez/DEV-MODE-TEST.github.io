@@ -2,40 +2,36 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Test WebAssembly PS5</title>
+  <title>Test Exploit - WebKit sin WASM</title>
   <style>
     body { background: #000; color: #0f0; font-family: monospace; padding: 2em; }
     h1 { color: cyan; }
   </style>
 </head>
 <body>
-  <h1>WebAssembly - Test Básico</h1>
-  <pre id="debug">Iniciando...</pre>
+  <h1>PS5 FW 10.20 - Test WebKit sin WebAssembly</h1>
+  <pre id="debug">Ejecutando prueba...</pre>
 
   <script>
     const log = msg => document.getElementById("debug").textContent += `\n${msg}`;
 
-    if (typeof WebAssembly === "undefined") {
-      log("❌ WebAssembly no está disponible.");
-    } else {
-      log("✅ WebAssembly está disponible.");
-      
-      const code = new Uint8Array([
-        0x00, 0x61, 0x73, 0x6d, // \0asm
-        0x01, 0x00, 0x00, 0x00, // versión
-        0x01, 0x07, 0x01, 0x60, 0x00, 0x01, 0x7f,       // Type: () -> i32
-        0x03, 0x02, 0x01, 0x00,                         // Function: type 0
-        0x07, 0x07, 0x01, 0x03, 0x61, 0x64, 0x64, 0x00, 0x00, // Export: add
-        0x0a, 0x06, 0x01, 0x04, 0x00, 0x41, 0x2a, 0x0b  // Code: return 42
-      ]);
-
-      WebAssembly.instantiate(code).then(result => {
-        log("✅ Módulo instanciado");
-        log("🔢 Resultado de 'add': " + result.instance.exports.add());
-      }).catch(err => {
-        log("❌ Error instanciando WebAssembly:");
-        log(err.message);
+    try {
+      let corrupted = false;
+      const arr = [1.1, 2.2, 3.3];
+      arr.sort(function(a, b) {
+        arr.length = 1; // Esto es un "trigger" clásico
+        corrupted = true;
+        return 0;
       });
+
+      if (corrupted && arr.length !== 3) {
+        log("⚠️ POSIBLE COMPORTAMIENTO VULNERABLE DETECTADO");
+      } else {
+        log("❌ No se detectó comportamiento vulnerable.");
+      }
+    } catch (e) {
+      log("❌ Error durante la prueba:");
+      log(e.toString());
     }
   </script>
 </body>
