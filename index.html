@@ -2,34 +2,41 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Exploit PS5 - WASM Table</title>
+  <title>Test WebAssembly PS5</title>
   <style>
-    body { background:#000; color:#0f0; font-family:monospace; padding:2em; }
+    body { background: #000; color: #0f0; font-family: monospace; padding: 2em; }
     h1 { color: cyan; }
   </style>
 </head>
 <body>
-  <h1>PS5 FW 10.20 - Test Tabla WebAssembly</h1>
-  <pre id="debug">Cargando módulo...</pre>
+  <h1>WebAssembly - Test Básico</h1>
+  <pre id="debug">Iniciando...</pre>
 
   <script>
     const log = msg => document.getElementById("debug").textContent += `\n${msg}`;
 
-    // Módulo .wasm válido: define una tabla y una función simple que retorna 42
-    const wasmBase64 = `
-AGFzbQEAAAABBgFgAn9/AX8DAgEABwEDfwF/AwIBAAcCAwEABwR/AwMBBQp/AwMBB2V4cG9ydAAABw==
-    `.trim(); // Módulo mínimo exportando una función
+    if (typeof WebAssembly === "undefined") {
+      log("❌ WebAssembly no está disponible.");
+    } else {
+      log("✅ WebAssembly está disponible.");
+      
+      const code = new Uint8Array([
+        0x00, 0x61, 0x73, 0x6d, // \0asm
+        0x01, 0x00, 0x00, 0x00, // versión
+        0x01, 0x07, 0x01, 0x60, 0x00, 0x01, 0x7f,       // Type: () -> i32
+        0x03, 0x02, 0x01, 0x00,                         // Function: type 0
+        0x07, 0x07, 0x01, 0x03, 0x61, 0x64, 0x64, 0x00, 0x00, // Export: add
+        0x0a, 0x06, 0x01, 0x04, 0x00, 0x41, 0x2a, 0x0b  // Code: return 42
+      ]);
 
-    const wasmCode = Uint8Array.from(atob(wasmBase64), c => c.charCodeAt(0));
-
-    WebAssembly.instantiate(wasmCode, {}).then(({ instance }) => {
-      log("✅ WebAssembly cargado con éxito");
-      log("🔢 Resultado de llamada: " + instance.exports[""]());
-
-    }).catch(err => {
-      log("❌ Error al cargar WebAssembly:");
-      log(err.message);
-    });
+      WebAssembly.instantiate(code).then(result => {
+        log("✅ Módulo instanciado");
+        log("🔢 Resultado de 'add': " + result.instance.exports.add());
+      }).catch(err => {
+        log("❌ Error instanciando WebAssembly:");
+        log(err.message);
+      });
+    }
   </script>
 </body>
 </html>
