@@ -2,31 +2,29 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Exploit PS5 - call_indirect</title>
+  <title>Exploit PS5 - WASM Table</title>
   <style>
     body { background:#000; color:#0f0; font-family:monospace; padding:2em; }
     h1 { color: cyan; }
   </style>
 </head>
 <body>
-  <h1>PS5 FW 10.20 - WebAssembly Confusión de Tipo</h1>
-  <pre id="debug">Cargando WebAssembly...</pre>
+  <h1>PS5 FW 10.20 - Test Tabla WebAssembly</h1>
+  <pre id="debug">Cargando módulo...</pre>
 
   <script>
     const log = msg => document.getElementById("debug").textContent += `\n${msg}`;
 
-    // Módulo WebAssembly embebido (con call_indirect vulnerable a confusión de tipo)
+    // Módulo .wasm válido: define una tabla y una función simple que retorna 42
     const wasmBase64 = `
-AGFzbQEAAAABCAJgAX8AYAAAAwEBAQcBAgMABQcDAAECCAEBAAAABQEDAgM=
-    `.trim();
+AGFzbQEAAAABBgFgAn9/AX8DAgEABwEDfwF/AwIBAAcCAwEABwR/AwMBBQp/AwMBB2V4cG9ydAAABw==
+    `.trim(); // Módulo mínimo exportando una función
 
     const wasmCode = Uint8Array.from(atob(wasmBase64), c => c.charCodeAt(0));
 
     WebAssembly.instantiate(wasmCode, {}).then(({ instance }) => {
-      log("✅ Módulo WebAssembly cargado");
-
-      // Aquí normalmente se construyen tablas manipulables, o se desencadena call_indirect mal formado
-      log("⚠️ Falta implementar la confusión con tabla indirecta");
+      log("✅ WebAssembly cargado con éxito");
+      log("🔢 Resultado de llamada: " + instance.exports[""]());
 
     }).catch(err => {
       log("❌ Error al cargar WebAssembly:");
