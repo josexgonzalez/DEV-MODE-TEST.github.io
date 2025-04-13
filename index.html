@@ -2,53 +2,33 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>WASM Test PS5 FW 10.20</title>
+  <title>Test WebAssembly PS5 FW 10.20</title>
   <style>
     body {
       background-color: #111;
-      color: #eee;
+      color: #0f0;
       font-family: monospace;
       text-align: center;
-      padding-top: 4em;
+      padding-top: 5em;
+    }
+    #resultado {
+      color: yellow;
+      font-size: 1.5em;
+      margin-top: 2em;
     }
   </style>
 </head>
 <body>
-  <h1>Test WebAssembly PS5 FW 10.20</h1>
-  <p id="status">Cargando prueba...</p>
-  <p id="debug"></p>
+  <h1>¿Está habilitado WebAssembly?</h1>
+  <p>Detectando soporte...</p>
+  <div id="resultado">...</div>
 
   <script>
-    async function loadWasm() {
-      const wasmCode = new Uint8Array([
-        0x00,0x61,0x73,0x6D, // \0asm
-        0x01,0x00,0x00,0x00, // version
-        // Type section: 1 type (no params, one i32 result)
-        0x01,0x07,0x01,0x60,0x00,0x01,0x7F,
-        // Function section: 1 function of type 0
-        0x03,0x02,0x01,0x00,
-        // Export section: export as "main"
-        0x07,0x07,0x01,0x04,0x6D,0x61,0x69,0x6E,0x00,0x00,
-        // Code section: 1 function body
-        0x0A,0x09,0x01,0x07,0x00,0x41,0x2A,0x41,0x03,0x6A,0x0B
-        // Func: return 42 + 3 = 45
-      ]);
-
-      try {
-        document.getElementById("debug").textContent = "Compilando WebAssembly...";
-        const module = await WebAssembly.compile(wasmCode);
-        const instance = await WebAssembly.instantiate(module);
-        const result = instance.exports.main();
-
-        document.getElementById("status").textContent = "WebAssembly ejecutado correctamente.";
-        document.getElementById("debug").textContent = "Resultado de 'main': " + result;
-      } catch (e) {
-        document.getElementById("debug").textContent = "Error: " + e;
-        document.getElementById("status").textContent = "Falló la ejecución.";
-      }
-    }
-
-    loadWasm();
+    const soporte = typeof WebAssembly;
+    document.getElementById("resultado").textContent = 
+      soporte === "object"
+        ? "✅ WebAssembly está HABILITADO"
+        : "❌ WebAssembly está DESHABILITADO";
   </script>
 </body>
 </html>
