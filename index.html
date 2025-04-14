@@ -1,105 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PS5 Exploit - Firmware 5.50</title>
-    <script>
-        // Función para manipular el heap y corromper la memoria
-        function exploitHeap() {
-            let obj = {value: "dummy"}; // Crear objeto dummy
-            let fakeObj = new Array(1000).fill(obj); // Crear una matriz con objetos
-
-            // Corromper la memoria con un objeto malicioso
-            fakeObj[500] = {target: "malicious"};
-
-            // Simular la manipulación de la memoria con objetos corruptos
-            let corruptedMemory = fakeObj[500];
-            console.log("Memory Corrupted:", corruptedMemory);
-
-            // Ejecutar código malicioso a través de eval()
-            const payload = `
-                // Simulación de interacción con BPF
-                const bpfCommand = '/dev/bpf0';  // Dispositivo BPF
-                console.log("Ejecutando BPF en", bpfCommand);
-            `;
-
-            eval(payload); // Ejecutar código malicioso inyectado
-        }
-
-        // Función para manipular mutexes con umtx
-        function triggerUmtx() {
-            const umtxAddress = 0x12345678;  // Dirección ficticia del mutex en memoria
-            const targetSyscall = 0x80;      // Número ficticio de syscall que se va a invocar
-
-            // Creación de la estructura del mutex
-            const mutex = {
-                address: umtxAddress,
-                flags: 0,
-                status: 'locked',
-            };
-
-            console.log("Mutex preparado:", mutex);
-
-            // Ejecutar syscall usando un gadget ROP
-            const syscall = `
-                // Simulación de ejecución de syscall con ROP
-                console.log("Ejecutando syscall con número:", ${targetSyscall});
-            `;
-
-            eval(syscall);  // Ejecutar la syscall simulada
-        }
-
-        // Función para ejecutar la cadena ROP
-        function ropChain() {
-            const gadgets = [
-                0xdeadbeef,  // Dirección ficticia de un gadget ROP
-                0xcafebabe,  // Otra dirección ficticia de un gadget
-                0x12345678,  // Otra dirección ficticia
-            ];
-
-            // Crear la ROP chain con gadgets
-            const ropPayload = gadgets.map(gadget => {
-                return `
-                    // Cargar dirección de gadget en el registro
-                    console.log("Ejecutando gadget ROP en:", ${gadget});
-                `;
-            }).join("\n");
-
-            // Ejecutar la cadena ROP
-            eval(ropPayload);
-        }
-
-        // Función para escalar privilegios
-        function escalatePrivileges() {
-            const syscallNumber = 0x99;  // Número ficticio de syscall para escalada de privilegios
-            const privilegedCommand = `
-                // Syscall para escalada de privilegios
-                console.log("Ejecutando syscall para escalada de privilegios:", ${syscallNumber});
-            `;
-            eval(privilegedCommand);  // Ejecutar la syscall de escalada
-        }
-
-        // Función de logs en tiempo real
-        function logExecution() {
-            console.log("Iniciando explotación en PS5...");
-            setInterval(() => {
-                console.log("Exploit en ejecución...");
-            }, 1000);
-        }
-
-        // Iniciar las funciones
-        logExecution();
-        exploitHeap();
-        triggerUmtx();
-        ropChain();
-        escalatePrivileges();
-    </script>
+    <title>PS5 WebKit Exploit</title>
+    <script src="exploit.js"></script>
 </head>
 <body>
-    <h1>PS5 Exploit - WebKit Manipulación de Heap</h1>
-    <button onclick="exploitHeap()">Ejecutar Exploit</button>
+    <h1>Exploit WebKit PS5</h1>
+    <button onclick="runExploit()">Ejecutar Exploit</button>
 </body>
-</html>
-
 </html>
