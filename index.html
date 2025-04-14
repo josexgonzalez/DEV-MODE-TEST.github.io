@@ -2,88 +2,62 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Exploit WebKit PS5</title>
+  <title>PoC Compatibilidad - ScopeInfo/Primitivas</title>
   <style>
-    body { font-family: monospace; background-color: #000; color: #0f0; padding: 20px; }
+    body { background-color: #000; color: #0f0; font-family: monospace; padding: 20px; }
     h1 { color: cyan; }
   </style>
 </head>
 <body>
-  <h1>Exploit WebKit PS5</h1>
-  <pre id="debug">Cargando...</pre>
+  <h1>Prueba de Compatibilidad - Scope Confusion / RW Primitives</h1>
+  <pre id="log">Iniciando pruebas...</pre>
 
   <script>
-    const f64_buf = new Float64Array(1);
-    const u32_buf = new Uint32Array(f64_buf.buffer);
-
-    function f2i(f) {
-      f64_buf[0] = f;
-      return [u32_buf[0], u32_buf[1]]; // [low, high]
-    }
-
-    function i2f(lo, hi) {
-      u32_buf[0] = lo;
-      u32_buf[1] = hi;
-      return f64_buf[0];
-    }
-
-    function hex(lo, hi) {
-      return "0x" + hi.toString(16).padStart(8, "0") + lo.toString(16).padStart(8, "0");
-    }
-
-    // Primitiva read64: lee 64 bits desde la memoria.
-    function read64(addr) {
-      const obj = { valueOf: () => addr };
-      const low = f2i(obj.valueOf())[0];  // Obtiene la parte baja de la dirección
-      const high = f2i(obj.valueOf())[1]; // Obtiene la parte alta de la dirección
-      return hex(low, high);
-    }
-
-    // Primitiva write64: escribe 64 bits a una dirección de memoria.
-    function write64(addr, value) {
-      const low = f2i(value)[0];
-      const high = f2i(value)[1];
-      const obj = { valueOf: () => addr };
-      obj.valueOf = function () {
-        return low;  // Simulación de sobrescritura de memoria (esto es solo una aproximación para ilustración).
-      };
-      return `Escribiendo en la dirección: ${hex(low, high)}`;
-    }
-
-    // Primitiva addrof: obtiene la dirección de un objeto en la memoria.
-    function addrof(obj) {
-      const addr = f2i(obj)[0]; // Extrae la dirección en formato de 32 bits
-      return `Dirección del objeto: ${hex(addr, 0)}`;
-    }
-
-    // Primitiva fakeobj: crea un objeto falso que apunta a una dirección de memoria controlada.
-    function fakeobj(addr) {
-      const obj = { valueOf: () => addr };
-      return `Objeto simulado apuntando a: ${hex(f2i(addr)[0], 0)}`;
-    }
+    const log = msg => document.getElementById("log").textContent += msg + "\n";
 
     try {
-      // Test: lectura de memoria real
-      const fakeAddr = 0x7fffb6f5c000;  // Dirección de memoria hipotética para prueba
-      const readResult = read64(fakeAddr);
+      // Comprobación básica de motor
+      const engine = navigator.userAgent;
+      log("🧠 Motor detectado: " + engine);
 
-      // Test: escritura de memoria real
-      const writeResult = write64(fakeAddr, 0x123456789ABCDEF0);
+      // Primitiva Float ↔ Int (requisito base)
+      const f64 = new Float64Array(1);
+      const u32 = new Uint32Array(f64.buffer);
+      f64[0] = 13.37;
+      log(`✅ Float64 ↔ Uint32: [${u32[0].toString(16)}, ${u32[1].toString(16)}]`);
 
-      // Test: obtener la dirección de un objeto
-      const obj = { a: 10, b: 20 };
-      const objAddr = addrof(obj);
+      // Verificación de acceso a propiedades internas de funciones
+      function test_func(x) { return x + 1; }
+      const src = test_func.toString();
+      log("📜 test_func.toString(): " + src);
 
-      // Test: crear un objeto falso apuntando a una dirección controlada
-      const fakeObject = fakeobj(fakeAddr);
+      // Verificación de posibles proxies para scope confusion
+      const handler = {
+        get(target, prop, receiver) {
+          log(`⚠️ Acceso a propiedad interceptada: ${prop}`);
+          return Reflect.get(target, prop, receiver);
+        }
+      };
+      const obj = new Proxy({value: 42}, handler);
+      log("✅ Proxy construido correctamente");
 
-      document.getElementById("debug").textContent =
-        `✅ Lectura de memoria:\n  Dirección: ${readResult}\n\n` +
-        `✅ Escritura de memoria:\n  Dirección: ${writeResult}\n\n` +
-        `✅ Dirección del objeto:\n  ${objAddr}\n\n` +
-        `✅ Objeto simulado:\n  ${fakeObject}`;
-    } catch (e) {
-      document.getElementById("debug").textContent = "❌ Error: " + e;
+      // WebAssembly minimal
+      if (typeof WebAssembly === "object") {
+        const wasm_code = new Uint8Array([
+          0x00, 0x61, 0x73, 0x6d, // "\0asm"
+          0x01, 0x00, 0x00, 0x00
+        ]);
+        WebAssembly.compile(wasm_code).then(() => {
+          log("✅ WebAssembly: Módulo compilado");
+        }).catch(e => {
+          log("❌ WebAssembly: Fallo - " + e);
+        });
+      } else {
+        log("❌ WebAssembly: No disponible");
+      }
+
+    } catch (err) {
+      log("❌ Error: " + err);
     }
   </script>
 </body>
