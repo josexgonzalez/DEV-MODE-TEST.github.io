@@ -2,80 +2,62 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Exploit WebKit PS5 - Heap Manipulación</title>
+  <title>PoC Compatibilidad - ScopeInfo/Primitivas</title>
   <style>
-    body {
-      background-color: #000;
-      color: #0f0;
-      font-family: monospace;
-      padding: 2em;
-    }
+    body { background-color: #000; color: #0f0; font-family: monospace; padding: 20px; }
     h1 { color: cyan; }
   </style>
 </head>
 <body>
-  <h1>WebKit Exploit - PS5 sin WebAssembly</h1>
-  <pre id="log">Inicializando...</pre>
+  <h1>Prueba de Compatibilidad - Scope Confusion / RW Primitives</h1>
+  <pre id="log">Iniciando pruebas...</pre>
 
   <script>
-    const log = msg => document.getElementById("log").textContent += "\n" + msg;
+    const log = msg => document.getElementById("log").textContent += msg + "\n";
 
-    log("✅ Entorno detectado: PS5 sin WebAssembly");
+    try {
+      // Comprobación básica de motor
+      const engine = navigator.userAgent;
+      log("🧠 Motor detectado: " + engine);
 
-    // Buffers para conversión float <-> int
-    const f64_buf = new Float64Array(1);
-    const u32_buf = new Uint32Array(f64_buf.buffer);
+      // Primitiva Float ↔ Int (requisito base)
+      const f64 = new Float64Array(1);
+      const u32 = new Uint32Array(f64.buffer);
+      f64[0] = 13.37;
+      log(`✅ Float64 ↔ Uint32: [${u32[0].toString(16)}, ${u32[1].toString(16)}]`);
 
-    function f2i(f) {
-      f64_buf[0] = f;
-      return [u32_buf[0], u32_buf[1]]; // [low, high]
-    }
+      // Verificación de acceso a propiedades internas de funciones
+      function test_func(x) { return x + 1; }
+      const src = test_func.toString();
+      log("📜 test_func.toString(): " + src);
 
-    function i2f(lo, hi) {
-      u32_buf[0] = lo;
-      u32_buf[1] = hi;
-      return f64_buf[0];
-    }
+      // Verificación de posibles proxies para scope confusion
+      const handler = {
+        get(target, prop, receiver) {
+          log(`⚠️ Acceso a propiedad interceptada: ${prop}`);
+          return Reflect.get(target, prop, receiver);
+        }
+      };
+      const obj = new Proxy({value: 42}, handler);
+      log("✅ Proxy construido correctamente");
 
-    function hex(lo, hi) {
-      return "0x" + hi.toString(16).padStart(8, "0") + lo.toString(16).padStart(8, "0");
-    }
-
-    // Heap spraying / grooming base
-    let sprays = [];
-    for (let i = 0; i < 10000; i++) {
-      sprays.push({
-        prop: i,
-        data: new Array(10).fill(13.37)
-      });
-    }
-
-    log("✅ Heap grooming completado (objetos tipo spray creados)");
-
-    // Colocar aquí vulnerabilidad descubierta (p. ej. type confusion, overflow, etc)
-    function triggerVuln() {
-      try {
-        // Simula corrupción heap (a reemplazar por real)
-        let corrupted = sprays[5000];
-        log("⚠️  Simulación de corrupción en objeto spray:");
-        log(JSON.stringify(corrupted));
-
-        // Lugar donde implementar: 
-        // - addrof(obj)
-        // - fakeobj(addr)
-        // - read64(addr)
-        // - write64(addr, value)
-
-        log("🧪 Ahora debes insertar primitivas reales para RW");
-      } catch (e) {
-        log("❌ Error al ejecutar: " + e);
+      // WebAssembly minimal
+      if (typeof WebAssembly === "object") {
+        const wasm_code = new Uint8Array([
+          0x00, 0x61, 0x73, 0x6d, // "\0asm"
+          0x01, 0x00, 0x00, 0x00
+        ]);
+        WebAssembly.compile(wasm_code).then(() => {
+          log("✅ WebAssembly: Módulo compilado");
+        }).catch(e => {
+          log("❌ WebAssembly: Fallo - " + e);
+        });
+      } else {
+        log("❌ WebAssembly: No disponible");
       }
-    }
 
-    // Iniciar ejecución automáticamente
-    window.onload = () => {
-      log("▶️ Ejecutando trigger...\n");
-      triggerVuln();
+    } catch (err) {
+      log("❌ Error: " + err);
     }
   </script>
 </body>
