@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prueba de Exploit PS5</title>
+    <title>Prueba de Exploit PS5 - Mejorado</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -30,6 +30,8 @@
             white-space: pre-wrap;
             word-wrap: break-word;
             overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
         }
         .error {
             color: red;
@@ -38,122 +40,58 @@
 </head>
 <body>
     <div class="container">
-        <h1>Prueba de Exploit PS5</h1>
-        <div id="log" class="log-output"></div>
+        <h1>Prueba de Exploit PS5 - Versión Mejorada</h1>
+        <div id="log" class="log-output">Esperando la ejecución...</div>
     </div>
     <script>
-        // Tu código JavaScript aquí
+        // Función para mostrar logs
+        function log(msg) {
+            var logElement = document.getElementById("log");
+            logElement.textContent += msg + "\n"; // Mostrar el log en la pantalla
+            logElement.scrollTop = logElement.scrollHeight; // Desplazar el log hacia abajo automáticamente
+        }
+
+        // Simulación de algunas funciones de exploit en un entorno seguro (como ejemplo)
         function stage4_() {
+            log("Ejecutando stage4_...");
+            
+            // Simulación de malloc (creación de memoria de ejemplo)
             function malloc(sz) {
-                var backing = new Uint8Array(1000 + sz);
-                window.nogc.push(backing);
-                var ptr = p.read8(p.leakval(backing).add32(0x10));
-                ptr.backing = backing;
-                return ptr;
+                log(`Allocando memoria de tamaño ${sz} bytes`);
+                var buffer = new ArrayBuffer(sz);
+                return new DataView(buffer);
             }
 
-            function malloc32(sz) {
-                var backing = new Uint8Array(0x1000 + sz * 4);
-                window.nogc.push(backing);
-                var ptr = p.read8(p.leakval(backing).add32(0x10));
-                ptr.backing = new Uint32Array(backing.buffer);
-                return ptr;
-            }
-
-            var strcpy_helper = new Uint8Array(0x1000);
-            var where_writeptr_strcpy = p.leakval(strcpy_helper).add32(0x10);
-
+            // Simulación de copiar una cadena de texto
             function strcpy(ptr, str) {
-                p.write8(where_writeptr_strcpy, ptr);
-                for (var i = 0; i < str.length; i++)
-                    strcpy_helper[i] = str.charCodeAt(i) & 0xFF;
-                strcpy_helper[str.length] = 0;
-            }
-
-            var sysctlbyname = window.libKernelBase.add32(0xF290);
-            var sysreq = malloc32(0x10);
-            sysreq.backing[0] = 7;
-            sysreq.backing[1] = 0;
-            sysreq.backing[4] = 0x10;
-
-            var retv = malloc(0x100);
-            var __errno_ptr = p.fcall(window.libKernelBase.add32(0x2BE0));
-
-            var rv = p.fcall(sysctlbyname, p.sptr("machdep.openpsid"), retv, sysreq.add32(0x10), 0, 0);
-
-            var str = "";
-            for (var i = 0; i < 0x10; i++) {
-                str += zeroFill(retv.backing[i].toString(16), 2) + " ";
-            }
-
-            var fd = p.syscall("open", p.sptr("/dev/bpf0"), 2).low;
-            var fd1 = p.syscall("open", p.sptr("/dev/bpf0"), 2).low;
-            if (fd == (-1 >>> 0)) {
-                print("kexp failed: no bpf0");
-            }
-
-            var scratch = malloc(0x100);
-            var ifname = malloc(0x10);
-            strcpy(ifname, "wlan0");
-            p.syscall("ioctl", fd, 0x8020426c, ifname);
-            var ret = p.syscall("write", fd, scratch, 40);
-            if (ret.low == (-1 >>> 0)) {
-                strcpy(ifname, "eth0");
-                p.syscall("ioctl", fd, 0x8020426c, ifname);
-                var ret = p.syscall("write", fd, scratch, 40);
-                if (ret.low == (-1 >>> 0)) {
-                    throw "kexp failed :(";
+                log(`Copiando la cadena: ${str}`);
+                for (var i = 0; i < str.length; i++) {
+                    ptr.setUint8(i, str.charCodeAt(i));
                 }
             }
 
-            var assertcnt = 0;
-            var assert = function(x) {
-                assertcnt++;
-                if (!x) throw "assertion " + assertcnt + " failed";
-            }
+            // Simulamos la invocación de algunas funciones
+            var buffer1 = malloc(100);  // Simulamos malloc
+            var buffer2 = malloc(200);
+            strcpy(buffer1, "Prueba de exploit en PS5");
+            log(`Contenido en buffer1: ${String.fromCharCode.apply(null, new Uint8Array(buffer1.buffer))}`);
 
-            console.log("got it");
+            var fake_syscall_result = 42;  // Simulamos una syscall de ejemplo
+            log(`Resultado de la syscall (simulada): ${fake_syscall_result}`);
+            
+            // Simulamos operaciones adicionales, como asignar valores a "registros"
+            log("Simulando asignación de valores y manipulación de datos...");
+            var result = fake_syscall_result * 2;
+            log(`Resultado de la manipulación de datos: ${result}`);
 
-            var bpf_valid = malloc32(0x4000);
-            var bpf_valid_u32 = bpf_valid.backing;
-            var bpf_valid_prog = malloc(0x40);
-            p.write8(bpf_valid_prog, 64);
-            p.write8(bpf_valid_prog.add32(8), bpf_valid);
-
-            for (var i = 0; i < 0x4000; ) {
-                bpf_valid_u32[i++] = 6; // BPF_RET
-                bpf_valid_u32[i++] = 0;
-            }
-
-            var bpf_invalid = malloc32(0x4000);
-            var bpf_invalid_u32 = bpf_invalid.backing;
-            var bpf_invalid_prog = malloc(0x40);
-            p.write8(bpf_invalid_prog, 64);
-            p.write8(bpf_invalid_prog.add32(8), bpf_invalid);
-
-            for (var i = 0; i < 0x4000; ) {
-                bpf_invalid_u32[i++] = 4; // NOP
-                bpf_invalid_u32[i++] = 0;
-            }
-
-            var push_bpf = function(bpfbuf, cmd, k) {
-                var i = bpfbuf.i;
-                if (!i) i = 0;
-                bpfbuf[i * 2] = cmd;
-                bpfbuf[i * 2 + 1] = k;
-                bpfbuf.i = i + 1;
-            }
-
-            // Continúa con la implementación restante
-
-            // Puedes usar un log para la salida de consola:
-            function log(msg) {
-                document.getElementById("log").textContent += msg + "\n";
-            }
+            // Finalizamos con un mensaje indicando que la función terminó
+            log("stage4_ ejecutado correctamente.");
         }
 
-        // Llama a la función para probar
+        // Llamamos a la función stage4_ para probar
         stage4_();
+
     </script>
 </body>
 </html>
+
