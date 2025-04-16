@@ -2,30 +2,30 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>PS5 WebKit ROP PoC (FW 4.03)</title>
+  <title>PS5 WebKit Exploit PoC (10.20)</title>
   <style>
     body { background-color: black; color: lime; font-family: monospace; padding: 1em; }
     #log { white-space: pre-wrap; }
   </style>
 </head>
 <body>
-  <h1>PS5 WebKit Exploit PoC (ROP Chain)</h1>
+  <h1>PS5 WebKit Exploit PoC (ROP Chain Simulado)</h1>
   <div id="log"></div>
   <script>
     const log = msg => document.getElementById('log').textContent += msg + "\n";
 
-    // Mock addresses - replace with real gadget addresses for PS5 FW 4.03
-    const GADGET_POP_RAX = 0x12345678n;
-    const GADGET_SYSCALL = 0x87654321n;
-    const SYSCALL_GETPID = 20n;
+    // Gadgets inventados (simulados)
+    const GADGET_POP_RAX = 0x1BADB0B1n;    // Gadget de "pop rax"
+    const GADGET_SYSCALL = 0xDEADBEEF1n;   // Gadget de "syscall"
+    const GADGET_RET = 0xCAFEBABE1n;       // Gadget de "ret" (para controlar flujo)
+    const SYSCALL_GETPID = 20n;            // Syscall número 20 (getpid)
 
-    // Helpers for arbitrary read/write primitives (mocked for now)
+    // Helpers para lectura/escritura (simuladas)
     let buf = new ArrayBuffer(0x100);
     let f64 = new Float64Array(buf);
     let u32 = new Uint32Array(buf);
     let dataview = new DataView(buf);
 
-    let fake_obj = null;
     let obj_array = null;
     let float_array = null;
 
@@ -51,57 +51,55 @@
 
       write64(addr, val) {
         dataview.setBigUint64(0, val, true);
-        // Write simulated to address (would write via corrupted backing store)
+        // Simula escritura en la dirección dada
       },
     };
 
     function setupPrimitives() {
       obj_array = [{}];
       float_array = new Float64Array(1);
-      // Simulate OOB to corrupt backing store here...
-
-      log("[*] Primitives initialized (mock)");
+      log("[*] Primitivas configuradas (simuladas)");
     }
 
     function buildROP() {
-      log("[*] Building ROP chain...");
+      log("[*] Construyendo ROP chain...");
       let chain = new BigUint64Array(10);
       let i = 0;
 
+      // ROP Chain Simulado
       chain[i++] = GADGET_POP_RAX;
-      chain[i++] = SYSCALL_GETPID;
-      chain[i++] = GADGET_SYSCALL;
+      chain[i++] = SYSCALL_GETPID;    // Cargar getpid en rax
+      chain[i++] = GADGET_SYSCALL;    // Invocar syscall
+      chain[i++] = GADGET_RET;        // Retorno para continuar flujo
 
       return chain;
     }
 
     function triggerROP(worker, chain) {
-      log("[*] Triggering ROP chain via Web Worker...");
-      // In a real exploit, we hijack the return address of the worker function
-      worker.postMessage(chain); // Send chain to the worker to "execute"
+      log("[*] Ejecutando ROP chain mediante Web Worker...");
+      worker.postMessage(chain);  // Enviar cadena al worker
     }
 
     function exploit() {
-      log("[+] Exploit started");
+      log("[+] Inicio del exploit");
       setupPrimitives();
       let rop = buildROP();
       
-      // Set up the Web Worker and handle the ROP chain execution
+      // Configurar Web Worker para ejecutar la cadena ROP
       let worker = new Worker(URL.createObjectURL(new Blob([`
         self.onmessage = function(event) {
           let chain = event.data;
-          // In reality, we would overwrite the return address or stack frame here
-          // and "jump" to the ROP chain
-          console.log("Executing ROP chain:", chain);
+          // En un exploit real, sobreescribiríamos la dirección de retorno aquí
+          console.log("Ejecutando ROP chain:", chain);
         }
       `])));
 
       worker.onmessage = function(e) {
-        log("[*] Worker message: " + e.data);
+        log("[*] Mensaje desde el Worker: " + e.data);
       };
 
       triggerROP(worker, rop);
-      log("[+] Done");
+      log("[+] Exploit completado");
     }
 
     window.onload = exploit;
