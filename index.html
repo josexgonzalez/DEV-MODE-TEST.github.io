@@ -1,108 +1,117 @@
-<!DOCTYPE html>
-<html>
+<div id="content-box">
+
 <head>
-  <meta charset="UTF-8">
-  <title>PS5 WebKit Exploit PoC (10.20)</title>
-  <style>
-    body { background-color: black; color: lime; font-family: monospace; padding: 1em; }
-    #log { white-space: pre-wrap; }
-  </style>
+    <title>ResDev UMTX v2.1</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="main.css">
+
+        <h1 style="text-align: center; position: absolute; top: 15;left: 10;"></h1>
+        <p class="text-secondary" id="top-bar-text"><span class="fw-bold" id="elfldr_running"></span></p>
+        <h1 style="text-align: center; position: absolute; top: 15;left: 10;"></h1>
+        <p class="text-secondary" id="top-bar-text"><span class="fw-bold" id="payload_info"></span></p>
+        <h1 style="text-align: center; position: absolute; top: 15;left: 10;"></h1>
+        <p class="text-secondary" id="top-bar-text"><span class="fw-bold" id="Listening_on"></span></p>
+
 </head>
-<body>
-  <h1>PS5 WebKit Exploit PoC (ROP Chain Simulado)</h1>
-  <div id="log"></div>
-  <script>
-    const log = msg => document.getElementById('log').textContent += msg + "\n";
+<div style="margin: 40px;">
 
-    // Gadgets inventados (simulados)
-    const GADGET_POP_RAX = 0x1BADB0B1n;    // Gadget de "pop rax"
-    const GADGET_SYSCALL = 0xDEADBEEF1n;   // Gadget de "syscall"
-    const GADGET_RET = 0xCAFEBABE1n;       // Gadget de "ret" (para controlar flujo)
-    const SYSCALL_GETPID = 20n;            // Syscall número 20 (getpid)
+    <div id="main-content"
 
-    // Helpers para lectura/escritura (simuladas)
-    let buf = new ArrayBuffer(0x100);
-    let f64 = new Float64Array(buf);
-    let u32 = new Uint32Array(buf);
-    let dataview = new DataView(buf);
+        style="display: flex; justify-content: center; align-items: center; position: absolute; top: 100;left: 50; width: 91%; height: 10.5%;">
+        <div id="pre-jb-view" class="d-flex align-items-center justify-content-center flex-direction-column selected">
+            <a tabindex="0" class="btn fw-bold" id="run-jb" onclick="run()"></a>
+        </div>
 
-    let obj_array = null;
-    let float_array = null;
+        <script>
+            setTimeout(() => {
+                document.getElementById('run-jb').click();
+            }, 3000);
+        </script>
 
-    function hex(x) {
-      return '0x' + x.toString(16);
-    }
+        <div id="console-view">
+            <div id="console" class="log"></div>
+        </div>
 
-    let memory = {
-      addrof(obj) {
-        obj_array[0] = obj;
-        return float_array[0];
-      },
+        <div id="payloads-view">
+        </div>
+    </div>
 
-      fakeobj(addr) {
-        float_array[0] = addr;
-        return obj_array[0];
-      },
+<div style="position: absolute; top: 600px; left: 15px; text-align: left;">
+    <p class="text-secondary">
+        <span class="fw-bold" id="listening-ip"></span>
+    </p>
+    <p class="text-secondary">
+        <span class="fw-bold" id="current-fw"></span>
+    </p>
+</div>
 
-      read64(addr) {
-        dataview.setBigUint64(0, addr, true);
-        return dataview.getBigUint64(0, true);
-      },
 
-      write64(addr, val) {
-        dataview.setBigUint64(0, val, true);
-        // Simula escritura en la dirección dada
-      },
-    };
 
-    function setupPrimitives() {
-      obj_array = [{}];
-      float_array = new Float64Array(1);
-      log("[*] Primitivas configuradas (simuladas)");
-    }
+    <script src="int64.js"></script>
+    <script src="rop.js"></script>
+    <script src="main.js"></script>
+    <script src="umtx2.js"></script>
+    <script src="custom_host_stuff.js"></script>
+    <script src="syscalls.js"></script>
+    <script type="module" src="psfree/psfree.js"></script>
+    <script src="payload_map.js"></script>
 
-    function buildROP() {
-      log("[*] Construyendo ROP chain...");
-      let chain = new BigUint64Array(10);
-      let i = 0;
-
-      // ROP Chain Simulado
-      chain[i++] = GADGET_POP_RAX;
-      chain[i++] = SYSCALL_GETPID;    // Cargar getpid en rax
-      chain[i++] = GADGET_SYSCALL;    // Invocar syscall
-      chain[i++] = GADGET_RET;        // Retorno para continuar flujo
-
-      return chain;
-    }
-
-    function triggerROP(worker, chain) {
-      log("[*] Ejecutando ROP chain mediante Web Worker...");
-      worker.postMessage(chain);  // Enviar cadena al worker
-    }
-
-    function exploit() {
-      log("[+] Inicio del exploit");
-      setupPrimitives();
-      let rop = buildROP();
-      
-      // Configurar Web Worker para ejecutar la cadena ROP
-      let worker = new Worker(URL.createObjectURL(new Blob([`
-        self.onmessage = function(event) {
-          let chain = event.data;
-          // En un exploit real, sobreescribiríamos la dirección de retorno aquí
-          console.log("Ejecutando ROP chain:", chain);
-        }
-      `])));
-
-      worker.onmessage = function(e) {
-        log("[*] Mensaje desde el Worker: " + e.data);
-      };
-
-      triggerROP(worker, rop);
-      log("[+] Exploit completado");
-    }
-
-    window.onload = exploit;
-  </script>
+    <script>
+        addEventListener('unhandledrejection', (event) => {
+            const reason = event.reason;
+            // We log the line and column numbers as well since some exceptions (like
+            // SyntaxError) do not show it in the stack trace.
+            alert(
+                ${reason}\n
+                + ${reason.sourceURL}:${reason.line}:${reason.column}\n
+                + ${reason.stack}
+            );
+            throw reason;
+        });
+        registerAppCacheEventHandlers();
+        registerL2ButtonHandler();
+        window.onload = function () {
+            let autoload = sessionStorage.getItem(SESSIONSTORE_ON_LOAD_AUTORUN_KEY);
+            if (autoload) {
+                run(autoload == "wkonly", false);
+            }
+        };
+    </script>
 </body>
-</html>
+
+        </div>
+
+          </div>
+           <center style="position: fixed;bottom: 0;width: 26%;margin-bottom: 46px" class="info opacity-transition"
+            id="credits">
+            <h4>
+                <b></b>
+            <center style="position: fixed;bottom: 3;width: 17%;margin-bottom: 20px" class="info opacity-transition"
+            id="credits">
+             <h4>
+                 <b></b>
+             <center style="position: fixed;bottom: 3;width: 185%;margin-bottom: 10px" class="info opacity-transition"
+            id="credits">
+             <h4>
+                 <b>UPDATED [05/04/25]</b>
+    </script>
+</body>
+
+</div>
+
+<style>
+    #content-box {
+        width: 120%; /* Ajusta el tamaño según necesites */
+        max-width: 1008px;
+        height: 90vh; /* Ajusta la altura según necesites */
+        overflow: auto; /* Agrega scroll si el contenido es muy grande */
+        position: absolute;
+        top: 50%;
+        left: 65%;
+        transform: translate(-50%, -50%);
+        background-color: rgba(51, 51, 51, 0.2); /* Color de fondo semi-transparente */
+        border-radius: 5px;
+        padding: 20px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+    }
+</style>
