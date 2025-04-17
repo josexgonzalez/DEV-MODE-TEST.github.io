@@ -634,8 +634,8 @@ async function main(userlandRW, wkOnly = false) {
 
         // Falsificar QA Flags y UToken a 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
         for (let i = 0; i < 16; i += 4) {
-            await krw.write4(get_kaddr(OFFSET_KERNEL_QA_FLAGS) + i, 0xFFFFFFFF);
-            await krw.write4(get_kaddr(OFFSET_KERNEL_UTOKEN_FLAGS) + i, 0xFFFFFFFF);
+            await krw.write4(get_kaddr(OFFSET_KERNEL_QA_FLAGS).add32(i), 0xFFFFFFFF);
+            await krw.write4(get_kaddr(OFFSET_KERNEL_UTOKEN_FLAGS).add32(i), 0xFFFFFFFF);
         }
         await log("QA Flags y UToken falsificados a 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", LogLevel.SUCCESS);
         showTemporaryAlert("Devkit Patch Applied");
