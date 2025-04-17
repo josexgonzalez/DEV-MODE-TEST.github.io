@@ -630,7 +630,7 @@ async function main(userlandRW, wkOnly = false) {
         await krw.write4(get_kaddr(OFFSET_KERNEL_SECURITY_FLAGS), security_flags | 0x14);
 
         // Set targetid to DEX
-        await krw.write1(get_kaddr(OFFSET_KERNEL_TARGETID), 0x80);
+        await krw.write1(get_kaddr(OFFSET_KERNEL_TARGETID), 0x70);
 
         // Falsificar QA Flags y UToken a 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
         for (let i = 0; i < 16; i += 4) {
