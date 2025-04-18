@@ -1,68 +1,88 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>PS5 Syscall Scanner</title>
-  <style>
-    body { background: #111; color: #0f0; font-family: monospace; padding: 20px; }
-    #log { white-space: pre; font-size: 14px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fuerza Bruta Syscalls PS5</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #333;
+            color: #fff;
+        }
+        pre {
+            background-color: #444;
+            padding: 10px;
+            font-size: 14px;
+            border-radius: 5px;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #555;
+            border-radius: 5px;
+        }
+    </style>
 </head>
 <body>
-  <h2>🛠️ Buscando sys_fsc2h_ctrl (PS5 FW 10.20)</h2>
-  <div id="log">[+] Iniciando búsqueda...</div>
+    <h1>Fuerza Bruta de Syscalls - PS5</h1>
+    <p>Exploit para probar syscalls en PS5 FW 10.20.</p>
+    <button onclick="startBruteForce()">Iniciar Fuerza Bruta</button>
+    <div id="log"></div>
 
-  <script>
-    const logEl = document.getElementById("log");
-    const log = (msg) => {
-      logEl.textContent += "\n" + msg;
-      console.log(msg);
-    };
+    <script>
+        let running = false;
+        let logDiv = document.getElementById("log");
 
-    async function sleep(ms) {
-      return new Promise(r => setTimeout(r, ms));
-    }
-
-    async function buscarSyscall() {
-      const CMD_WAIT = 0x10001;
-      const fake_path = 0; // Simulación: NULL pointer
-      let syscallEncontrada = false;
-
-      log("[*] Comenzando búsqueda de syscalls en el rango 500–700...");
-
-      for (let sc = 500; sc <= 700; sc++) {
-        try {
-          log(`[*] Probando syscall ${sc}...`);
-          let result = ps5.syscall(sc, CMD_WAIT, fake_path);
-
-          if (result === 0) {
-            log(`[+] Posible syscall encontrada en ${sc} (res = ${result})`);
-            syscallEncontrada = true;
-          } else if (result > -4096 && result < 0) {
-            log(`[?] Syscall ${sc} respondió error (res = ${result})`);
-          } else {
-            log(`[ ] Syscall ${sc} no válida (res = ${result})`);
-          }
-        } catch (e) {
-          log(`[-] Excepción al probar syscall ${sc}: ${e}`);
+        function log(message) {
+            let msgDiv = document.createElement("pre");
+            msgDiv.textContent = message;
+            logDiv.appendChild(msgDiv);
         }
 
-        await sleep(50); // Pausa para evitar saturación de llamadas
-      }
+        function syscall(number, arg1 = 0, arg2 = 0, arg3 = 0) {
+            try {
+                // Suponiendo que se está usando un método para hacer syscalls en PS5
+                // Aquí usamos syscall(N) con los argumentos, como es común en los exploits
+                let result = syscall_impl(number, arg1, arg2, arg3);
+                return result;
+            } catch (e) {
+                return e.message;
+            }
+        }
 
-      if (!syscallEncontrada) {
-        log("[-] No se encontró ninguna syscall válida en el rango.");
-      }
+        function bruteForceSyscalls(start, end) {
+            if (!running) return;
 
-      log("[*] Búsqueda finalizada.");
-    }
+            for (let syscallNum = start; syscallNum <= end; syscallNum++) {
+                let result = syscall(syscallNum);
+                if (result !== "ENOSYS") {
+                    log(`syscall(${syscallNum}) -> ${result}`);
+                }
+                if (!running) break;
+            }
+        }
 
-    // Verifica si el objeto 'ps5' y la función 'syscall' existen
-    if (typeof ps5 !== 'undefined' && ps5.syscall) {
-      buscarSyscall();
-    } else {
-      log("[-] No se encontró objeto ps5.syscall. ¿Cargaste el exploit?");
-    }
-  </script>
+        function startBruteForce() {
+            if (running) {
+                log("Fuerza bruta ya está en ejecución.");
+                return;
+            }
+            running = true;
+            log("Iniciando fuerza bruta de syscalls...");
+
+            let start = 500;  // Comienza en syscall(500)
+            let end = 600;    // Termina en syscall(600)
+
+            bruteForceSyscalls(start, end);
+        }
+
+        function stopBruteForce() {
+            running = false;
+            log("Fuerza bruta detenida.");
+        }
+
+    </script>
 </body>
 </html>
