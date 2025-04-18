@@ -26,25 +26,38 @@
     async function buscarSyscall() {
       const CMD_WAIT = 0x10001;
       const fake_path = 0; // Simulación: NULL pointer
+      let syscallEncontrada = false;
+
+      log("[*] Comenzando búsqueda de syscalls en el rango 500–700...");
 
       for (let sc = 500; sc <= 700; sc++) {
         try {
+          log(`[*] Probando syscall ${sc}...`);
           let result = ps5.syscall(sc, CMD_WAIT, fake_path);
+
           if (result === 0) {
             log(`[+] Posible syscall encontrada en ${sc} (res = ${result})`);
+            syscallEncontrada = true;
           } else if (result > -4096 && result < 0) {
             log(`[?] Syscall ${sc} respondió error (res = ${result})`);
+          } else {
+            log(`[ ] Syscall ${sc} no válida (res = ${result})`);
           }
         } catch (e) {
-          log(`[-] syscall ${sc} generó excepción`);
+          log(`[-] Excepción al probar syscall ${sc}: ${e}`);
         }
 
-        await sleep(50); // Pequeña pausa para evitar saturación
+        await sleep(50); // Pausa para evitar saturación de llamadas
+      }
+
+      if (!syscallEncontrada) {
+        log("[-] No se encontró ninguna syscall válida en el rango.");
       }
 
       log("[*] Búsqueda finalizada.");
     }
 
+    // Verifica si el objeto 'ps5' y la función 'syscall' existen
     if (typeof ps5 !== 'undefined' && ps5.syscall) {
       buscarSyscall();
     } else {
