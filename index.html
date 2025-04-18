@@ -1,48 +1,55 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Syscall Checker</title>
+  <meta charset="utf-8">
+  <title>PS5 Syscall Scanner</title>
   <style>
-    body { font-family: monospace; background: #111; color: #0f0; padding: 20px; }
-    .log { white-space: pre-wrap; }
+    body { background: #111; color: #0f0; font-family: monospace; padding: 20px; }
+    #log { white-space: pre; font-size: 14px; }
   </style>
 </head>
 <body>
-  <h2>PS5 Syscall Checker: sys_fsc2h_ctrl</h2>
-  <div class="log" id="log">[+] Comprobando syscalls 500–700...</div>
+  <h2>🛠️ Buscando sys_fsc2h_ctrl (PS5 FW 10.20)</h2>
+  <div id="log">[+] Iniciando búsqueda...</div>
 
   <script>
+    const logEl = document.getElementById("log");
     const log = (msg) => {
-      const logEl = document.getElementById("log");
       logEl.textContent += "\n" + msg;
       console.log(msg);
     };
 
-    function syscall(n, a1, a2, a3) {
-      try {
-        return window.syscall(n, a1, a2, a3); // Solo funcionará si tienes primitivas JS/syscall activadas por exploit
-      } catch (e) {
-        return -9999;
-      }
+    async function sleep(ms) {
+      return new Promise(r => setTimeout(r, ms));
     }
 
-    async function checkSyscalls() {
+    async function buscarSyscall() {
       const CMD_WAIT = 0x10001;
-      const pathPtr = 0; // path inválido, pero queremos ver si la syscall existe
+      const fake_path = 0; // Simulación: NULL pointer
 
-      for (let i = 500; i <= 700; i++) {
-        let res = syscall(i, CMD_WAIT, pathPtr);
-        if (res === 0) {
-          log(`[+] Posible syscall válida encontrada: ${i}`);
-        } else if (res > -4096 && res < 0) {
-          log(`[?] Syscall ${i} respondió con error conocido: ${res}`);
+      for (let sc = 500; sc <= 700; sc++) {
+        try {
+          let result = ps5.syscall(sc, CMD_WAIT, fake_path);
+          if (result === 0) {
+            log(`[+] Posible syscall encontrada en ${sc} (res = ${result})`);
+          } else if (result > -4096 && result < 0) {
+            log(`[?] Syscall ${sc} respondió error (res = ${result})`);
+          }
+        } catch (e) {
+          log(`[-] syscall ${sc} generó excepción`);
         }
-        await new Promise(r => setTimeout(r, 50)); // evitar crash por spam
+
+        await sleep(50); // Pequeña pausa para evitar saturación
       }
-      log("[*] Prueba finalizada.");
+
+      log("[*] Búsqueda finalizada.");
     }
 
-    checkSyscalls();
+    if (typeof ps5 !== 'undefined' && ps5.syscall) {
+      buscarSyscall();
+    } else {
+      log("[-] No se encontró objeto ps5.syscall. ¿Cargaste el exploit?");
+    }
   </script>
 </body>
 </html>
