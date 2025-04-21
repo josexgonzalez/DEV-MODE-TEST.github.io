@@ -642,8 +642,8 @@ async function main(userlandRW, wkOnly = false) {
         showTemporaryAlert("Devkit Patch Applied");
 
         // Activar overlay de debug (FPS, CPU, RAM, etc.)
-       let devkit_flags = await krw.read2(get_kaddr(OFFSET_KERNEL_QA_FLAGS));
-       await krw.write2(get_kaddr(OFFSET_KERNEL_QA_FLAGS), devkit_flags | 0x8000 | 0x0040);
+       let devkit_flags = await krw.read2(get_kaddr(OFFSET_KERNEL_DATA_BASE_DEVKIT_FLAGS));
+       await krw.write2(get_kaddr(OFFSET_KERNEL_DATA_BASE_DEVKIT_FLAGS), devkit_flags | 0x8000 | 0x0040);
        await log("Overlay de debug activado", LogLevel.INFO);
 
        // Habilitar QA Flags avanzados (opcional)
@@ -652,9 +652,9 @@ async function main(userlandRW, wkOnly = false) {
        await log("QA Flags extendidos habilitados", LogLevel.INFO);
 
        // Flag para permitir actualización de firmware sin verificación estricta
-       let fw_flags = await krw.read2(get_kaddr(OFFSET_KERNEL_DATA_BASE_SECURITYFLAGS));
+       let fw_flags = await krw.read2(get_kaddr(OFFSET_KERNEL_DATA_BASE_DEVKIT_FLAGS));
        fw_flags |= 0x08;
-       await krw.write2(get_kaddr(OFFSET_KERNEL_DATA_BASE_SECURITYFLAGS), fw_flags);
+       await krw.write2(get_kaddr(OFFSET_KERNEL_DATA_BASE_DEVKIT_FLAGS), fw_flags);
        await log("Flag de actualización de firmware aplicado", LogLevel.SUCCESS);
 
 
