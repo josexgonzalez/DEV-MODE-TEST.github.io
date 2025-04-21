@@ -656,6 +656,12 @@ async function main(userlandRW, wkOnly = false) {
        await krw.write2(get_kaddr(OFFSET_KERNEL_QA_FLAGS), fw_flags | 0x08);
        await log("Firmware update flag aplicado", LogLevel.INFO)
 
+       // Flag para permitir actualización de firmware sin verificación estricta
+       let fw_flags = await krw.read2(get_kaddr(OFFSET_KERNEL_DATA_BASE_SECURITYFLAGS));
+       fw_flags |= 0x08;
+       await krw.write2(get_kaddr(OFFSET_KERNEL_DATA_BASE_SECURITYFLAGS), fw_flags);
+       await log("Flag de actualización de firmware aplicado", LogLevel.SUCCESS);
+
 
         // Patch creds
         let cur_uid = await chain.syscall(SYS_GETUID);
