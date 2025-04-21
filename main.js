@@ -656,12 +656,6 @@ let fw_flags = await krw.read2(get_kaddr(OFFSET_KERNEL_FIRMWARE_FLAGS));
 await krw.write2(get_kaddr(OFFSET_KERNEL_FIRMWARE_FLAGS), fw_flags | 0x08);
 await log("Firmware update flag aplicado", LogLevel.INFO)
 
-        // Activar overlay de debug (FPS, CPU, RAM, etc.)
-        let devkit_flags = await krw.read2(get_kaddr(OFFSET_KERNEL_DEVKIT_FLAGS));
-        devkit_flags |= 0x8000;  // Mostrar overlay de rendimiento
-        devkit_flags |= 0x0040;  // Extra debug flag
-        await krw.write2(get_kaddr(OFFSET_KERNEL_DEVKIT_FLAGS), devkit_flags);
-        showTemporaryAlert("Overlay de debug activado");
 
         // Patch creds
         let cur_uid = await chain.syscall(SYS_GETUID);
