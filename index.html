@@ -1,45 +1,47 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>PS5 Media Parser Test</title>
-    <style>
-        body { background: #111; color: #eee; font-family: monospace; padding: 2em; }
-        section { margin-bottom: 2em; }
-        h2 { color: #f55; }
-    </style>
+  <title>PS5 10.20 Double Free PoC</title>
+  <style>
+    body { background: #111; color: #0f0; font-family: monospace; padding: 2rem; }
+  </style>
 </head>
 <body>
-    <h1>PS5 Media Parser Test</h1>
+  <h1>Double Free PoC — PS5 10.20</h1>
+  <p id="status">Ejecutando PoC...</p>
+  <script>
+    function log(msg) {
+      document.getElementById("status").textContent = msg;
+      console.log(msg);
+    }
 
-    <section>
-        <h2>🖼️ Malicious JPG</h2>
-        <img src="malicious.jpg" alt="Malicious JPG">
-    </section>
+    try {
+      // Candidato sospechoso de vulnerabilidad (de versiones WebKit antiguas)
+      for (let i = 0; i < 10000; i++) {
+        let ab = new ArrayBuffer(0x1000);
+        let ta = new Uint32Array(ab);
+        // Fill con datos para evitar optimización
+        for (let j = 0; j < ta.length; j++) {
+          ta[j] = 0x41414141;
+        }
 
-    <section>
-        <h2>🎵 Malicious MP3</h2>
-        <audio controls autoplay>
-            <source src="malicious.mp3" type="audio/mpeg">
-            Your browser does not support the audio element.
-        </audio>
-    </section>
+        // Fuerza liberación anticipada
+        ab = null;
+        ta = null;
+      }
 
-    <section>
-        <h2>🎞️ Malicious MP4</h2>
-        <video width="320" height="240" controls autoplay>
-            <source src="malicious.mp4" type="video/mp4">
-            Your browser does not support the video tag.
-        </video>
-    </section>
+      // Repetimos con AudioBuffer (usado en bugs previos)
+      let ctx = new (window.AudioContext || window.webkitAudioContext)();
+      for (let i = 0; i < 1000; i++) {
+        let buffer = ctx.createBuffer(1, 4096, 44100);
+        buffer = null;
+      }
 
-    <section>
-        <h2>🖼️ Malicious WAV (as audio)</h2>
-        <audio controls autoplay>
-            <source src="malicious.wav" type="audio/wav">
-            Your browser does not support the audio element.
-        </audio>
-    </section>
+      log("PoC ejecutado. Si ves esto sin cuelgue, probablemente no vulnerable (o mitigado).");
 
+    } catch (e) {
+      log("Excepción capturada: " + e.toString());
+    }
+  </script>
 </body>
 </html>
