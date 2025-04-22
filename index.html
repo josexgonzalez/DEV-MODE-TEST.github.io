@@ -1,80 +1,49 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <title>Double Free PoC - PS5 10.20</title>
-  <style>
-    body { background: #111; color: #0f0; font-family: monospace; padding: 2rem; }
-    .log { margin-top: 1rem; color: #0f0; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Double Free Test - PS5</title>
 </head>
 <body>
-  <h1>PS5 Double Free PoC (10.20)</h1>
-  <div class="log" id="log">Ejecutando tests...</div>
+    <h1>Test de Double Free (PS5)</h1>
+    <p>Este código intenta provocar una condición de carrera (double free) usando WebKit en PS5.</p>
+    <script>
+        let sharedBuffer;
+        let transferObject;
 
-  <script>
-    const log = msg => {
-      document.getElementById('log').textContent = msg;
-      console.log(msg);
-    };
-
-    const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-    async function triggerPoC() {
-      try {
-        log("Fase 1: Spam de ArrayBuffers...");
-
-        for (let i = 0; i < 5000; i++) {
-          let ab = new ArrayBuffer(0x1000);
-          let view = new Uint32Array(ab);
-          for (let j = 0; j < view.length; j++) view[j] = 0x1337;
+        function createBuffer() {
+            // Creamos un SharedArrayBuffer que se puede transferir
+            sharedBuffer = new SharedArrayBuffer(1024); // Buffer de 1 KB
+            console.log("Buffer creado:", sharedBuffer);
+            transferObject = { buffer: sharedBuffer };
         }
 
-        await sleep(100);
+        function triggerDoubleFree() {
+            // Intentamos "liberar" el buffer dos veces
+            try {
+                // Transferimos el buffer a otro objeto
+                transferObject.buffer = null;
+                console.log("Buffer transferido y liberado");
+                
+                // Intentamos transferir nuevamente (doble liberación)
+                sharedBuffer = null;
+                console.log("Buffer liberado nuevamente (simulando double free)");
 
-        log("Fase 2: Spam de AudioBuffers...");
-
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        for (let i = 0; i < 1000; i++) {
-          let buffer = ctx.createBuffer(1, 2048, 44100);
+            } catch (error) {
+                console.error("Error al intentar doble liberación:", error);
+            }
         }
 
-        await sleep(100);
-
-        log("Fase 3: transferToImageBitmap en bucle...");
-
-        if ('OffscreenCanvas' in window) {
-          for (let i = 0; i < 300; i++) {
-            let canvas = new OffscreenCanvas(128, 128);
-            let bmp = await canvas.transferToImageBitmap();
-          }
+        function startTest() {
+            createBuffer();
+            setTimeout(() => {
+                triggerDoubleFree();
+            }, 1000); // Esperamos 1 segundo para simular una condición de carrera
         }
 
-        await sleep(100);
-
-        log("Fase 4: postMessage + MessageChannel spam...");
-
-        for (let i = 0; i < 500; i++) {
-          const { port1, port2 } = new MessageChannel();
-          port1.postMessage("spam", [port2]);
-        }
-
-        await sleep(100);
-
-        log("Fase 5: Saturación de GC con transferencias...");
-
-        let ports = [];
-        for (let i = 0; i < 2000; i++) {
-          const { port1, port2 } = new MessageChannel();
-          ports.push(port1);
-        }
-
-        log("PoC ejecutado con éxito. Si hubo crash o cuelgue, es vulnerable.");
-      } catch (e) {
-        log("Excepción: " + e.toString());
-      }
-    }
-
-    triggerPoC();
-  </script>
+        // Iniciar el test al cargar la página
+        window.onload = startTest;
+    </script>
 </body>
 </html>
