@@ -1,47 +1,80 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>PS5 10.20 Double Free PoC</title>
+  <title>Double Free PoC - PS5 10.20</title>
   <style>
     body { background: #111; color: #0f0; font-family: monospace; padding: 2rem; }
+    .log { margin-top: 1rem; color: #0f0; }
   </style>
 </head>
 <body>
-  <h1>Double Free PoC — PS5 10.20</h1>
-  <p id="status">Ejecutando PoC...</p>
-  <script>
-    function log(msg) {
-      document.getElementById("status").textContent = msg;
-      console.log(msg);
-    }
+  <h1>PS5 Double Free PoC (10.20)</h1>
+  <div class="log" id="log">Ejecutando tests...</div>
 
-    try {
-      // Candidato sospechoso de vulnerabilidad (de versiones WebKit antiguas)
-      for (let i = 0; i < 10000; i++) {
-        let ab = new ArrayBuffer(0x1000);
-        let ta = new Uint32Array(ab);
-        // Fill con datos para evitar optimización
-        for (let j = 0; j < ta.length; j++) {
-          ta[j] = 0x41414141;
+  <script>
+    const log = msg => {
+      document.getElementById('log').textContent = msg;
+      console.log(msg);
+    };
+
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+    async function triggerPoC() {
+      try {
+        log("Fase 1: Spam de ArrayBuffers...");
+
+        for (let i = 0; i < 5000; i++) {
+          let ab = new ArrayBuffer(0x1000);
+          let view = new Uint32Array(ab);
+          for (let j = 0; j < view.length; j++) view[j] = 0x1337;
         }
 
-        // Fuerza liberación anticipada
-        ab = null;
-        ta = null;
+        await sleep(100);
+
+        log("Fase 2: Spam de AudioBuffers...");
+
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        for (let i = 0; i < 1000; i++) {
+          let buffer = ctx.createBuffer(1, 2048, 44100);
+        }
+
+        await sleep(100);
+
+        log("Fase 3: transferToImageBitmap en bucle...");
+
+        if ('OffscreenCanvas' in window) {
+          for (let i = 0; i < 300; i++) {
+            let canvas = new OffscreenCanvas(128, 128);
+            let bmp = await canvas.transferToImageBitmap();
+          }
+        }
+
+        await sleep(100);
+
+        log("Fase 4: postMessage + MessageChannel spam...");
+
+        for (let i = 0; i < 500; i++) {
+          const { port1, port2 } = new MessageChannel();
+          port1.postMessage("spam", [port2]);
+        }
+
+        await sleep(100);
+
+        log("Fase 5: Saturación de GC con transferencias...");
+
+        let ports = [];
+        for (let i = 0; i < 2000; i++) {
+          const { port1, port2 } = new MessageChannel();
+          ports.push(port1);
+        }
+
+        log("PoC ejecutado con éxito. Si hubo crash o cuelgue, es vulnerable.");
+      } catch (e) {
+        log("Excepción: " + e.toString());
       }
-
-      // Repetimos con AudioBuffer (usado en bugs previos)
-      let ctx = new (window.AudioContext || window.webkitAudioContext)();
-      for (let i = 0; i < 1000; i++) {
-        let buffer = ctx.createBuffer(1, 4096, 44100);
-        buffer = null;
-      }
-
-      log("PoC ejecutado. Si ves esto sin cuelgue, probablemente no vulnerable (o mitigado).");
-
-    } catch (e) {
-      log("Excepción capturada: " + e.toString());
     }
+
+    triggerPoC();
   </script>
 </body>
 </html>
