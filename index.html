@@ -1,49 +1,107 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Double Free Test - PS5</title>
+  <title>AIO Race Test</title>
+  <style>
+    body {
+      background: #111;
+      color: #0f0;
+      font-family: monospace;
+      padding: 1em;
+    }
+    pre {
+      white-space: pre-wrap;
+    }
+  </style>
 </head>
 <body>
-    <h1>Test de Double Free (PS5)</h1>
-    <p>Este código intenta provocar una condición de carrera (double free) usando WebKit en PS5.</p>
-    <script>
-        let sharedBuffer;
-        let transferObject;
+  <h1>AIO Race Test</h1>
+  <pre id="log">Iniciando...</pre>
+  <script>
+    const log = (msg) => document.getElementById("log").textContent += `\n${msg}`;
 
-        function createBuffer() {
-            // Creamos un SharedArrayBuffer que se puede transferir
-            sharedBuffer = new SharedArrayBuffer(1024); // Buffer de 1 KB
-            console.log("Buffer creado:", sharedBuffer);
-            transferObject = { buffer: sharedBuffer };
-        }
+    const SCE_KERNEL_AIO_CMD_READ = 0x001;
+    const SCE_KERNEL_AIO_CMD_WRITE = 0x002;
+    const SCE_KERNEL_AIO_CMD_MASK = 0xfff;
+    const SCE_KERNEL_AIO_CMD_MULTI = 0x1000;
 
-        function triggerDoubleFree() {
-            // Intentamos "liberar" el buffer dos veces
-            try {
-                // Transferimos el buffer a otro objeto
-                transferObject.buffer = null;
-                console.log("Buffer transferido y liberado");
-                
-                // Intentamos transferir nuevamente (doble liberación)
-                sharedBuffer = null;
-                console.log("Buffer liberado nuevamente (simulando double free)");
+    const SCE_KERNEL_AIO_PRIORITY_HIGH = 3;
+    const SCE_KERNEL_AIO_WAIT_AND = 0x01;
 
-            } catch (error) {
-                console.error("Error al intentar doble liberación:", error);
-            }
-        }
+    const num_reqs = 3;
+    const race_errs = new Int32Array(2);
+    const sce_errs = new Int32Array(num_reqs);
+    const ids = new Uint32Array(num_reqs);
+    const reqs = Array(num_reqs).fill(null).map(() => ({ fd: -1 }));
 
-        function startTest() {
-            createBuffer();
-            setTimeout(() => {
-                triggerDoubleFree();
-            }, 1000); // Esperamos 1 segundo para simular una condición de carrera
-        }
+    const thread_a_ready = { val: 0 };
+    const thread_b_ready = { val: 0 };
+    const thread_a_finished = { val: 0 };
+    const thread_b_finished = { val: 0 };
 
-        // Iniciar el test al cargar la página
-        window.onload = startTest;
-    </script>
+    function rop_pin_to_core(core) {
+      // no-op for simulation
+    }
+
+    function setup_thread_a() {
+      return async function () {
+        rop_pin_to_core(0);
+        thread_a_ready.val = 1;
+        while (thread_b_ready.val === 0) await new Promise(r => setTimeout(r, 0));
+        race_errs[0] = delete_aio_multi(ids[0]);
+        thread_a_finished.val = 1;
+      };
+    }
+
+    function setup_thread_b() {
+      return async function () {
+        rop_pin_to_core(1);
+        thread_b_ready.val = 1;
+        while (thread_a_ready.val === 0) await new Promise(r => setTimeout(r, 0));
+        race_errs[1] = delete_aio_multi(ids[0]);
+        thread_b_finished.val = 1;
+      };
+    }
+
+    function submit_aio() {
+      // Simulate writing and assigning ids
+      for (let i = 0; i < num_reqs; i++) ids[i] = Math.floor(Math.random() * 1000 + 1);
+      return true;
+    }
+
+    function wait_aio() {
+      // Simulate waiting
+      sce_errs.fill(0);
+    }
+
+    function delete_aio_multi(id) {
+      // Simulated race condition effect
+      return Math.random() > 0.5 ? 0x8001000B : 0x0;
+    }
+
+    async function main() {
+      for (let i = 0; i < 100; i++) {
+        race_errs[0] = -1;
+        race_errs[1] = -1;
+        thread_a_ready.val = 0;
+        thread_b_ready.val = 0;
+        thread_a_finished.val = 0;
+        thread_b_finished.val = 0;
+
+        submit_aio();
+        wait_aio();
+
+        const threadA = setup_thread_a();
+        const threadB = setup_thread_b();
+        await Promise.all([threadA(), threadB()]);
+
+        log(`[${i}] 0x${(race_errs[0] >>> 0).toString(16)} | 0x${(race_errs[1] >>> 0).toString(16)}`);
+      }
+
+      log("Finalizado.");
+    }
+
+    main();
+  </script>
 </body>
 </html>
