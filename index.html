@@ -1,107 +1,125 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <title>AIO Race Test</title>
-  <style>
-    body {
-      background: #111;
-      color: #0f0;
-      font-family: monospace;
-      padding: 1em;
-    }
-    pre {
-      white-space: pre-wrap;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba Exploit PS5</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #333;
+            color: white;
+            padding: 20px;
+        }
+        .logs {
+            background-color: #222;
+            color: #7f7f7f;
+            padding: 10px;
+            margin-top: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-item {
+            padding: 5px;
+            margin-bottom: 5px;
+            background-color: #444;
+            border-radius: 3px;
+        }
+        .alert {
+            background-color: #444;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+    </style>
 </head>
 <body>
-  <h1>AIO Race Test</h1>
-  <pre id="log">Iniciando...</pre>
-  <script>
-    const log = (msg) => document.getElementById("log").textContent += `\n${msg}`;
 
-    const SCE_KERNEL_AIO_CMD_READ = 0x001;
-    const SCE_KERNEL_AIO_CMD_WRITE = 0x002;
-    const SCE_KERNEL_AIO_CMD_MASK = 0xfff;
-    const SCE_KERNEL_AIO_CMD_MULTI = 0x1000;
+    <h1>Exploit PS5 - Prueba</h1>
 
-    const SCE_KERNEL_AIO_PRIORITY_HIGH = 3;
-    const SCE_KERNEL_AIO_WAIT_AND = 0x01;
+    <div class="alert">
+        <strong>Estado:</strong> <span id="status">Cargando...</span>
+    </div>
 
-    const num_reqs = 3;
-    const race_errs = new Int32Array(2);
-    const sce_errs = new Int32Array(num_reqs);
-    const ids = new Uint32Array(num_reqs);
-    const reqs = Array(num_reqs).fill(null).map(() => ({ fd: -1 }));
+    <div class="logs" id="log-container">
+        <div class="log-item">Esperando activación...</div>
+    </div>
 
-    const thread_a_ready = { val: 0 };
-    const thread_b_ready = { val: 0 };
-    const thread_a_finished = { val: 0 };
-    const thread_b_finished = { val: 0 };
+    <script>
+        // Definición de gadgets y syscalls
+        const syscall_map = {
+            0x001: 0x34230, // sys_exit
+            0x002: 0x351E0, // sys_fork
+            0x003: 0x33400, // sys_read
+            0x004: 0x33360, // sys_write
+            0x005: 0x33A00, // sys_open
+            0x006: 0x34030, // sys_close
+            0x007: 0x32C20, // sys_wait4
+            // Agregar más syscalls según sea necesario
+        };
 
-    function rop_pin_to_core(core) {
-      // no-op for simulation
-    }
+        const wk_gadgetmap = {
+            "ret"    : 0x00000042,
+            "pop rdi": 0x00043B7C,
+            "pop rsi": 0x0008F33E,
+            "pop rdx": 0x000156EA,
+            "pop rcx": 0x00060DF3,
+            "pop r8" : 0x01262A4F,
+            "pop r9" : 0x004E450C,
+            "pop rax": 0x00084094,
+            "pop rsp": 0x0005D293,
+            "mov [rdi], rsi": 0x00118570,
+            "mov [rdi], rax": 0x00C3A5C0,
+            "infloop": 0x000109E1,
+            "shl rax, 4" : 0x0011BBB6,
+            // Más gadgets si es necesario
+        };
 
-    function setup_thread_a() {
-      return async function () {
-        rop_pin_to_core(0);
-        thread_a_ready.val = 1;
-        while (thread_b_ready.val === 0) await new Promise(r => setTimeout(r, 0));
-        race_errs[0] = delete_aio_multi(ids[0]);
-        thread_a_finished.val = 1;
-      };
-    }
+        // Función para registrar logs
+        function logMessage(message) {
+            const logContainer = document.getElementById('log-container');
+            const logItem = document.createElement('div');
+            logItem.className = 'log-item';
+            logItem.textContent = message;
+            logContainer.appendChild(logItem);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
 
-    function setup_thread_b() {
-      return async function () {
-        rop_pin_to_core(1);
-        thread_b_ready.val = 1;
-        while (thread_a_ready.val === 0) await new Promise(r => setTimeout(r, 0));
-        race_errs[1] = delete_aio_multi(ids[0]);
-        thread_b_finished.val = 1;
-      };
-    }
+        // Función para simular la ejecución de un exploit (esto es solo demostrativo)
+        function runExploit() {
+            logMessage('Iniciando explotación...');
 
-    function submit_aio() {
-      // Simulate writing and assigning ids
-      for (let i = 0; i < num_reqs; i++) ids[i] = Math.floor(Math.random() * 1000 + 1);
-      return true;
-    }
+            // Emular algunas acciones de gadget
+            setTimeout(() => {
+                logMessage('Ejecutando gadget "pop rdi"...');
+                // Aquí, la ejecución real de un gadget o syscall sería aplicada
+                logMessage('Gadget ejecutado exitosamente');
+            }, 2000);
 
-    function wait_aio() {
-      // Simulate waiting
-      sce_errs.fill(0);
-    }
+            setTimeout(() => {
+                logMessage('Llamando a syscall "sys_read"...');
+                // Llamada al syscall real en un entorno adecuado
+                logMessage('Syscall ejecutada exitosamente');
+            }, 4000);
 
-    function delete_aio_multi(id) {
-      // Simulated race condition effect
-      return Math.random() > 0.5 ? 0x8001000B : 0x0;
-    }
+            setTimeout(() => {
+                logMessage('Iniciando ciclo de pruebas de syscall...');
+                // Llamadas adicionales según sea necesario
+                logMessage('Pruebas completadas');
+                document.getElementById('status').textContent = 'Exploit completado';
+            }, 6000);
+        }
 
-    async function main() {
-      for (let i = 0; i < 100; i++) {
-        race_errs[0] = -1;
-        race_errs[1] = -1;
-        thread_a_ready.val = 0;
-        thread_b_ready.val = 0;
-        thread_a_finished.val = 0;
-        thread_b_finished.val = 0;
+        // Simular la ejecución de un exploit cuando se carga la página
+        window.onload = () => {
+            logMessage('Cargando entorno...');
+            setTimeout(() => {
+                document.getElementById('status').textContent = 'Exploit listo para probar';
+                runExploit();
+            }, 3000);
+        };
+    </script>
 
-        submit_aio();
-        wait_aio();
-
-        const threadA = setup_thread_a();
-        const threadB = setup_thread_b();
-        await Promise.all([threadA(), threadB()]);
-
-        log(`[${i}] 0x${(race_errs[0] >>> 0).toString(16)} | 0x${(race_errs[1] >>> 0).toString(16)}`);
-      }
-
-      log("Finalizado.");
-    }
-
-    main();
-  </script>
 </body>
 </html>
