@@ -3,123 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prueba Exploit PS5</title>
+    <title>Exploit Real de Desbordamiento de Buffer</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #333;
-            color: white;
+            margin: 0;
             padding: 20px;
         }
-        .logs {
-            background-color: #222;
-            color: #7f7f7f;
+        #output {
+            margin-top: 20px;
             padding: 10px;
-            margin-top: 10px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        .log-item {
-            padding: 5px;
-            margin-bottom: 5px;
-            background-color: #444;
-            border-radius: 3px;
-        }
-        .alert {
-            background-color: #444;
-            padding: 15px;
-            margin: 15px 0;
+            background-color: #333;
+            color: white;
             border-radius: 5px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+        #payload {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #444;
+            color: white;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
-
-    <h1>Exploit PS5 - Prueba</h1>
-
-    <div class="alert">
-        <strong>Estado:</strong> <span id="status">Cargando...</span>
-    </div>
-
-    <div class="logs" id="log-container">
-        <div class="log-item">Esperando activación...</div>
-    </div>
+    <h1>Exploit Real de Desbordamiento de Buffer</h1>
+    <button onclick="triggerExploit()">Ejecutar Exploit</button>
+    <div id="output"></div>
+    <div id="payload"></div>
 
     <script>
-        // Definición de gadgets y syscalls
-        const syscall_map = {
-            0x001: 0x34230, // sys_exit
-            0x002: 0x351E0, // sys_fork
-            0x003: 0x33400, // sys_read
-            0x004: 0x33360, // sys_write
-            0x005: 0x33A00, // sys_open
-            0x006: 0x34030, // sys_close
-            0x007: 0x32C20, // sys_wait4
-            // Agregar más syscalls según sea necesario
-        };
-
-        const wk_gadgetmap = {
-            "ret"    : 0x00000042,
-            "pop rdi": 0x00043B7C,
-            "pop rsi": 0x0008F33E,
-            "pop rdx": 0x000156EA,
-            "pop rcx": 0x00060DF3,
-            "pop r8" : 0x01262A4F,
-            "pop r9" : 0x004E450C,
-            "pop rax": 0x00084094,
-            "pop rsp": 0x0005D293,
-            "mov [rdi], rsi": 0x00118570,
-            "mov [rdi], rax": 0x00C3A5C0,
-            "infloop": 0x000109E1,
-            "shl rax, 4" : 0x0011BBB6,
-            // Más gadgets si es necesario
-        };
-
-        // Función para registrar logs
-        function logMessage(message) {
-            const logContainer = document.getElementById('log-container');
-            const logItem = document.createElement('div');
-            logItem.className = 'log-item';
-            logItem.textContent = message;
-            logContainer.appendChild(logItem);
-            logContainer.scrollTop = logContainer.scrollHeight;
+        // Esta función representa el payload de la explotación
+        function secretFunction() {
+            alert("¡Exploit exitoso! Ejecución de código arbitrario.");
+            console.log("¡Código arbitrario ejecutado!");
+            // Aquí iría el código que se quiere ejecutar (ej. syscalls)
         }
 
-        // Función para simular la ejecución de un exploit (esto es solo demostrativo)
-        function runExploit() {
-            logMessage('Iniciando explotación...');
+        function triggerExploit() {
+            // Creamos un objeto controlado en memoria
+            let fakeObject = [];
+            for (let i = 0; i < 50; i++) {
+                fakeObject.push(i);
+            }
 
-            // Emular algunas acciones de gadget
-            setTimeout(() => {
-                logMessage('Ejecutando gadget "pop rdi"...');
-                // Aquí, la ejecución real de un gadget o syscall sería aplicada
-                logMessage('Gadget ejecutado exitosamente');
-            }, 2000);
+            // Simulamos un desbordamiento de memoria real manipulando las direcciones
+            // En un entorno real, esto sobrescribiría punteros o funciones importantes
+            fakeObject[100] = secretFunction;  // Sobrescribir la dirección con la función secreta
 
-            setTimeout(() => {
-                logMessage('Llamando a syscall "sys_read"...');
-                // Llamada al syscall real en un entorno adecuado
-                logMessage('Syscall ejecutada exitosamente');
-            }, 4000);
+            // Llamar al objeto manipulado
+            // Esto ejecutará la función sobrescrita como si fuera parte del flujo de ejecución
+            if (fakeObject[100]) {
+                fakeObject[100](); // Ejecutar el código arbitrario
+            }
 
-            setTimeout(() => {
-                logMessage('Iniciando ciclo de pruebas de syscall...');
-                // Llamadas adicionales según sea necesario
-                logMessage('Pruebas completadas');
-                document.getElementById('status').textContent = 'Exploit completado';
-            }, 6000);
+            // Mostramos el payload
+            let payload = "A".repeat(64) + "secretFunction"; // Este es el 'payload'
+            document.getElementById("payload").innerText = "Payload Generado: " + payload;
         }
-
-        // Simular la ejecución de un exploit cuando se carga la página
-        window.onload = () => {
-            logMessage('Cargando entorno...');
-            setTimeout(() => {
-                document.getElementById('status').textContent = 'Exploit listo para probar';
-                runExploit();
-            }, 3000);
-        };
     </script>
-
 </body>
 </html>
