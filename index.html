@@ -1,101 +1,147 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>PS5 Proxy Exploit</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pruebas de Desbordamiento y Manipulación del Heap</title>
     <style>
         body {
-            background: #111;
-            color: #0f0;
-            font-family: monospace;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
             padding: 20px;
         }
-        #log {
-            white-space: pre-wrap;
-            font-size: 14px;
-            max-height: 80vh;
-            overflow-y: auto;
+        h1 {
+            color: #333;
         }
-        .ok { color: #0f0; }
-        .fail { color: #f00; }
-        .info { color: #0ff; }
+        pre {
+            background-color: #333;
+            color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
     </style>
 </head>
 <body>
-    <h1>PS5 Proxy Exploit</h1>
-    <div id="log"></div>
+    <h1>Pruebas de Desbordamiento y Manipulación del Heap</h1>
+    <pre id="output"></pre>
 
     <script>
-        (function() {
-            const logElement = document.getElementById('log');
+        // Función para mostrar los resultados en la página
+        function log(message) {
+            const output = document.getElementById('output');
+            output.textContent += message + "\n";
+        }
 
-            function logOk(message) {
-                const el = document.createElement('div');
-                el.textContent = "[OK] " + message;
-                el.className = "ok";
-                logElement.appendChild(el);
-            }
+        // Desbordamiento de búfer con ArrayBuffer
+        function testBufferOverflow() {
+            log("[INFO] Iniciando prueba de desbordamiento de búfer.");
 
-            function logFail(message) {
-                const el = document.createElement('div');
-                el.textContent = "[FAIL] " + message;
-                el.className = "fail";
-                logElement.appendChild(el);
-            }
+            let heapObject = { buffer: new ArrayBuffer(16) };  // Buffer de 16 bytes
 
-            function logInfo(message) {
-                const el = document.createElement('div');
-                el.textContent = "[INFO] " + message;
-                el.className = "info";
-                logElement.appendChild(el);
-            }
-
-            // Manipulando el comportamiento de un objeto con Proxy
-            function createExploitableProxy() {
-                const handler = {
-                    get: function(target, prop) {
-                        if (prop === 'target') {
-                            // Devuelve algo inesperado
-                            return 0xdeadbeef;
-                        }
-                        return prop in target ? target[prop] : 'default_value';
-                    },
-                    set: function(target, prop, value) {
-                        if (prop === 'target') {
-                            // Cambiar algo crítico
-                            target[prop] = value;
-                            logOk(`New value for target: ${value}`);
-                        } else {
-                            target[prop] = value;
-                        }
-                        return true;
+            let handler = {
+                get: function(target, prop) {
+                    if (prop === 'buffer') {
+                        return new DataView(target.buffer);
                     }
-                };
+                    return target[prop];
+                },
+                set: function(target, prop, value) {
+                    if (prop === 'buffer') {
+                        let dv = new DataView(target.buffer);
+                        // Intentamos escribir fuera de los límites del buffer
+                        if (value > 0) {
+                            dv.setUint32(20, value);  // Escribimos fuera de los límites
+                            log(`Escritura fuera de los límites del buffer: ${value} en la posición 20`);
+                        }
+                    }
+                    return true;
+                }
+            };
 
-                const proxy = new Proxy({}, handler);
-                return proxy;
-            }
+            let proxy = new Proxy(heapObject, handler);
 
-            // Crear un Proxy explotable
-            const exploitableProxy = createExploitableProxy();
+            // Intentamos escribir un valor fuera de los límites del ArrayBuffer
+            proxy.buffer = 0xdeadbeef;
+            log("[INFO] Desbordamiento de búfer completado.");
+        }
 
-            // Intenta interactuar con el Proxy
-            logInfo("Trying to access 'target' property...");
-            try {
-                const targetValue = exploitableProxy.target;
-                logOk(`Intercepted 'target' access, value: 0x${targetValue.toString(16)}`);
-            } catch (e) {
-                logFail(`Failed to access 'target': ${e.message}`);
-            }
+        // Manipulación de datos a través de DataView
+        function testDataViewManipulation() {
+            log("[INFO] Iniciando prueba de manipulación con DataView.");
 
-            logInfo("Trying to set 'target' property...");
-            try {
-                exploitableProxy.target = 0x12345678;
-                logOk("Successfully modified 'target' property.");
-            } catch (e) {
-                logFail(`Failed to set 'target': ${e.message}`);
-            }
-        })();
+            let heapObject = { buffer: new ArrayBuffer(64) };  // Buffer de 64 bytes
+
+            let handler = {
+                get: function(target, prop) {
+                    if (prop === 'buffer') {
+                        return new DataView(target.buffer);
+                    }
+                    return target[prop];
+                },
+                set: function(target, prop, value) {
+                    if (prop === 'buffer') {
+                        let dv = new DataView(target.buffer);
+                        dv.setUint32(32, value);  // Modificamos el valor a la posición 32 del buffer
+                        log(`Escribimos en la posición 32 del buffer con el valor: ${value}`);
+                    }
+                    return true;
+                }
+            };
+
+            let proxy = new Proxy(heapObject, handler);
+
+            // Modificamos directamente el buffer
+            proxy.buffer = 0x12345678;
+            log("[INFO] Manipulación de DataView completada.");
+        }
+
+        // Manipulación de punteros en el heap
+        function testPointerManipulation() {
+            log("[INFO] Iniciando prueba de manipulación de punteros.");
+
+            let heapObject = {
+                callback: function() {
+                    log("[INFO] Ejecutando función original.");
+                },
+                buffer: new ArrayBuffer(8)
+            };
+
+            let handler = {
+                get: function(target, prop) {
+                    if (prop === 'callback') {
+                        return function() {
+                            log("[INFO] Callback malicioso ejecutado.");
+                        };
+                    }
+                    return target[prop];
+                },
+                set: function(target, prop, value) {
+                    if (prop === 'buffer') {
+                        let dv = new DataView(target.buffer);
+                        // Escribimos un puntero a una dirección maliciosa
+                        dv.setUint32(4, value);
+                        log(`Escribimos un puntero en el buffer con valor: ${value}`);
+                    }
+                    return true;
+                }
+            };
+
+            let proxy = new Proxy(heapObject, handler);
+
+            // Modificamos el puntero del callback
+            proxy.buffer = 0x12345678;
+
+            // Ejecutamos el callback, que ahora apunta a la función maliciosa
+            proxy.callback();
+            log("[INFO] Manipulación de punteros completada.");
+        }
+
+        // Llamadas a las pruebas
+        testBufferOverflow();
+        testDataViewManipulation();
+        testPointerManipulation();
     </script>
 </body>
 </html>
