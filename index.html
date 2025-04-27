@@ -1,67 +1,101 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Exploit PS5 - Escalación de Privilegios</title>
-    <script>
-        // Direcciones de memoria de gadgets y shellcode
-        const setuidGadget = 0x4001999999999800;   // Dirección de setuid(0) (Gadget)
-        const execveGadget = 0x4001999999999900;    // Dirección de execve("/bin/sh") (Gadget)
-        const returnShellGadget = 0x7ff8000000001000; // Dirección de retorno al shell
-        const popRdiGadget = 0x7ff8000000001100;     // Gadget auxiliar para manipulación de argumentos
-        
-        // Shellcode de '/bin/sh'
-        const shellcode = [
-            0x2f, 0x62, 0x69, 0x6e, 0x2f, 0x73, 0x68 // '/bin/sh' en hexadecimal
-        ];
-
-        // Función que ejecuta el payload
-        function executePayload() {
-            console.log("[+] Iniciando ejecución del payload...");
-
-            // Escribir el shellcode en memoria
-            const shellcodeAddress = 0x009887ff8000000000000;  // Dirección donde se escribirá el shellcode
-            console.log(`[+] Inyectando shellcode en dirección: 0x${shellcodeAddress.toString(16)}`);
-
-            // Simulación de inyección de shellcode (esto debería ser realizado en la memoria con una función adecuada)
-            console.log(`[+] Valor escrito: ${shellcode.map(byte => `0x${byte.toString(16)}`).join(', ')}`);
-
-            // Construcción de la cadena ROP para la escalación de privilegios
-            console.log("[+] Construyendo cadena ROP para escalación de privilegios...");
-
-            // Cadena ROP para elevar los privilegios y ejecutar '/bin/sh'
-            const ropChain = [
-                // Gadget para 'setuid(0)' (elevar privilegios)
-                setuidGadget, // Dirección de setuid(0)
-                0,            // Argumento para setuid(0) -> 0 (root)
-                
-                // Gadget para 'execve("/bin/sh")'
-                execveGadget, // Dirección de execve
-                shellcodeAddress,  // Dirección de '/bin/sh'
-                0,            // Argumento para execve (NULL)
-                0             // Argumento para execve (NULL)
-            ];
-
-            // Ejecutar los gadgets en orden (simulación de ejecución)
-            for (let i = 0; i < ropChain.length; i++) {
-                console.log(`[+] Ejecutando gadget en dirección: 0x${ropChain[i].toString(16)}`);
-            }
-
-            // Confirmación de la ejecución exitosa del payload
-            console.log("[+] Payload ejecutado exitosamente!");
-            console.log("[+] Ahora deberías tener acceso con privilegios elevados.");
+    <title>PS5 Proxy Exploit</title>
+    <style>
+        body {
+            background: #111;
+            color: #0f0;
+            font-family: monospace;
+            padding: 20px;
         }
-
-        // Iniciar el payload
-        window.onload = function() {
-            executePayload();
-        };
-    </script>
+        #log {
+            white-space: pre-wrap;
+            font-size: 14px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .ok { color: #0f0; }
+        .fail { color: #f00; }
+        .info { color: #0ff; }
+    </style>
 </head>
 <body>
-    <h1>Exploit PS5 - Escalación de Privilegios</h1>
-    <p>Esto es un payload de ejemplo que intenta escalar los privilegios en PS5 firmware 4.03.</p>
-    <p>Por favor, revisa los logs en la consola de JavaScript para ver los detalles de la ejecución.</p>
+    <h1>PS5 Proxy Exploit</h1>
+    <div id="log"></div>
+
+    <script>
+        (function() {
+            const logElement = document.getElementById('log');
+
+            function logOk(message) {
+                const el = document.createElement('div');
+                el.textContent = "[OK] " + message;
+                el.className = "ok";
+                logElement.appendChild(el);
+            }
+
+            function logFail(message) {
+                const el = document.createElement('div');
+                el.textContent = "[FAIL] " + message;
+                el.className = "fail";
+                logElement.appendChild(el);
+            }
+
+            function logInfo(message) {
+                const el = document.createElement('div');
+                el.textContent = "[INFO] " + message;
+                el.className = "info";
+                logElement.appendChild(el);
+            }
+
+            // Manipulando el comportamiento de un objeto con Proxy
+            function createExploitableProxy() {
+                const handler = {
+                    get: function(target, prop) {
+                        if (prop === 'target') {
+                            // Devuelve algo inesperado
+                            return 0xdeadbeef;
+                        }
+                        return prop in target ? target[prop] : 'default_value';
+                    },
+                    set: function(target, prop, value) {
+                        if (prop === 'target') {
+                            // Cambiar algo crítico
+                            target[prop] = value;
+                            logOk(`New value for target: ${value}`);
+                        } else {
+                            target[prop] = value;
+                        }
+                        return true;
+                    }
+                };
+
+                const proxy = new Proxy({}, handler);
+                return proxy;
+            }
+
+            // Crear un Proxy explotable
+            const exploitableProxy = createExploitableProxy();
+
+            // Intenta interactuar con el Proxy
+            logInfo("Trying to access 'target' property...");
+            try {
+                const targetValue = exploitableProxy.target;
+                logOk(`Intercepted 'target' access, value: 0x${targetValue.toString(16)}`);
+            } catch (e) {
+                logFail(`Failed to access 'target': ${e.message}`);
+            }
+
+            logInfo("Trying to set 'target' property...");
+            try {
+                exploitableProxy.target = 0x12345678;
+                logOk("Successfully modified 'target' property.");
+            } catch (e) {
+                logFail(`Failed to set 'target': ${e.message}`);
+            }
+        })();
+    </script>
 </body>
 </html>
