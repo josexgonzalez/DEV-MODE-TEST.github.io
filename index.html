@@ -16,6 +16,10 @@
     <div id="controls" style="display: none;">
         <h3>Lectura de memoria automática:</h3>
         <button onclick="autoDump()">Ver Dump Automático</button>
+        <h3>Escribir en memoria:</h3>
+        <input type="text" id="writeAddress" placeholder="Dirección a escribir" />
+        <input type="text" id="writeValue" placeholder="Valor a escribir" />
+        <button onclick="writeMemory()">Escribir en memoria</button>
     </div>
 
     <button onclick="location.reload()">Relanzar</button>
@@ -132,6 +136,20 @@
             const v = read64(a);
             log(phex(a) + ": " + phex(v));
         }
+    }
+
+    function writeMemory() {
+        const address = parseInt(document.getElementById('writeAddress').value, 16);
+        const value = parseInt(document.getElementById('writeValue').value, 16);
+
+        if (isNaN(address) || isNaN(value)) {
+            log("[!] Dirección o valor no válidos.");
+            return;
+        }
+
+        log(`[+] Escribiendo en dirección: ${phex(address)} valor: ${phex(value)}`);
+        write64(address, value);
+        log("[+] Valor escrito correctamente.");
     }
 
     exploit();
