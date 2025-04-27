@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pruebas de Desbordamiento y Manipulación del Heap</title>
+    <title>Pruebas de Manipulación del Heap</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -24,7 +24,7 @@
     </style>
 </head>
 <body>
-    <h1>Pruebas de Desbordamiento y Manipulación del Heap</h1>
+    <h1>Pruebas de Manipulación del Heap</h1>
     <pre id="output"></pre>
 
     <script>
@@ -34,59 +34,23 @@
             output.textContent += message + "\n";
         }
 
-        // Desbordamiento de búfer con ArrayBuffer
-        function testBufferOverflow() {
-            log("[INFO] Iniciando prueba de desbordamiento de búfer.");
-
-            // Creamos un buffer de 16 bytes
-            let heapObject = { buffer: new ArrayBuffer(16) };
-
-            // Intentamos acceder al buffer y escribir fuera de los límites
-            try {
-                let dv = new DataView(heapObject.buffer);
-                dv.setUint32(20, 0xdeadbeef);  // Escribimos fuera de los límites del buffer (fuera de 16 bytes)
-                log("[ERROR] Desbordamiento exitoso! Escribimos fuera de los límites.");
-            } catch (e) {
-                log("[INFO] Desbordamiento no permitido. Error: " + e);
-            }
-
-            log("[INFO] Fin de la prueba de desbordamiento de búfer.");
-        }
-
-        // Manipulación de datos a través de DataView
-        function testDataViewManipulation() {
-            log("[INFO] Iniciando prueba de manipulación con DataView.");
-
-            // Creamos un buffer de 64 bytes
-            let heapObject = { buffer: new ArrayBuffer(64) };
-
-            // Modificamos la posición 32 del buffer
-            let dv = new DataView(heapObject.buffer);
-            dv.setUint32(32, 0x12345678);
-            log("[INFO] Escribimos el valor 0x12345678 en la posición 32 del buffer.");
-
-            // Leemos el valor en la posición 32 del buffer
-            let value = dv.getUint32(32);
-            log("[INFO] Leímos el valor de la posición 32: " + value.toString(16));
-
-            log("[INFO] Fin de la prueba de manipulación con DataView.");
-        }
-
-        // Manipulación de punteros en el heap
+        // Manipulación de punteros usando Proxy
         function testPointerManipulation() {
-            log("[INFO] Iniciando prueba de manipulación de punteros.");
+            log("[INFO] Iniciando prueba de manipulación de punteros con Proxy.");
 
+            // Creamos un objeto con un valor de puntero simulado
             let heapObject = {
+                target: 0xdeadbeef, // Dirección simulada
                 callback: function() {
-                    log("[INFO] Ejecutando función original.");
-                },
-                buffer: new ArrayBuffer(8)
+                    log("[INFO] Callback original ejecutado.");
+                }
             };
 
+            // Creamos un Proxy para interceptar accesos y manipulaciones
             let handler = {
                 get: function(target, prop) {
                     if (prop === 'callback') {
-                        // Cambiamos el comportamiento del callback
+                        // Manipulamos el callback
                         return function() {
                             log("[INFO] Callback malicioso ejecutado.");
                         };
@@ -94,30 +58,51 @@
                     return target[prop];
                 },
                 set: function(target, prop, value) {
-                    if (prop === 'buffer') {
-                        let dv = new DataView(target.buffer);
-                        // Modificamos el puntero en el buffer
-                        dv.setUint32(4, value);
-                        log("[INFO] Escribimos un puntero malicioso en el buffer: " + value.toString(16));
+                    if (prop === 'target') {
+                        // Simulamos un cambio en el puntero (modificamos la dirección)
+                        log("[INFO] Cambiamos el puntero 'target' de " + target[prop].toString(16) + " a " + value.toString(16));
+                        target[prop] = value;
                     }
                     return true;
                 }
             };
 
+            // Usamos el Proxy para interceptar modificaciones
             let proxy = new Proxy(heapObject, handler);
 
-            // Cambiamos el puntero del callback
-            proxy.buffer = 0x12345678;
+            // Cambiamos el valor del puntero
+            proxy.target = 0x12345678;
 
-            // Ejecutamos el callback, que ahora apunta a la función maliciosa
+            // Ejecutamos el callback, que ahora está malicioso
             proxy.callback();
-            log("[INFO] Fin de la prueba de manipulación de punteros.");
+
+            log("[INFO] Fin de la prueba de manipulación de punteros con Proxy.");
+        }
+
+        // Prueba de manipulación de ArrayBuffer con DataView (sin desbordamiento)
+        function testArrayBufferManipulation() {
+            log("[INFO] Iniciando prueba de manipulación con ArrayBuffer y DataView.");
+
+            // Creamos un buffer de 32 bytes
+            let buffer = new ArrayBuffer(32);
+            let dv = new DataView(buffer);
+
+            // Escribimos valores en diferentes posiciones del buffer
+            dv.setUint32(0, 0x11111111); // Escribimos un valor en la posición 0
+            dv.setUint32(4, 0x22222222); // Escribimos un valor en la posición 4
+            dv.setUint32(8, 0x33333333); // Escribimos un valor en la posición 8
+
+            log("[INFO] Valores escritos en el ArrayBuffer.");
+            log("[INFO] Posición 0: " + dv.getUint32(0).toString(16));
+            log("[INFO] Posición 4: " + dv.getUint32(4).toString(16));
+            log("[INFO] Posición 8: " + dv.getUint32(8).toString(16));
+
+            log("[INFO] Fin de la prueba de manipulación con ArrayBuffer.");
         }
 
         // Llamadas a las pruebas
-        testBufferOverflow();
-        testDataViewManipulation();
         testPointerManipulation();
+        testArrayBufferManipulation();
     </script>
 </body>
 </html>
