@@ -131,15 +131,29 @@
             logInfo("Starting Scope Fuzzing...");
 
             const templates = [
-                (obj) => { with(obj) { return (function() { return this; })(); } },
-                (obj) => (function() { "use strict"; return this; }).call(obj),
-                (obj) => (() => { return this; }).call(obj),
+                (obj) => { 
+                    with(obj) { 
+                        return (function() { return this; })(); 
+                    }
+                },
+                (obj) => (function() { 
+                    "use strict"; 
+                    return this; 
+                }).call(obj),
+                (obj) => (() => { 
+                    return this; 
+                }).call(obj),
                 (obj) => new Function("return this;").call(obj),
                 (obj) => eval("this")
             ];
 
             for (let i = 0; i < 30; i++) { // 30 pruebas
                 let obj = {};
+
+                // Asegurarnos de no usar un objeto global o de window
+                const context = (function() { 
+                    return this;
+                }).call(obj);
 
                 if (randomBool()) {
                     obj = new Proxy(obj, {
@@ -150,10 +164,11 @@
                 }
 
                 try {
-                    const code = templates[Math.floor(Math.random() * templates.length)](obj);
+                    const code = templates[Math.floor(Math.random() * templates.length)](context);
                     const result = (new Function("obj", `return ${code};`))(obj);
 
-                    if (result !== obj && result !== globalThis && result !== undefined) {
+                    // Aquí verificamos si el resultado es el esperado o no.
+                    if (result !== obj && result !== undefined) {
                         throw new Error("Unexpected 'this' value!");
                     }
 
