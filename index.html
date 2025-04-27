@@ -63,17 +63,17 @@
 
     function addrof(obj) {
       try {
-        if (obj && obj.buffer) {
-          const arr = new Uint8Array(obj.buffer);
+        if (obj instanceof ArrayBuffer) {
+          const arr = new Uint8Array(obj);
           const addr = arr.buffer;
-          logInfo(`Dirección obtenida: ${hex(addr.byteOffset)}`);
-          if (addr.byteOffset === 0) {
+          logInfo(`Dirección obtenida: ${hex(arr.byteOffset)}`);
+          if (arr.byteOffset === 0) {
             logFail('Error: la dirección obtenida es 0x0');
             return null;
           }
-          return addr.byteOffset;
+          return arr.byteOffset;
         } else {
-          logFail('El objeto no tiene buffer o no es válido.');
+          logFail('El objeto no es un ArrayBuffer válido.');
           return null;
         }
       } catch (e) {
