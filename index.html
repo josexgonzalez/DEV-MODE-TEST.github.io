@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>PS5 10.20 TypedArray Leak Test</title>
+  <title>PS5 10.20 TypedArray Memory Corruption Detector</title>
   <style>
     body {
       background: #111;
@@ -13,17 +13,16 @@
     #log {
       margin-top: 20px;
       white-space: pre-wrap;
+      max-height: 80vh;
+      overflow-y: auto;
     }
-    .fail {
-      color: #f00;
-    }
-    .success {
-      color: #0f0;
-    }
+    .fail { color: #f00; }
+    .success { color: #0f0; }
+    .info { color: #0af; }
   </style>
 </head>
 <body>
-  <h1>PS5 TypedArray Leak/Corruption Test</h1>
+  <h1>PS5 10.20 TypedArray Memory Corruption Detector</h1>
   <div id="log"></div>
 
   <script>
@@ -43,52 +42,64 @@
       logDiv.appendChild(e);
     }
 
-    function floatToHex(f) {
+    function logInfo(msg) {
+      const e = document.createElement('div');
+      e.className = 'info';
+      e.textContent = '[INFO] ' + msg;
+      logDiv.appendChild(e);
+    }
+
+    function hex(x) {
+      return '0x' + x.toString(16);
+    }
+
+    function floatToUint64(f) {
       const buf = new ArrayBuffer(8);
       const f64 = new Float64Array(buf);
       const u32 = new Uint32Array(buf);
       f64[0] = f;
-      return '0x' + u32[1].toString(16).padStart(8, '0') + u32[0].toString(16).padStart(8, '0');
+      return [u32[0], u32[1]];
     }
 
-    function runTest() {
-      logOk('Iniciando test de TypedArrays...');
+    function start() {
+      logInfo('Iniciando Memory Corruption Detector...');
 
-      try {
-        const buffer = new ArrayBuffer(0x1000);
-        const float64 = new Float64Array(buffer);
-        const uint32 = new Uint32Array(buffer);
+      const victimBuf = new ArrayBuffer(0x100);
+      const attackerBuf = new ArrayBuffer(0x100);
+      const float64 = new Float64Array(attackerBuf);
 
-        // Escribir un valor flotante especial
-        float64[0] = 1.23456789e300;
-        const valHex = floatToHex(float64[0]);
+      logOk('Buffers creados.');
 
-        // Leer como enteros
-        const low = uint32[0];
-        const high = uint32[1];
-
-        if (low === 0 || high === 0) {
-          logFail('Leak posible: valores 0 inesperados');
-        } else {
-          logOk('Valores normales detectados: low=0x' + low.toString(16) + ', high=0x' + high.toString(16));
-        }
-
-        // Intentar detectar corrupción de memoria
-        for (let i = 0; i < float64.length; i++) {
-          if (float64[i] !== 0 && i !== 0) {
-            logFail('Corrupción detectada en offset ' + i + ': ' + floatToHex(float64[i]));
-          }
-        }
-
-        logOk('Test finalizado.');
-
-      } catch (e) {
-        logFail('Excepción atrapada: ' + e.toString());
+      // Fase de "ataque controlado" (simulado)
+      for (let i = 0; i < float64.length; i++) {
+        float64[i] = 1.1111111111111111e-308; // valor muy pequeño que en bits es casi 0
       }
+
+      // Ahora intentamos simular corrupción: escribimos patrones ilegales
+      float64[0] = 2.2250738585072014e-308; // patrón para alterar bajo nivel
+
+      logInfo('Patrones de corrupción simulados.');
+
+      // Ahora inspeccionamos si cambió la memoria
+      const viewVictim = new Uint32Array(victimBuf);
+
+      let corruptionDetected = false;
+      for (let i = 0; i < viewVictim.length; i++) {
+        if (viewVictim[i] !== 0) {
+          logFail(`Corrupción detectada en víctima en offset ${i}: ${hex(viewVictim[i])}`);
+          corruptionDetected = true;
+          break;
+        }
+      }
+
+      if (!corruptionDetected) {
+        logOk('No se detectó corrupción en víctima.');
+      }
+
+      logInfo('Detector terminado.');
     }
 
-    // Auto-iniciar
-    window.onload = runTest;
+    window.onload = start;
   </script>
 </body>
 </html>
