@@ -128,7 +128,7 @@
         }
 
         async function runFuzzingTests() {
-            logInfo("\nStarting Scope Fuzzing...\n");
+            logInfo("Starting Scope Fuzzing...");
 
             const templates = [
                 (obj) => { with(obj) { return (function() { return this; })(); } },
