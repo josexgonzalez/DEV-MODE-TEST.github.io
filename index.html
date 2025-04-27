@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prueba de Escalación de Privilegios en PS5</title>
+    <title>Escalación de Privilegios en PS5</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -61,21 +61,27 @@
             return 0x1234567890abcdef; // Valor simulado
         }
 
-        // Función para crear una cadena ROP (simulada)
+        // Función para construir la cadena ROP con escalación de privilegios
         function buildROPChain() {
-            log('[+] Construyendo cadena ROP...');
+            log('[+] Construyendo cadena ROP para escalación de privilegios...');
+
             let chain = [];
-            // Ejemplo de gadgets y direcciones
-            let gadget1 = 0x12345678; // Dirección de un gadget (simulada)
-            let gadget2 = 0x23456789; // Dirección del syscall (simulada)
+
+            // Gadget para llamar a setuid(0) - Cambiar a root (ID de usuario 0)
+            let setuidGadget = 0x12345678; // Dirección de un gadget que invoca setuid(0) (simulada)
+            let execveGadget = 0x23456789; // Dirección de un gadget para invocar execve (simulada)
             let shellcodeAddress = 0x7ff8000000000000; // Dirección donde se inyecta el shellcode
 
-            // Añadir gadgets a la cadena
-            chain.push(gadget1);
-            chain.push(gadget2);
-            chain.push(shellcodeAddress);
+            // Instrucciones para la cadena ROP
+            chain.push(setuidGadget); // Llamada a setuid(0) para cambiar a root
+            chain.push(0); // Argumento de setuid (0 para root)
 
-            log('[+] Cadena ROP construida.');
+            // Ahora invocamos execve("/bin/sh") para abrir la shell como root
+            let execveArgs = [0x7ff8000000001000]; // Dirección donde se encuentra "/bin/sh"
+            chain.push(execveGadget); // Llamada a execve
+            chain.push(execveArgs[0]); // Dirección de "/bin/sh" como primer argumento
+
+            log('[+] Cadena ROP construida para escalación.');
             return chain;
         }
 
@@ -83,7 +89,7 @@
         function executePayload() {
             log('[+] Iniciando ejecución del payload...');
 
-            // Dirección de memoria donde se inyectará el código
+            // Dirección de memoria donde se inyectará el shellcode
             let shellcodeAddress = 0x7ff8000000000000;
 
             // Ejemplo de shellcode para obtener un shell
@@ -96,8 +102,8 @@
             // Inyectar shellcode
             log('[+] Inyectando shellcode...');
             write64(shellcodeAddress, shellCommandBytes);
-            
-            // Construir la cadena ROP para setuid(0) o execve("/bin/sh")
+
+            // Construir la cadena ROP para setuid(0) y execve("/bin/sh")
             let ropChain = buildROPChain();
 
             // Ejecutar la cadena ROP
