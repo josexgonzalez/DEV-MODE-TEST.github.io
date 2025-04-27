@@ -79,8 +79,8 @@
                 return [
                     `${ident}()`,
                     `"use strict"; ${ident}()`,
-                    `new Function("${ident}()")()`,
-                    `new Function("'use strict'; ${ident}()")()`
+                    `${ident}.bind(context)()`,  // Usamos bind para garantizar el contexto
+                    `"use strict"; ${ident}.bind(context)()`
                 ];
             }
 
