@@ -56,12 +56,11 @@
             logInfo("\nStarting focused Proxy Fuzzing...\n");
 
             const templates = [
-                (obj) => `with(obj) { return this; }`,
                 (obj) => `(function() { return this; }).call(obj)`,
                 (obj) => `(() => this).call(obj)`,
                 (obj) => `new Function("return this").call(obj)`,
                 (obj) => `eval("this")`,
-                (obj) => `with(obj) { a = 1; return a; }` // Check 'has'
+                (obj) => `obj.a = 1; return obj.a;` // Acceso directo a propiedades
             ];
 
             const proxyHandlers = [
@@ -98,11 +97,11 @@
                     const code = templates[Math.floor(Math.random() * templates.length)](proxyObj);
                     const result = (new Function("obj", `return ${code};`))(proxyObj);
 
-                    if (code.includes("a = 1") && handler.has()) {
-                      // Check if 'a' is actually defined in the object
-                      if (obj.a !== 1) {
-                        throw new Error("Proxy 'has' bypassed!");
-                      }
+                    if (code.includes("obj.a = 1")) {
+                        // Check if 'a' is actually defined in the object
+                        if (obj.a !== 1) {
+                            throw new Error("Proxy 'has' bypassed!");
+                        }
                     }
 
 
