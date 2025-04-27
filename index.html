@@ -1,128 +1,76 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>PS5 Proxy Fuzzing</title>
-    <style>
-        body {
-            background: #111;
-            color: #0f0;
-            font-family: monospace;
-            padding: 20px;
-        }
-        #log {
-            white-space: pre-wrap;
-            font-size: 14px;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-        .ok { color: #0f0; }
-        .fail { color: #f00; }
-        .info { color: #0ff; }
-    </style>
-</head>
-<body>
-    <h1>PS5 Proxy Fuzzing Test</h1>
-    <div id="log"></div>
+function shouldBe(actual, expected) {
+    if (actual !== expected)
+        throw new Error(`Bad value: ${actual}!`);
+}
 
-    <script>
-    (function() {
-        const logElement = document.getElementById('log');
+function shouldThrow(func, errorMessage) {
+    let errorThrown = false;
+    try {
+        func();
+    } catch (error) {
+        errorThrown = true;
+        if (String(error) !== errorMessage)
+            throw new Error(`Bad error: ${error}`);
+    }
+    if (!errorThrown)
+        throw new Error("Didn't throw!");
+}
 
-        function logOk(message) {
-            const el = document.createElement('div');
-            el.textContent = "[OK] " + message;
-            el.className = "ok";
-            logElement.appendChild(el);
-        }
-        function logFail(message) {
-            const el = document.createElement('div');
-            el.textContent = "[FAIL] " + message;
-            el.className = "fail";
-            logElement.appendChild(el);
-        }
-        function logInfo(message) {
-            const el = document.createElement('div');
-            el.textContent = "[INFO] " + message;
-            el.className = "info";
-            logElement.appendChild(el);
-        }
+function makeTestCases(ident) {
+    return [
+        `${ident}()`,
+        `"use strict"; ${ident}()`,
+        `eval("${ident}()")`,
+        `eval("'use strict'; ${ident}()")`,
+        `(0, eval)("${ident}()")`,
+        `(0, eval)("'use strict'; ${ident}()")`,
+        `"use strict"; (0, eval)("${ident}()")`,
+        `new Function("${ident}()")()`,
+        `new Function("'use strict'; ${ident}()")()`,
+        `new Function("eval('${ident}()')")()`,
+        `new Function("'use strict'; eval('${ident}()')")()`,
+        `eval('new Function("${ident}()")()')`,
+        `"use strict"; eval('new Function("${ident}()")()')`,
+        `(0, eval)('new Function("${ident}()")()')`,
+        String.raw`eval('new Function("\'use strict\'; ${ident}()")()')`,
+        String.raw`eval('new Function("\'use strict\'; eval(\'${ident}()\')")()')`,
+        String.raw`(0, eval)('new Function("\'use strict\'; ${ident}()")()')`,
+        String.raw`(0, eval)('new Function("\'use strict\'; eval(\'${ident}()\')")()')`,
+    ];
+}
 
-        function randomBool() {
-            return Math.random() < 0.5;
-        }
+// En vez de "scope extension", lo simulamos manualmente:
+function makeScopeObject() {
+    function foo() { foo.lastThisValue = this; }
+    function bar() { "use strict"; bar.lastThisValue = this; }
 
-        async function runProxyFuzzing() {
-            logInfo("\nStarting focused Proxy Fuzzing...\n");
+    return { foo, bar };
+}
 
-            const templates = [
-                (obj) => `(function() { return this; }).call(obj)`,
-                (obj) => `(() => this).call(obj)`,
-                (obj) => `new Function("return this").call(obj)`,
-                (obj) => `eval("this")`,
-                (obj) => `obj.a = 1; return obj.a;` // Acceso directo a propiedades
-            ];
+// Lo montamos manualmente:
+(function() {
+    for (const ident of ["foo", "bar"]) {
+        const scope = makeScopeObject();
 
-            const proxyHandlers = [
-                {
-                    get: (target, prop) => Reflect.get(target, prop),
-                    has: () => true,
-                    set: (target, prop, value) => { target[prop] = value; return true; }
-                },
-                {
-                    get: (target, prop) => Reflect.get(target, prop),
-                    has: () => false,
-                    set: (target, prop, value) => { target[prop] = value; return true; }
-                },
-                {
-                    get: (target, prop) => {
-                        logInfo(`Intercepted get: ${prop}`);
-                        return Reflect.get(target, prop);
-                    },
-                    has: (target, prop) => {
-                        logInfo(`Intercepted has: ${prop}`);
-                        return true;
-                    },
-                    set: (target, prop, value) => { target[prop] = value; return true; }
-                }
+        for (const testCase of makeTestCases(ident)) {
+            for (let i = 0; i < 10; i++) { // menos repeticiones para navegador PS5
+                // Simulamos el scope: lo asignamos a globalThis
+                globalThis.foo = scope.foo;
+                globalThis.bar = scope.bar;
 
-            ];
+                eval(testCase);
 
-            for (let i = 0; i < 100; i++) { // Increased iterations
-                let obj = {};
-                let handler = proxyHandlers[Math.floor(Math.random() * proxyHandlers.length)];
-                let proxyObj = new Proxy(obj, handler);
-
-                try {
-                    const code = templates[Math.floor(Math.random() * templates.length)](proxyObj);
-                    const result = (new Function("obj", `return ${code};`))(proxyObj);
-
-                    if (code.includes("obj.a = 1")) {
-                        // Check if 'a' is actually defined in the object
-                        if (obj.a !== 1) {
-                            throw new Error("Proxy 'has' bypassed!");
-                        }
-                    }
-
-
-                    if (result !== proxyObj && result !== globalThis && result !== undefined) {
-                        throw new Error(`Unexpected 'this' value! Result: ${result}`);
-                    }
-
-                    logOk(`Proxy Fuzz ${i}: OK`);
-                } catch (e) {
-                    logFail(`Proxy Fuzz ${i}: ${e.message}`);
-                }
+                if (ident === "foo")
+                    shouldBe(scope.foo.lastThisValue, globalThis); // modo no estricto: this === global
+                else
+                    shouldBe(scope.bar.lastThisValue, undefined); // modo estricto: this === undefined
             }
-        }
 
-        async function main() {
-            await runProxyFuzzing();
-            logElement.innerHTML += "\n\n[Finished]";
-        }
+            // Ahora eliminamos del globalThis para provocar error
+            delete globalThis.foo;
+            delete globalThis.bar;
 
-        main();
-    })();
-    </script>
-</body>
-</html>
+            shouldThrow(() => { eval(testCase); }, `ReferenceError: Can't find variable: ${ident}`);
+        }
+    }
+})();
