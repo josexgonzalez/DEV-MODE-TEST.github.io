@@ -53,7 +53,6 @@
       return '0x' + x.toString(16);
     }
 
-    // Convertir float a Uint64 (de 64 bits)
     function floatToUint64(f) {
       const buf = new ArrayBuffer(8);
       const f64 = new Float64Array(buf);
@@ -62,30 +61,19 @@
       return [u32[0], u32[1]];
     }
 
-    // Crear un array de objetos para realizar Heap Grooming
-    function heapGrooming() {
-      let groomed = [];
-      for (let i = 0; i < 0x100; i++) {
-        groomed.push(new ArrayBuffer(0x100));
-      }
-      logOk('Heap grooming completado.');
-      return groomed;
-    }
-
-    // Crear primitivas
     function addrof(obj) {
       const arr = new Uint8Array(obj);
       const addr = arr.buffer;
-      logInfo(`Dirección obtenida: ${hex(addr)}`);
+      logInfo(`Dirección obtenida: ${hex(arr.byteOffset)}`); // Obtener la dirección real
       return addr;
     }
 
     function fakeobj(addr) {
       const fake = new ArrayBuffer(0x100);
       const fakeView = new Uint8Array(fake);
-      // Aquí forzamos que el objeto sea un "fake" apuntando a la dirección
+      // Forzar que el objeto sea un "fake" apuntando a la dirección
       fakeView[0] = addr;
-      logInfo(`Creado objeto falso en dirección: ${hex(addr)}`);
+      logInfo(`Creado objeto falso en dirección: ${hex(fakeView.byteOffset)}`);
       return fake;
     }
 
@@ -105,28 +93,32 @@
     function start() {
       logInfo('Iniciando exploit...');
 
-      // Fase de Heap Grooming
-      const groomed = heapGrooming();
+      // Heap grooming
+      const heap = [];
+      for (let i = 0; i < 100; i++) {
+        heap.push(new ArrayBuffer(0x100));
+      }
+      logOk('Heap grooming completado.');
 
-      // Crear buffers para atacar
       const victimBuf = new ArrayBuffer(0x100);
       const attackerBuf = new ArrayBuffer(0x100);
       const float64 = new Float64Array(attackerBuf);
 
       logOk('Buffers creados.');
 
-      // Fase de "ataque controlado"
+      // Fase de "ataque controlado" (simulado)
       for (let i = 0; i < float64.length; i++) {
-        float64[i] = 1.1111111111111111e-308; // valor pequeño
+        float64[i] = 1.1111111111111111e-308; // valor muy pequeño que en bits es casi 0
       }
 
-      // Ahora intentamos simular corrupción: escribir patrones ilegales
+      // Ahora intentamos simular corrupción: escribimos patrones ilegales
       float64[0] = 2.2250738585072014e-308; // patrón para alterar bajo nivel
 
       logInfo('Patrones de corrupción simulados.');
 
       // Ahora inspeccionamos si cambió la memoria
       const viewVictim = new Uint32Array(victimBuf);
+
       let corruptionDetected = false;
       for (let i = 0; i < viewVictim.length; i++) {
         if (viewVictim[i] !== 0) {
@@ -142,19 +134,22 @@
 
       logInfo('Detector de corrupción terminado.');
 
-      // Ahora que tenemos control sobre la memoria, podemos probar las primitivas
+      // Probar primitivas
       logInfo('Probando primitivas de memoria:');
 
-      // Utilizamos addrof, fakeobj, read64, write64 con un objeto de ejemplo
-      const obj = groomed[0];
-      const addr = addrof(obj);
+      // Ejemplo de addrof (obtener dirección de un objeto)
+      const addr = addrof(attackerBuf);
 
-      const fakeObject = fakeobj(addr);
-      const value = read64(addr);
-      write64(addr, value + BigInt(1));
+      // Crear un objeto falso en esa dirección
+      fakeobj(addr);
+
+      // Leer 64 bits de esa dirección
+      const readVal = read64(addr);
+
+      // Escribir 64 bits en esa dirección
+      write64(addr, 1n);
 
       logInfo('Primitivas probadas correctamente.');
-
       logOk('Exploit completado.');
     }
 
