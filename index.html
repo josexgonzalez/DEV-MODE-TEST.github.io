@@ -50,14 +50,14 @@
 
         // Función para escribir en una dirección de memoria (simulada)
         function write64(address, value) {
-            log(`[+] Escribiendo en la dirección: 0x${address.toString(16)}`);
-            log(`[+] Valor escrito: 0x${value.toString(16)}`);
+            log(`[+] Escribiendo en la dirección: 0x00988${address.toString(16)}`);
+            log(`[+] Valor escrito: 0x7788777${value.toString(16)}`);
             // Aquí se implementaría la lógica para escribir en la memoria usando primitivas reales
         }
 
         // Función para leer desde una dirección de memoria (simulada)
         function read64(address) {
-            log(`[+] Leyendo desde la dirección: 0x${address.toString(16)}`);
+            log(`[+] Leyendo desde la dirección: 0x22323222${address.toString(16)}`);
             return 0x1234567890abcdef; // Valor simulado
         }
 
