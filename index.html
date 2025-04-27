@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>PS5 Buffer Overflow Test - Advanced</title>
+    <title>PS5 Scope Test Extended</title>
     <style>
         body {
             background: #111;
@@ -22,10 +22,11 @@
     </style>
 </head>
 <body>
-    <h1>PS5 Advanced Buffer Overflow Test</h1>
+    <h1>PS5 Scope and Fuzzing Test</h1>
     <div id="log"></div>
 
     <script>
+    (function() {
         const logElement = document.getElementById('log');
 
         function logOk(message) {
@@ -34,14 +35,12 @@
             el.className = "ok";
             logElement.appendChild(el);
         }
-
         function logFail(message) {
             const el = document.createElement('div');
             el.textContent = "[FAIL] " + message;
             el.className = "fail";
             logElement.appendChild(el);
         }
-
         function logInfo(message) {
             const el = document.createElement('div');
             el.textContent = "[INFO] " + message;
@@ -49,58 +48,130 @@
             logElement.appendChild(el);
         }
 
-        async function advancedBufferTest() {
-            logInfo("Iniciando prueba avanzada de desbordamiento de búfer...");
-
-            // Creamos un objeto con un prototipo manipulable
-            const targetObject = {
-                prop: 0x12345678
-            };
-
-            // Manipulamos el prototipo para agregar propiedades
-            const prototypeObject = {
-                overflowProp: 0xdeadbeef
-            };
-
-            Object.setPrototypeOf(targetObject, prototypeObject);
-
-            logInfo("Prototipo manipulado correctamente.");
-
-            // Usamos Proxy para interceptar el acceso a las propiedades
-            const proxy = new Proxy(targetObject, {
-                get(target, prop, receiver) {
-                    if (prop === 'overflowProp') {
-                        logInfo(`Interceptando acceso a overflowProp: ${target[prop]}`);
-                        return 0x87654321;  // Cambiar el valor a un valor inesperado
-                    }
-                    return Reflect.get(...arguments);
-                }
-            });
-
-            logInfo("Proxy activado para manipulación de propiedades.");
-
-            // Intentamos escribir un valor fuera de los límites
-            try {
-                proxy.overflowProp = 0x99999999;
-                logOk("Valor de overflowProp modificado exitosamente a: " + proxy.overflowProp);
-            } catch (e) {
-                logFail("Error al intentar modificar overflowProp: " + e.message);
-            }
-
-            // Verificamos el comportamiento de desbordamiento en el búfer
-            const buffer = new ArrayBuffer(16);
-            const view = new DataView(buffer);
-            try {
-                view.setUint32(20, 0x12345678); // Intento de escritura fuera de los límites
-                logFail("Escritura fuera de los límites no bloqueada.");
-            } catch (e) {
-                logOk("Desbordamiento fuera de los límites correctamente bloqueado: " + e.message);
-            }
-
-            logInfo("Fin de la prueba avanzada.");
+        function shouldBe(actual, expected) {
+            if (actual !== expected)
+                throw new Error(`Bad value: ${actual}! Expected: ${expected}`);
         }
 
-        advancedBufferTest();
+        function shouldThrow(func, errorMessage) {
+            let errorThrown = false;
+            try {
+                func();
+            } catch (error) {
+                errorThrown = true;
+                if (String(error) !== errorMessage)
+                    throw new Error(`Bad error: ${error}`);
+            }
+            if (!errorThrown)
+                throw new Error("Didn't throw!");
+        }
+
+        function randomBool() {
+            return Math.random() < 0.5;
+        }
+
+        async function runMainTests() {
+            logInfo("Running Main Scope Tests...");
+
+            function makeScopeObject() {
+                function foo() { foo.lastThisValue = this; }
+                function bar() { "use strict"; bar.lastThisValue = this; }
+                return { foo, bar };
+            }
+
+            function makeTestCases(ident) {
+                return [
+                    `${ident}()`,
+                    `"use strict"; ${ident}()`,
+                    `eval("${ident}()")`,
+                    `eval("'use strict'; ${ident}()")`,
+                    `(0, eval)("${ident}()")`,
+                    `(0, eval)("'use strict'; ${ident}()")`,
+                    `new Function("${ident}()")()`,
+                    `new Function("'use strict'; ${ident}()")()`
+                ];
+            }
+
+            for (const ident of ["foo", "bar"]) {
+                const scope = makeScopeObject();
+
+                for (const testCase of makeTestCases(ident)) {
+                    for (let i = 0; i < 2; i++) { // Reducido para velocidad
+                        globalThis.foo = scope.foo;
+                        globalThis.bar = scope.bar;
+
+                        try {
+                            eval(testCase);
+
+                            if (ident === "foo")
+                                shouldBe(scope.foo.lastThisValue, globalThis);
+                            else
+                                shouldBe(scope.bar.lastThisValue, undefined);
+
+                            logOk(`Test passed: ${testCase}`);
+                        } catch (e) {
+                            logFail(`Test failed: ${testCase} -> ${e.message}`);
+                        }
+                    }
+
+                    delete globalThis.foo;
+                    delete globalThis.bar;
+
+                    try {
+                        shouldThrow(() => { eval(testCase); }, `ReferenceError: Can't find variable: ${ident}`);
+                        logOk(`Correctly threw ReferenceError: ${testCase}`);
+                    } catch (e) {
+                        logFail(`Should have thrown ReferenceError: ${testCase} -> ${e.message}`);
+                    }
+                }
+            }
+        }
+
+        async function runFuzzingTests() {
+            logInfo("\nStarting Scope Fuzzing...\n");
+
+            const templates = [
+                (obj) => `with(obj) { return (function() { return this; })(); }`,
+                (obj) => `(function() { "use strict"; return this; }).call(obj)`,
+                (obj) => `(() => { return this; }).call(obj)`,
+                (obj) => `new Function("return this;").call(obj)`,
+                (obj) => `eval("this")`
+            ];
+
+            for (let i = 0; i < 30; i++) { // 30 pruebas
+                let obj = {};
+
+                if (randomBool()) {
+                    obj = new Proxy(obj, {
+                        get: (target, prop) => Reflect.get(target, prop),
+                        has: () => true,
+                        set: (target, prop, value) => { target[prop] = value; return true; }
+                    });
+                }
+
+                try {
+                    const code = templates[Math.floor(Math.random() * templates.length)](obj);
+                    const result = (new Function("obj", `return ${code};`))(obj);
+
+                    if (result !== obj && result !== globalThis && result !== undefined) {
+                        throw new Error("Unexpected 'this' value!");
+                    }
+
+                    logOk(`Fuzz ${i}: OK`);
+                } catch (e) {
+                    logFail(`Fuzz ${i}: ${e.message}`);
+                }
+            }
+        }
+
+        async function main() {
+            await runMainTests();
+            await runFuzzingTests();
+            logElement.innerHTML += "\n\n[Finished]";
+        }
+
+        main();
+    })();
     </script>
 </body>
 </html>
