@@ -9,7 +9,7 @@
             color: #0f0;
             font-family: monospace;
             padding: 20px;
-        }
+        } 
         #log {
             white-space: pre-wrap;
             font-size: 14px;
@@ -131,11 +131,11 @@
             logInfo("\nStarting Scope Fuzzing...\n");
 
             const templates = [
-                (obj) => `with(obj) { return (function() { return this; })(); }`,
-                (obj) => `(function() { "use strict"; return this; }).call(obj)`,
-                (obj) => `(() => { return this; }).call(obj)`,
-                (obj) => `new Function("return this;").call(obj)`,
-                (obj) => `eval("this")`
+                (obj) => { with(obj) { return (function() { return this; })(); } },
+                (obj) => (function() { "use strict"; return this; }).call(obj),
+                (obj) => (() => { return this; }).call(obj),
+                (obj) => new Function("return this;").call(obj),
+                (obj) => eval("this")
             ];
 
             for (let i = 0; i < 30; i++) { // 30 pruebas
