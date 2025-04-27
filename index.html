@@ -148,9 +148,13 @@
       if (victimAddr === null) return;
 
       const fakeObject = fakeobj(victimAddr);
+
       const readValue = read64(fakeObject);
       if (readValue !== null) {
+        logInfo(`Valor leído: ${readValue}`);
         write64(fakeObject, 1);
+      } else {
+        logFail('Fallo al leer el valor.');
       }
 
       logInfo('Primitivas probadas correctamente.');
