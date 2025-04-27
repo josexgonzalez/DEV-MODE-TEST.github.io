@@ -1,76 +1,170 @@
-function shouldBe(actual, expected) {
-    if (actual !== expected)
-        throw new Error(`Bad value: ${actual}!`);
-}
-
-function shouldThrow(func, errorMessage) {
-    let errorThrown = false;
-    try {
-        func();
-    } catch (error) {
-        errorThrown = true;
-        if (String(error) !== errorMessage)
-            throw new Error(`Bad error: ${error}`);
-    }
-    if (!errorThrown)
-        throw new Error("Didn't throw!");
-}
-
-function makeTestCases(ident) {
-    return [
-        `${ident}()`,
-        `"use strict"; ${ident}()`,
-        `eval("${ident}()")`,
-        `eval("'use strict'; ${ident}()")`,
-        `(0, eval)("${ident}()")`,
-        `(0, eval)("'use strict'; ${ident}()")`,
-        `"use strict"; (0, eval)("${ident}()")`,
-        `new Function("${ident}()")()`,
-        `new Function("'use strict'; ${ident}()")()`,
-        `new Function("eval('${ident}()')")()`,
-        `new Function("'use strict'; eval('${ident}()')")()`,
-        `eval('new Function("${ident}()")()')`,
-        `"use strict"; eval('new Function("${ident}()")()')`,
-        `(0, eval)('new Function("${ident}()")()')`,
-        String.raw`eval('new Function("\'use strict\'; ${ident}()")()')`,
-        String.raw`eval('new Function("\'use strict\'; eval(\'${ident}()\')")()')`,
-        String.raw`(0, eval)('new Function("\'use strict\'; ${ident}()")()')`,
-        String.raw`(0, eval)('new Function("\'use strict\'; eval(\'${ident}()\')")()')`,
-    ];
-}
-
-// En vez de "scope extension", lo simulamos manualmente:
-function makeScopeObject() {
-    function foo() { foo.lastThisValue = this; }
-    function bar() { "use strict"; bar.lastThisValue = this; }
-
-    return { foo, bar };
-}
-
-// Lo montamos manualmente:
-(function() {
-    for (const ident of ["foo", "bar"]) {
-        const scope = makeScopeObject();
-
-        for (const testCase of makeTestCases(ident)) {
-            for (let i = 0; i < 10; i++) { // menos repeticiones para navegador PS5
-                // Simulamos el scope: lo asignamos a globalThis
-                globalThis.foo = scope.foo;
-                globalThis.bar = scope.bar;
-
-                eval(testCase);
-
-                if (ident === "foo")
-                    shouldBe(scope.foo.lastThisValue, globalThis); // modo no estricto: this === global
-                else
-                    shouldBe(scope.bar.lastThisValue, undefined); // modo estricto: this === undefined
-            }
-
-            // Ahora eliminamos del globalThis para provocar error
-            delete globalThis.foo;
-            delete globalThis.bar;
-
-            shouldThrow(() => { eval(testCase); }, `ReferenceError: Can't find variable: ${ident}`);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PS5 Scope Test</title>
+    <style>
+        body {
+            background: #111;
+            color: #0f0;
+            font-family: monospace;
+            padding: 20px;
         }
-    }
-})();
+        #log {
+            white-space: pre-wrap;
+            font-size: 14px;
+        }
+        .ok {
+            color: #0f0;
+        }
+        .fail {
+            color: #f00;
+        }
+    </style>
+</head>
+<body>
+    <h1>PS5 Scope and This Test</h1>
+    <div id="log"></div>
+
+    <script>
+    (function() {
+        const logElement = document.getElementById('log');
+        function logOk(message) {
+            const el = document.createElement('div');
+            el.textContent = "[OK] " + message;
+            el.className = "ok";
+            logElement.appendChild(el);
+        }
+        function logFail(message) {
+            const el = document.createElement('div');
+            el.textContent = "[FAIL] " + message;
+            el.className = "fail";
+            logElement.appendChild(el);
+        }
+
+        function shouldBe(actual, expected) {
+            if (actual !== expected)
+                throw new Error(`Bad value: ${actual}! Expected: ${expected}`);
+        }
+
+        function shouldThrow(func, errorMessage) {
+            let errorThrown = false;
+            try {
+                func();
+            } catch (error) {
+                errorThrown = true;
+                if (String(error) !== errorMessage)
+                    throw new Error(`Bad error: ${error}`);
+            }
+            if (!errorThrown)
+                throw new Error("Didn't throw!");
+        }
+
+        function makeTestCases(ident) {
+            return [
+                `${ident}()`,
+                `"use strict"; ${ident}()`,
+                `eval("${ident}()")`,
+                `eval("'use strict'; ${ident}()")`,
+                `(0, eval)("${ident}()")`,
+                `(0, eval)("'use strict'; ${ident}()")`,
+                `"use strict"; (0, eval)("${ident}()")`,
+                `new Function("${ident}()")()`,
+                `new Function("'use strict'; ${ident}()")()`,
+                `new Function("eval('${ident}()')")()`,
+                `new Function("'use strict'; eval('${ident}()')")()`,
+                `eval('new Function("${ident}()")()')`,
+                `"use strict"; eval('new Function("${ident}()")()')`,
+                `(0, eval)('new Function("${ident}()")()')`,
+                String.raw`eval('new Function("\'use strict\'; ${ident}()")()')`,
+                String.raw`eval('new Function("\'use strict\'; eval(\'${ident}()\')")()')`,
+                String.raw`(0, eval)('new Function("\'use strict\'; ${ident}()")()')`,
+                String.raw`(0, eval)('new Function("\'use strict\'; eval(\'${ident}()\')")()')`,
+            ];
+        }
+
+        function makeScopeObject() {
+            function foo() { foo.lastThisValue = this; }
+            function bar() { "use strict"; bar.lastThisValue = this; }
+
+            return { foo, bar };
+        }
+
+        async function runMainTests() {
+            for (const ident of ["foo", "bar"]) {
+                const scope = makeScopeObject();
+
+                for (const testCase of makeTestCases(ident)) {
+                    for (let i = 0; i < 3; i++) { // Solo 3 repeticiones por test para ir más rápido
+                        globalThis.foo = scope.foo;
+                        globalThis.bar = scope.bar;
+
+                        try {
+                            eval(testCase);
+
+                            if (ident === "foo")
+                                shouldBe(scope.foo.lastThisValue, globalThis); // Non-strict: this = globalThis
+                            else
+                                shouldBe(scope.bar.lastThisValue, undefined);  // Strict: this = undefined
+
+                            logOk(`Test passed: ${testCase}`);
+                        } catch (e) {
+                            logFail(`Test failed: ${testCase} -> ${e.message}`);
+                        }
+                    }
+
+                    delete globalThis.foo;
+                    delete globalThis.bar;
+
+                    try {
+                        shouldThrow(() => { eval(testCase); }, `ReferenceError: Can't find variable: ${ident}`);
+                        logOk(`Correctly threw ReferenceError: ${testCase}`);
+                    } catch (e) {
+                        logFail(`Should have thrown ReferenceError: ${testCase} -> ${e.message}`);
+                    }
+                }
+            }
+        }
+
+        async function runProxyAndWithTests() {
+            // Más avanzado: Probar 'with' y Proxy
+            logElement.innerHTML += "\n\n--- Proxy and With Tests ---\n\n";
+
+            const target = {
+                secret: 42,
+                getThis: function() { return this; }
+            };
+
+            const handler = {
+                has(target, prop) { return true; },
+                get(target, prop, receiver) {
+                    if (prop in target)
+                        return Reflect.get(target, prop, receiver);
+                    return undefined;
+                }
+            };
+
+            const proxy = new Proxy(target, handler);
+
+            try {
+                with (proxy) {
+                    let value = getThis();
+                    shouldBe(value, proxy);
+                    logOk("Proxy 'with' test: `this` is proxy");
+                }
+            } catch (e) {
+                logFail("Proxy 'with' test failed: " + e.message);
+            }
+        }
+
+        async function main() {
+            await runMainTests();
+            await runProxyAndWithTests();
+            logElement.innerHTML += "\n\n[Finished]";
+        }
+
+        main();
+    })();
+    </script>
+</body>
+</html>
