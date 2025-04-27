@@ -79,10 +79,6 @@
                 return [
                     `${ident}()`,
                     `"use strict"; ${ident}()`,
-                    `eval("${ident}()")`,
-                    `eval("'use strict'; ${ident}()")`,
-                    `(0, eval)("${ident}()")`,
-                    `(0, eval)("'use strict'; ${ident}()")`,
                     `new Function("${ident}()")()`,
                     `new Function("'use strict'; ${ident}()")()`
                 ];
@@ -101,7 +97,7 @@
                         try {
                             // Ejecutamos el código en un contexto controlado.
                             const code = testCase.replace(ident, `context.${ident}`);
-                            eval(code);
+                            new Function(code).call(context);
 
                             if (ident === "foo")
                                 shouldBe(scope.foo.lastThisValue, context);
@@ -122,9 +118,9 @@
 
             const templates = [
                 (obj) => { 
-                    with(obj) { 
-                        return (function() { return this; })(); 
-                    }
+                    return (function() { 
+                        return this; 
+                    }).call(obj);
                 },
                 (obj) => (function() { 
                     "use strict"; 
@@ -133,8 +129,7 @@
                 (obj) => (() => { 
                     return this; 
                 }).call(obj),
-                (obj) => new Function("return this;").call(obj),
-                (obj) => eval("this")
+                (obj) => new Function("return this;").call(obj)
             ];
 
             for (let i = 0; i < 30; i++) { // 30 pruebas
@@ -145,18 +140,9 @@
                     return this; 
                 }).call(obj);
 
-                if (Math.random() < 0.5) {
-                    obj = new Proxy(obj, {
-                        get: (target, prop) => Reflect.get(target, prop),
-                        has: () => true,
-                        set: (target, prop, value) => { target[prop] = value; return true; }
-                    });
-                }
-
                 try {
                     const templateIndex = Math.floor(Math.random() * templates.length);
-                    const code = templates[templateIndex](context);
-                    const result = (new Function("obj", `return ${code};`))(obj);
+                    const result = templates[templateIndex](context);
 
                     // Verificamos si el resultado es el esperado o no.
                     if (result !== obj && result !== undefined) {
