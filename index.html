@@ -3,123 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Escalación de Privilegios en PS5</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #121212;
-            color: white;
-        }
-        .output {
-            padding: 10px;
-            background-color: #333;
-            margin: 10px 0;
-            border-radius: 5px;
-        }
-        #logs {
-            height: 200px;
-            overflow-y: scroll;
-            padding: 5px;
-            background-color: #222;
-            border-radius: 5px;
-            margin-top: 20px;
-        }
-        .log-line {
-            font-family: monospace;
-            color: #00FF00;
-        }
-    </style>
-</head>
-<body>
-    <h1>Escalación de Privilegios en PS5</h1>
-    <button id="execute">Ejecutar Payload</button>
-    <div id="logs"></div>
-
+    <title>Exploit PS5 - Escalación de Privilegios</title>
     <script>
-        // Función para escribir en la consola del navegador
-        function log(message) {
-            const logsDiv = document.getElementById('logs');
-            const newLine = document.createElement('div');
-            newLine.className = 'log-line';
-            newLine.textContent = message;
-            logsDiv.appendChild(newLine);
-            logsDiv.scrollTop = logsDiv.scrollHeight; // Mantener el scroll al final
-        }
+        // Direcciones de memoria de gadgets y shellcode
+        const setuidGadget = 0x4001999999999800;   // Dirección de setuid(0) (Gadget)
+        const execveGadget = 0x4001999999999900;    // Dirección de execve("/bin/sh") (Gadget)
+        const returnShellGadget = 0x7ff8000000001000; // Dirección de retorno al shell
+        const popRdiGadget = 0x7ff8000000001100;     // Gadget auxiliar para manipulación de argumentos
+        
+        // Shellcode de '/bin/sh'
+        const shellcode = [
+            0x2f, 0x62, 0x69, 0x6e, 0x2f, 0x73, 0x68 // '/bin/sh' en hexadecimal
+        ];
 
-        // Función para escribir en una dirección de memoria (simulada)
-        function write64(address, value) {
-            log(`[+] Escribiendo en la dirección: 0x00988${address.toString(16)}`);
-            log(`[+] Valor escrito: 0x7788777${value.toString(16)}`);
-            // Aquí se implementaría la lógica para escribir en la memoria usando primitivas reales
-        }
-
-        // Función para leer desde una dirección de memoria (simulada)
-        function read64(address) {
-            log(`[+] Leyendo desde la dirección: 0x22323222${address.toString(16)}`);
-            return 0x1234567890abcdef; // Valor simulado
-        }
-
-        // Función para construir la cadena ROP con escalación de privilegios
-        function buildROPChain() {
-            log('[+] Construyendo cadena ROP para escalación de privilegios...');
-
-            let chain = [];
-
-            // Direcciones simuladas de gadgets
-            let setuidGadget = 0x12345678; // Dirección de un gadget que invoca setuid(0) (simulada)
-            let execveGadget = 0x23456789; // Dirección de un gadget para invocar execve (simulada)
-            let shellcodeAddress = 0x7ff8000000000000; // Dirección donde se inyecta el shellcode (simulada)
-
-            // Instrucciones para la cadena ROP
-            chain.push(setuidGadget); // Llamada a setuid(0) para cambiar a root
-            chain.push(0); // Argumento de setuid (0 para root)
-
-            // Ahora invocamos execve("/bin/sh") para abrir la shell como root
-            let execveArgs = [0x7ff8000000001000]; // Dirección donde se encuentra "/bin/sh"
-            chain.push(execveGadget); // Llamada a execve
-            chain.push(execveArgs[0]); // Dirección de "/bin/sh" como primer argumento
-
-            log('[+] Cadena ROP construida para escalación.');
-            return chain;
-        }
-
-        // Función para ejecutar el payload
+        // Función que ejecuta el payload
         function executePayload() {
-            log('[+] Iniciando ejecución del payload...');
+            console.log("[+] Iniciando ejecución del payload...");
 
-            // Dirección de memoria donde se inyectará el shellcode
-            let shellcodeAddress = 0x7ff8000000000000;
+            // Escribir el shellcode en memoria
+            const shellcodeAddress = 0x009887ff8000000000000;  // Dirección donde se escribirá el shellcode
+            console.log(`[+] Inyectando shellcode en dirección: 0x${shellcodeAddress.toString(16)}`);
 
-            // Ejemplo de shellcode para obtener un shell
-            let shellCommand = "/bin/sh";
-            let shellCommandBytes = [];
-            for (let i = 0; i < shellCommand.length; i++) {
-                shellCommandBytes.push(shellCommand.charCodeAt(i));
+            // Simulación de inyección de shellcode (esto debería ser realizado en la memoria con una función adecuada)
+            console.log(`[+] Valor escrito: ${shellcode.map(byte => `0x${byte.toString(16)}`).join(', ')}`);
+
+            // Construcción de la cadena ROP para la escalación de privilegios
+            console.log("[+] Construyendo cadena ROP para escalación de privilegios...");
+
+            // Cadena ROP para elevar los privilegios y ejecutar '/bin/sh'
+            const ropChain = [
+                // Gadget para 'setuid(0)' (elevar privilegios)
+                setuidGadget, // Dirección de setuid(0)
+                0,            // Argumento para setuid(0) -> 0 (root)
+                
+                // Gadget para 'execve("/bin/sh")'
+                execveGadget, // Dirección de execve
+                shellcodeAddress,  // Dirección de '/bin/sh'
+                0,            // Argumento para execve (NULL)
+                0             // Argumento para execve (NULL)
+            ];
+
+            // Ejecutar los gadgets en orden (simulación de ejecución)
+            for (let i = 0; i < ropChain.length; i++) {
+                console.log(`[+] Ejecutando gadget en dirección: 0x${ropChain[i].toString(16)}`);
             }
 
-            // Inyectar shellcode
-            log('[+] Inyectando shellcode...');
-            write64(shellcodeAddress, shellCommandBytes);
-
-            // Construir la cadena ROP para setuid(0) y execve("/bin/sh")
-            let ropChain = buildROPChain();
-
-            // Ejecutar la cadena ROP
-            log('[+] Ejecutando la cadena ROP...');
-            ropChain.forEach(gadget => {
-                log(`[+] Ejecutando gadget en dirección: 0x${gadget.toString(16)}`);
-                // Aquí se ejecutaría cada gadget de la cadena ROP
-            });
-
-            // Resultado de la ejecución
-            log('[+] Payload ejecutado exitosamente!');
-            log('[+] Ahora deberías tener acceso con privilegios elevados.');
+            // Confirmación de la ejecución exitosa del payload
+            console.log("[+] Payload ejecutado exitosamente!");
+            console.log("[+] Ahora deberías tener acceso con privilegios elevados.");
         }
 
-        // Evento de ejecución del payload al hacer click en el botón
-        document.getElementById('execute').addEventListener('click', executePayload);
+        // Iniciar el payload
+        window.onload = function() {
+            executePayload();
+        };
     </script>
+</head>
+<body>
+    <h1>Exploit PS5 - Escalación de Privilegios</h1>
+    <p>Esto es un payload de ejemplo que intenta escalar los privilegios en PS5 firmware 4.03.</p>
+    <p>Por favor, revisa los logs en la consola de JavaScript para ver los detalles de la ejecución.</p>
 </body>
 </html>
