@@ -63,14 +63,14 @@
 
     function addrof(obj) {
       try {
+        if (obj === undefined || obj === null) {
+          logFail('Error: el objeto es null o undefined');
+          return null;
+        }
+
         const arr = new Uint8Array(obj);
         const addr = arr.buffer;
         logInfo(`Dirección obtenida: ${hex(addr.byteOffset)}`);
-        // Verificar si la dirección es válida
-        if (addr.byteOffset === 0) {
-          logFail('Error: la dirección obtenida es 0x0');
-          return null;
-        }
         return addr.byteOffset;
       } catch (e) {
         logFail(`Error al obtener dirección: ${e.message}`);
