@@ -38,63 +38,38 @@
         function testBufferOverflow() {
             log("[INFO] Iniciando prueba de desbordamiento de búfer.");
 
-            let heapObject = { buffer: new ArrayBuffer(16) };  // Buffer de 16 bytes
+            // Creamos un buffer de 16 bytes
+            let heapObject = { buffer: new ArrayBuffer(16) };
 
-            let handler = {
-                get: function(target, prop) {
-                    if (prop === 'buffer') {
-                        return new DataView(target.buffer);
-                    }
-                    return target[prop];
-                },
-                set: function(target, prop, value) {
-                    if (prop === 'buffer') {
-                        let dv = new DataView(target.buffer);
-                        // Intentamos escribir fuera de los límites del buffer
-                        if (value > 0) {
-                            dv.setUint32(20, value);  // Escribimos fuera de los límites
-                            log(`Escritura fuera de los límites del buffer: ${value} en la posición 20`);
-                        }
-                    }
-                    return true;
-                }
-            };
+            // Intentamos acceder al buffer y escribir fuera de los límites
+            try {
+                let dv = new DataView(heapObject.buffer);
+                dv.setUint32(20, 0xdeadbeef);  // Escribimos fuera de los límites del buffer (fuera de 16 bytes)
+                log("[ERROR] Desbordamiento exitoso! Escribimos fuera de los límites.");
+            } catch (e) {
+                log("[INFO] Desbordamiento no permitido. Error: " + e);
+            }
 
-            let proxy = new Proxy(heapObject, handler);
-
-            // Intentamos escribir un valor fuera de los límites del ArrayBuffer
-            proxy.buffer = 0xdeadbeef;
-            log("[INFO] Desbordamiento de búfer completado.");
+            log("[INFO] Fin de la prueba de desbordamiento de búfer.");
         }
 
         // Manipulación de datos a través de DataView
         function testDataViewManipulation() {
             log("[INFO] Iniciando prueba de manipulación con DataView.");
 
-            let heapObject = { buffer: new ArrayBuffer(64) };  // Buffer de 64 bytes
+            // Creamos un buffer de 64 bytes
+            let heapObject = { buffer: new ArrayBuffer(64) };
 
-            let handler = {
-                get: function(target, prop) {
-                    if (prop === 'buffer') {
-                        return new DataView(target.buffer);
-                    }
-                    return target[prop];
-                },
-                set: function(target, prop, value) {
-                    if (prop === 'buffer') {
-                        let dv = new DataView(target.buffer);
-                        dv.setUint32(32, value);  // Modificamos el valor a la posición 32 del buffer
-                        log(`Escribimos en la posición 32 del buffer con el valor: ${value}`);
-                    }
-                    return true;
-                }
-            };
+            // Modificamos la posición 32 del buffer
+            let dv = new DataView(heapObject.buffer);
+            dv.setUint32(32, 0x12345678);
+            log("[INFO] Escribimos el valor 0x12345678 en la posición 32 del buffer.");
 
-            let proxy = new Proxy(heapObject, handler);
+            // Leemos el valor en la posición 32 del buffer
+            let value = dv.getUint32(32);
+            log("[INFO] Leímos el valor de la posición 32: " + value.toString(16));
 
-            // Modificamos directamente el buffer
-            proxy.buffer = 0x12345678;
-            log("[INFO] Manipulación de DataView completada.");
+            log("[INFO] Fin de la prueba de manipulación con DataView.");
         }
 
         // Manipulación de punteros en el heap
@@ -111,6 +86,7 @@
             let handler = {
                 get: function(target, prop) {
                     if (prop === 'callback') {
+                        // Cambiamos el comportamiento del callback
                         return function() {
                             log("[INFO] Callback malicioso ejecutado.");
                         };
@@ -120,9 +96,9 @@
                 set: function(target, prop, value) {
                     if (prop === 'buffer') {
                         let dv = new DataView(target.buffer);
-                        // Escribimos un puntero a una dirección maliciosa
+                        // Modificamos el puntero en el buffer
                         dv.setUint32(4, value);
-                        log(`Escribimos un puntero en el buffer con valor: ${value}`);
+                        log("[INFO] Escribimos un puntero malicioso en el buffer: " + value.toString(16));
                     }
                     return true;
                 }
@@ -130,12 +106,12 @@
 
             let proxy = new Proxy(heapObject, handler);
 
-            // Modificamos el puntero del callback
+            // Cambiamos el puntero del callback
             proxy.buffer = 0x12345678;
 
             // Ejecutamos el callback, que ahora apunta a la función maliciosa
             proxy.callback();
-            log("[INFO] Manipulación de punteros completada.");
+            log("[INFO] Fin de la prueba de manipulación de punteros.");
         }
 
         // Llamadas a las pruebas
