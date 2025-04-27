@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>PS5 Advanced Buffer Overflow Exploit</title>
+    <title>PS5 Buffer Overflow Test - Advanced</title>
     <style>
         body {
             background: #111;
@@ -26,7 +26,6 @@
     <div id="log"></div>
 
     <script>
-    (function() {
         const logElement = document.getElementById('log');
 
         function logOk(message) {
@@ -50,85 +49,58 @@
             logElement.appendChild(el);
         }
 
-        async function runAdvancedBufferOverflow() {
-            logInfo("Iniciando prueba de desbordamiento de búfer avanzado...");
+        async function advancedBufferTest() {
+            logInfo("Iniciando prueba avanzada de desbordamiento de búfer...");
 
-            // Crear un ArrayBuffer y un DataView para manipulación de memoria
-            const buffer = new ArrayBuffer(64);  // Buffer de 64 bytes
-            const view = new DataView(buffer);
-
-            logInfo("Escribiendo datos en el ArrayBuffer...");
-            // Escribimos datos en el buffer
-            view.setInt32(0, 0x12345678);
-            view.setInt32(4, 0xdeadbeef);
-            view.setInt32(8, 0x87654321);
-            view.setInt32(12, 0x0);
-
-            logOk("Valores escritos en el buffer: 0x12345678, 0xdeadbeef, 0x87654321, 0x0");
-
-            // Intento de desbordamiento fuera de los límites
-            try {
-                logInfo("Probando desbordamiento fuera de los límites...");
-                view.setInt32(70, 0x11111111); // Esto debería fallar debido a los límites
-                logFail("Desbordamiento permitido cuando no debería");
-            } catch (e) {
-                logOk("Desbordamiento fuera de los límites falló como esperado: " + e.message);
-            }
-
-            // Manipulación avanzada del buffer con Proxy
-            logInfo("Probando manipulación avanzada con Proxy...");
-            const target = { prop: 0 };
-            const handler = {
-                get(target, prop) {
-                    logInfo(`Accediendo a la propiedad: ${prop}`);
-                    return prop in target ? target[prop] : 0xdeadbeef;
-                },
-                set(target, prop, value) {
-                    logInfo(`Cambiando ${prop} a ${value}`);
-                    target[prop] = value;
-                    return true;
-                }
+            // Creamos un objeto con un prototipo manipulable
+            const targetObject = {
+                prop: 0x12345678
             };
 
-            const proxy = new Proxy(target, handler);
+            // Manipulamos el prototipo para agregar propiedades
+            const prototypeObject = {
+                overflowProp: 0xdeadbeef
+            };
 
-            // Manipulamos las propiedades del Proxy
-            proxy.prop = 0x12345678;
-            logOk("Manipulación del puntero 'prop' exitosa, nuevo valor: " + proxy.prop.toString(16));
+            Object.setPrototypeOf(targetObject, prototypeObject);
 
-            // Intento de desbordamiento a través del proxy
+            logInfo("Prototipo manipulado correctamente.");
+
+            // Usamos Proxy para interceptar el acceso a las propiedades
+            const proxy = new Proxy(targetObject, {
+                get(target, prop, receiver) {
+                    if (prop === 'overflowProp') {
+                        logInfo(`Interceptando acceso a overflowProp: ${target[prop]}`);
+                        return 0x87654321;  // Cambiar el valor a un valor inesperado
+                    }
+                    return Reflect.get(...arguments);
+                }
+            });
+
+            logInfo("Proxy activado para manipulación de propiedades.");
+
+            // Intentamos escribir un valor fuera de los límites
             try {
-                logInfo("Probando desbordamiento con Proxy...");
-                proxy.fakeProp = 0xdeadbeef;  // No debería existir
-                logFail("Desbordamiento con Proxy permitido cuando no debería");
+                proxy.overflowProp = 0x99999999;
+                logOk("Valor de overflowProp modificado exitosamente a: " + proxy.overflowProp);
             } catch (e) {
-                logOk("Desbordamiento con Proxy falló como esperado: " + e.message);
+                logFail("Error al intentar modificar overflowProp: " + e.message);
             }
 
-            // Explorar posibles vulnerabilidades de puntero
-            logInfo("Probando manipulación avanzada de punteros...");
-            const arr = new Array(5);
-            arr[0] = 0x12345678;
-            arr[1] = 0xdeadbeef;
-            arr[2] = 0x87654321;
-            arr[3] = 0x0;
-            arr[4] = 0x11111111;
-
-            logOk("Array manipulado con punteros: " + arr.join(", "));
-
-            // Intentar sobrescribir el puntero a través del array
+            // Verificamos el comportamiento de desbordamiento en el búfer
+            const buffer = new ArrayBuffer(16);
+            const view = new DataView(buffer);
             try {
-                arr[10] = 0x99999999; // Sobrescribir fuera del límite
-                logFail("Desbordamiento del array permitido cuando no debería");
+                view.setUint32(20, 0x12345678); // Intento de escritura fuera de los límites
+                logFail("Escritura fuera de los límites no bloqueada.");
             } catch (e) {
-                logOk("Desbordamiento del array falló como esperado: " + e.message);
+                logOk("Desbordamiento fuera de los límites correctamente bloqueado: " + e.message);
             }
 
-            logElement.innerHTML += "\n\n[Finished]";
+            logInfo("Fin de la prueba avanzada.");
         }
 
-        runAdvancedBufferOverflow();
-    })();
+        advancedBufferTest();
     </script>
 </body>
 </html>
