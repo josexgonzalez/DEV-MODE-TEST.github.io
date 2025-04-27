@@ -1,112 +1,101 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>PS5 Scope Test</title>
-    <style>
-        body {
-            background: #111;
-            color: #0f0;
-            font-family: monospace;
-            padding: 20px;
-        } 
-        #log {
-            white-space: pre-wrap;
-            font-size: 14px;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-        .ok { color: #0f0; }
-        .fail { color: #f00; }
-        .info { color: #0ff; }
-    </style>
+<meta charset="UTF-8">
+<title>PS5 Proxy Fuzzer</title>
+<style>
+body { background: #111; color: #0f0; font-family: monospace; padding: 20px; }
+#log { white-space: pre-wrap; font-size: 14px; max-height: 80vh; overflow-y: auto; }
+.ok { color: #0f0; }
+.fail { color: #f00; }
+.info { color: #0ff; }
+</style>
 </head>
 <body>
-    <h1>PS5 Scope and Fuzzing Test</h1>
-    <div id="log"></div>
+<h1>PS5 Proxy Type Confusion Test</h1>
+<div id="log"></div>
+<script>
+(function() {
+    const logElement = document.getElementById('log');
+    function logOk(message) {
+        const el = document.createElement('div');
+        el.textContent = "[OK] " + message;
+        el.className = "ok";
+        logElement.appendChild(el);
+    }
+    function logFail(message) {
+        const el = document.createElement('div');
+        el.textContent = "[FAIL] " + message;
+        el.className = "fail";
+        logElement.appendChild(el);
+    }
+    function logInfo(message) {
+        const el = document.createElement('div');
+        el.textContent = "[INFO] " + message;
+        el.className = "info";
+        logElement.appendChild(el);
+    }
 
-    <script>
-    (function() {
-        const logElement = document.getElementById('log');
+    function randomBool() {
+        return Math.random() < 0.5;
+    }
 
-        function logOk(message) {
-            const el = document.createElement('div');
-            el.textContent = "[OK] " + message;
-            el.className = "ok";
-            logElement.appendChild(el);
-        }
-        function logFail(message) {
-            const el = document.createElement('div');
-            el.textContent = "[FAIL] " + message;
-            el.className = "fail";
-            logElement.appendChild(el);
-        }
-        function logInfo(message) {
-            const el = document.createElement('div');
-            el.textContent = "[INFO] " + message;
-            el.className = "info";
-            logElement.appendChild(el);
-        }
+    async function runProxyTests() {
+        logInfo("Iniciando fuzzing de Proxies anómalos...");
 
-        // Test básico con función simple que evalúa el contexto de 'this'
-        function basicTest() {
-            logInfo("Running Basic Test...");
+        for (let i = 0; i < 100; i++) {
+            let target = {};
+            let trap = {};
 
-            // Test 1: Sin "use strict" y sin contexto específico
-            function testFoo() { return this; }
-            const result1 = testFoo();
-            if (result1 === window || result1 === globalThis) { // en entorno global debería devolver window
-                logOk("Test 1 passed (Global context).");
-            } else {
-                logFail("Test 1 failed (Unexpected this value).");
+            if (randomBool()) {
+                trap.get = function(t, prop, rec) {
+                    if (typeof prop === 'string' && prop.startsWith("leak"))
+                        return 0xdeadbeef;
+                    return Reflect.get(t, prop, rec);
+                };
             }
 
-            // Test 2: Con "use strict"
-            function testStrictFoo() { "use strict"; return this; }
-            const result2 = testStrictFoo();
-            if (result2 === undefined) { // En modo 'strict', 'this' es undefined
-                logOk("Test 2 passed (Strict mode).");
-            } else {
-                logFail("Test 2 failed (Unexpected this value in strict mode).");
+            if (randomBool()) {
+                trap.has = function(t, prop) {
+                    return true; // decimos que TODO existe
+                };
             }
-        }
 
-        // Función de fuzzing para probar el contexto con diferentes técnicas
-        async function runFuzzingTests() {
-            logInfo("Starting Fuzzing Tests...");
+            if (randomBool()) {
+                trap.ownKeys = function(t) {
+                    return ['foo', 'bar', 'baz', Math.random() < 0.5 ? 'qux' : Symbol('sym')];
+                };
+            }
 
-            const fuzzCases = [
-                () => { return this; }, // Caso 1: this en contexto global
-                () => { "use strict"; return this; }, // Caso 2: 'use strict' - should return undefined
-                function() { return this; }, // Caso 3: Función simple, 'this' en contexto global
-                function() { "use strict"; return this; } // Caso 4: Función en modo estricto
-            ];
+            const proxy = new Proxy(target, trap);
 
-            // Probar 10 iteraciones
-            for (let i = 0; i < 10; i++) {
-                const test = fuzzCases[i % fuzzCases.length];
+            try {
+                with(proxy) {
+                    let testVal = leak123 || 0;
 
-                try {
-                    const result = test();
-                    if (result === globalThis || result === undefined) {
-                        logOk(`Fuzz ${i}: OK`);
-                    } else {
-                        throw new Error(`Unexpected 'this' value`);
+                    if (testVal === 0xdeadbeef) {
+                        logOk(`Leak detectado en prueba ${i}! Valor: ${testVal.toString(16)}`);
                     }
-                } catch (e) {
-                    logFail(`Fuzz ${i}: ${e.message}`);
+
+                    if (typeof foo === 'object' || typeof foo === 'function') {
+                        logFail(`Type confusion detectado en prueba ${i}: tipo inesperado`);
+                    }
                 }
+            } catch (e) {
+                logFail(`Error capturado en prueba ${i}: ${e.message}`);
             }
         }
 
-        async function main() {
-            basicTest();  // Ejecutar test básico
-            await runFuzzingTests(); // Ejecutar fuzzing
-            logElement.innerHTML += "\n\n[Finished]";
-        }
+        logInfo("Fuzzing de proxies finalizado.");
+    }
 
-        main();
-    })();
-    </script>
+    async function main() {
+        await runProxyTests();
+        logElement.innerHTML += "\n\n[Finished]";
+    }
+
+    main();
+})();
+</script>
 </body>
 </html>
