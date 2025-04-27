@@ -1,101 +1,94 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>PS5 Proxy Fuzzer</title>
-<style>
-body { background: #111; color: #0f0; font-family: monospace; padding: 20px; }
-#log { white-space: pre-wrap; font-size: 14px; max-height: 80vh; overflow-y: auto; }
-.ok { color: #0f0; }
-.fail { color: #f00; }
-.info { color: #0ff; }
-</style>
+  <meta charset="UTF-8">
+  <title>PS5 10.20 TypedArray Leak Test</title>
+  <style>
+    body {
+      background: #111;
+      color: #0f0;
+      font-family: monospace;
+      padding: 20px;
+    }
+    #log {
+      margin-top: 20px;
+      white-space: pre-wrap;
+    }
+    .fail {
+      color: #f00;
+    }
+    .success {
+      color: #0f0;
+    }
+  </style>
 </head>
 <body>
-<h1>PS5 Proxy Type Confusion Test</h1>
-<div id="log"></div>
-<script>
-(function() {
-    const logElement = document.getElementById('log');
-    function logOk(message) {
-        const el = document.createElement('div');
-        el.textContent = "[OK] " + message;
-        el.className = "ok";
-        logElement.appendChild(el);
-    }
-    function logFail(message) {
-        const el = document.createElement('div');
-        el.textContent = "[FAIL] " + message;
-        el.className = "fail";
-        logElement.appendChild(el);
-    }
-    function logInfo(message) {
-        const el = document.createElement('div');
-        el.textContent = "[INFO] " + message;
-        el.className = "info";
-        logElement.appendChild(el);
+  <h1>PS5 TypedArray Leak/Corruption Test</h1>
+  <div id="log"></div>
+
+  <script>
+    const logDiv = document.getElementById('log');
+
+    function logOk(msg) {
+      const e = document.createElement('div');
+      e.className = 'success';
+      e.textContent = '[OK] ' + msg;
+      logDiv.appendChild(e);
     }
 
-    function randomBool() {
-        return Math.random() < 0.5;
+    function logFail(msg) {
+      const e = document.createElement('div');
+      e.className = 'fail';
+      e.textContent = '[FAIL] ' + msg;
+      logDiv.appendChild(e);
     }
 
-    async function runProxyTests() {
-        logInfo("Iniciando fuzzing de Proxies anómalos...");
+    function floatToHex(f) {
+      const buf = new ArrayBuffer(8);
+      const f64 = new Float64Array(buf);
+      const u32 = new Uint32Array(buf);
+      f64[0] = f;
+      return '0x' + u32[1].toString(16).padStart(8, '0') + u32[0].toString(16).padStart(8, '0');
+    }
 
-        for (let i = 0; i < 100; i++) {
-            let target = {};
-            let trap = {};
+    function runTest() {
+      logOk('Iniciando test de TypedArrays...');
 
-            if (randomBool()) {
-                trap.get = function(t, prop, rec) {
-                    if (typeof prop === 'string' && prop.startsWith("leak"))
-                        return 0xdeadbeef;
-                    return Reflect.get(t, prop, rec);
-                };
-            }
+      try {
+        const buffer = new ArrayBuffer(0x1000);
+        const float64 = new Float64Array(buffer);
+        const uint32 = new Uint32Array(buffer);
 
-            if (randomBool()) {
-                trap.has = function(t, prop) {
-                    return true; // decimos que TODO existe
-                };
-            }
+        // Escribir un valor flotante especial
+        float64[0] = 1.23456789e300;
+        const valHex = floatToHex(float64[0]);
 
-            if (randomBool()) {
-                trap.ownKeys = function(t) {
-                    return ['foo', 'bar', 'baz', Math.random() < 0.5 ? 'qux' : Symbol('sym')];
-                };
-            }
+        // Leer como enteros
+        const low = uint32[0];
+        const high = uint32[1];
 
-            const proxy = new Proxy(target, trap);
-
-            try {
-                with(proxy) {
-                    let testVal = leak123 || 0;
-
-                    if (testVal === 0xdeadbeef) {
-                        logOk(`Leak detectado en prueba ${i}! Valor: ${testVal.toString(16)}`);
-                    }
-
-                    if (typeof foo === 'object' || typeof foo === 'function') {
-                        logFail(`Type confusion detectado en prueba ${i}: tipo inesperado`);
-                    }
-                }
-            } catch (e) {
-                logFail(`Error capturado en prueba ${i}: ${e.message}`);
-            }
+        if (low === 0 || high === 0) {
+          logFail('Leak posible: valores 0 inesperados');
+        } else {
+          logOk('Valores normales detectados: low=0x' + low.toString(16) + ', high=0x' + high.toString(16));
         }
 
-        logInfo("Fuzzing de proxies finalizado.");
+        // Intentar detectar corrupción de memoria
+        for (let i = 0; i < float64.length; i++) {
+          if (float64[i] !== 0 && i !== 0) {
+            logFail('Corrupción detectada en offset ' + i + ': ' + floatToHex(float64[i]));
+          }
+        }
+
+        logOk('Test finalizado.');
+
+      } catch (e) {
+        logFail('Excepción atrapada: ' + e.toString());
+      }
     }
 
-    async function main() {
-        await runProxyTests();
-        logElement.innerHTML += "\n\n[Finished]";
-    }
-
-    main();
-})();
-</script>
+    // Auto-iniciar
+    window.onload = runTest;
+  </script>
 </body>
 </html>
