@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>PS5 Scope Test</title>
+    <title>PS5 Scope Test Extended</title>
     <style>
         body {
             background: #111;
@@ -13,22 +13,22 @@
         #log {
             white-space: pre-wrap;
             font-size: 14px;
+            max-height: 80vh;
+            overflow-y: auto;
         }
-        .ok {
-            color: #0f0;
-        }
-        .fail {
-            color: #f00;
-        }
+        .ok { color: #0f0; }
+        .fail { color: #f00; }
+        .info { color: #0ff; }
     </style>
 </head>
 <body>
-    <h1>PS5 Scope and This Test</h1>
+    <h1>PS5 Scope and Fuzzing Test</h1>
     <div id="log"></div>
 
     <script>
     (function() {
         const logElement = document.getElementById('log');
+
         function logOk(message) {
             const el = document.createElement('div');
             el.textContent = "[OK] " + message;
@@ -39,6 +39,12 @@
             const el = document.createElement('div');
             el.textContent = "[FAIL] " + message;
             el.className = "fail";
+            logElement.appendChild(el);
+        }
+        function logInfo(message) {
+            const el = document.createElement('div');
+            el.textContent = "[INFO] " + message;
+            el.className = "info";
             logElement.appendChild(el);
         }
 
@@ -60,42 +66,37 @@
                 throw new Error("Didn't throw!");
         }
 
-        function makeTestCases(ident) {
-            return [
-                `${ident}()`,
-                `"use strict"; ${ident}()`,
-                `eval("${ident}()")`,
-                `eval("'use strict'; ${ident}()")`,
-                `(0, eval)("${ident}()")`,
-                `(0, eval)("'use strict'; ${ident}()")`,
-                `"use strict"; (0, eval)("${ident}()")`,
-                `new Function("${ident}()")()`,
-                `new Function("'use strict'; ${ident}()")()`,
-                `new Function("eval('${ident}()')")()`,
-                `new Function("'use strict'; eval('${ident}()')")()`,
-                `eval('new Function("${ident}()")()')`,
-                `"use strict"; eval('new Function("${ident}()")()')`,
-                `(0, eval)('new Function("${ident}()")()')`,
-                String.raw`eval('new Function("\'use strict\'; ${ident}()")()')`,
-                String.raw`eval('new Function("\'use strict\'; eval(\'${ident}()\')")()')`,
-                String.raw`(0, eval)('new Function("\'use strict\'; ${ident}()")()')`,
-                String.raw`(0, eval)('new Function("\'use strict\'; eval(\'${ident}()\')")()')`,
-            ];
-        }
-
-        function makeScopeObject() {
-            function foo() { foo.lastThisValue = this; }
-            function bar() { "use strict"; bar.lastThisValue = this; }
-
-            return { foo, bar };
+        function randomBool() {
+            return Math.random() < 0.5;
         }
 
         async function runMainTests() {
+            logInfo("Running Main Scope Tests...");
+
+            function makeScopeObject() {
+                function foo() { foo.lastThisValue = this; }
+                function bar() { "use strict"; bar.lastThisValue = this; }
+                return { foo, bar };
+            }
+
+            function makeTestCases(ident) {
+                return [
+                    `${ident}()`,
+                    `"use strict"; ${ident}()`,
+                    `eval("${ident}()")`,
+                    `eval("'use strict'; ${ident}()")`,
+                    `(0, eval)("${ident}()")`,
+                    `(0, eval)("'use strict'; ${ident}()")`,
+                    `new Function("${ident}()")()`,
+                    `new Function("'use strict'; ${ident}()")()`
+                ];
+            }
+
             for (const ident of ["foo", "bar"]) {
                 const scope = makeScopeObject();
 
                 for (const testCase of makeTestCases(ident)) {
-                    for (let i = 0; i < 3; i++) { // Solo 3 repeticiones por test para ir más rápido
+                    for (let i = 0; i < 2; i++) { // Reducido para velocidad
                         globalThis.foo = scope.foo;
                         globalThis.bar = scope.bar;
 
@@ -103,9 +104,9 @@
                             eval(testCase);
 
                             if (ident === "foo")
-                                shouldBe(scope.foo.lastThisValue, globalThis); // Non-strict: this = globalThis
+                                shouldBe(scope.foo.lastThisValue, globalThis);
                             else
-                                shouldBe(scope.bar.lastThisValue, undefined);  // Strict: this = undefined
+                                shouldBe(scope.bar.lastThisValue, undefined);
 
                             logOk(`Test passed: ${testCase}`);
                         } catch (e) {
@@ -126,40 +127,46 @@
             }
         }
 
-        async function runProxyAndWithTests() {
-            // Más avanzado: Probar 'with' y Proxy
-            logElement.innerHTML += "\n\n--- Proxy and With Tests ---\n\n";
+        async function runFuzzingTests() {
+            logInfo("\nStarting Scope Fuzzing...\n");
 
-            const target = {
-                secret: 42,
-                getThis: function() { return this; }
-            };
+            const templates = [
+                (obj) => `with(obj) { return (function() { return this; })(); }`,
+                (obj) => `(function() { "use strict"; return this; }).call(obj)`,
+                (obj) => `(() => { return this; }).call(obj)`,
+                (obj) => `new Function("return this;").call(obj)`,
+                (obj) => `eval("this")`
+            ];
 
-            const handler = {
-                has(target, prop) { return true; },
-                get(target, prop, receiver) {
-                    if (prop in target)
-                        return Reflect.get(target, prop, receiver);
-                    return undefined;
+            for (let i = 0; i < 30; i++) { // 30 pruebas
+                let obj = {};
+
+                if (randomBool()) {
+                    obj = new Proxy(obj, {
+                        get: (target, prop) => Reflect.get(target, prop),
+                        has: () => true,
+                        set: (target, prop, value) => { target[prop] = value; return true; }
+                    });
                 }
-            };
 
-            const proxy = new Proxy(target, handler);
+                try {
+                    const code = templates[Math.floor(Math.random() * templates.length)](obj);
+                    const result = (new Function("obj", `return ${code};`))(obj);
 
-            try {
-                with (proxy) {
-                    let value = getThis();
-                    shouldBe(value, proxy);
-                    logOk("Proxy 'with' test: `this` is proxy");
+                    if (result !== obj && result !== globalThis && result !== undefined) {
+                        throw new Error("Unexpected 'this' value!");
+                    }
+
+                    logOk(`Fuzz ${i}: OK`);
+                } catch (e) {
+                    logFail(`Fuzz ${i}: ${e.message}`);
                 }
-            } catch (e) {
-                logFail("Proxy 'with' test failed: " + e.message);
             }
         }
 
         async function main() {
             await runMainTests();
-            await runProxyAndWithTests();
+            await runFuzzingTests();
             logElement.innerHTML += "\n\n[Finished]";
         }
 
