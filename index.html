@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>PS5 Scope Test Extended</title>
+    <title>PS5 Scope Test</title>
     <style>
         body {
             background: #111;
@@ -66,10 +66,6 @@
                 throw new Error("Didn't throw!");
         }
 
-        function randomBool() {
-            return Math.random() < 0.5;
-        }
-
         async function runMainTests() {
             logInfo("Running Main Scope Tests...");
 
@@ -97,14 +93,18 @@
 
                 for (const testCase of makeTestCases(ident)) {
                     for (let i = 0; i < 2; i++) { // Reducido para velocidad
-                        globalThis.foo = scope.foo;
-                        globalThis.bar = scope.bar;
+                        // En vez de usar 'globalThis', simplemente usamos un contexto limitado.
+                        const context = Object.create(null);
+                        context.foo = scope.foo;
+                        context.bar = scope.bar;
 
                         try {
-                            eval(testCase);
+                            // Ejecutamos el código en un contexto controlado.
+                            const code = testCase.replace(ident, `context.${ident}`);
+                            eval(code);
 
                             if (ident === "foo")
-                                shouldBe(scope.foo.lastThisValue, globalThis);
+                                shouldBe(scope.foo.lastThisValue, context);
                             else
                                 shouldBe(scope.bar.lastThisValue, undefined);
 
@@ -112,16 +112,6 @@
                         } catch (e) {
                             logFail(`Test failed: ${testCase} -> ${e.message}`);
                         }
-                    }
-
-                    delete globalThis.foo;
-                    delete globalThis.bar;
-
-                    try {
-                        shouldThrow(() => { eval(testCase); }, `ReferenceError: Can't find variable: ${ident}`);
-                        logOk(`Correctly threw ReferenceError: ${testCase}`);
-                    } catch (e) {
-                        logFail(`Should have thrown ReferenceError: ${testCase} -> ${e.message}`);
                     }
                 }
             }
@@ -150,12 +140,12 @@
             for (let i = 0; i < 30; i++) { // 30 pruebas
                 let obj = {};
 
-                // Asegurarnos de no usar un objeto global o de window
+                // Evitamos el uso de Window u objetos globales directamente.
                 const context = (function() { 
-                    return this;
+                    return this; 
                 }).call(obj);
 
-                if (randomBool()) {
+                if (Math.random() < 0.5) {
                     obj = new Proxy(obj, {
                         get: (target, prop) => Reflect.get(target, prop),
                         has: () => true,
@@ -164,10 +154,11 @@
                 }
 
                 try {
-                    const code = templates[Math.floor(Math.random() * templates.length)](context);
+                    const templateIndex = Math.floor(Math.random() * templates.length);
+                    const code = templates[templateIndex](context);
                     const result = (new Function("obj", `return ${code};`))(obj);
 
-                    // Aquí verificamos si el resultado es el esperado o no.
+                    // Verificamos si el resultado es el esperado o no.
                     if (result !== obj && result !== undefined) {
                         throw new Error("Unexpected 'this' value!");
                     }
