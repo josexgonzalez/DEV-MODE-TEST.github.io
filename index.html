@@ -114,7 +114,7 @@ function log(txt) {
 
     log("[*] Preparando ROP...");
 
-    const SYSCALL_RET = 0xfffffffffffff000n; // Falso placeholder
+    const SYSCALL_RET = 0x2333445564343n; // Falso placeholder
     const JOPCHAIN_ADDR = rop_addr + 0x100n;
 
     function trigger_payload(buffer) {
