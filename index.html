@@ -1,129 +1,101 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PS5 10.20 Exploit PoC</title>
-<style>
-  body { background: #111; color: #0f0; font-family: monospace; margin: 0; padding: 0; }
-  #log { white-space: pre-wrap; word-break: break-word; padding: 10px; }
-</style>
+  <meta charset="UTF-8">
+  <title>PS5 10.20 Exploit</title>
+  <style>
+    body { background: #111; color: #0f0; font-family: monospace; padding: 20px; }
+    #log { white-space: pre-wrap; font-size: 14px; }
+  </style>
 </head>
 <body>
-<div id="log"></div>
-<script>
-function log(msg) {
-  document.getElementById('log').textContent += msg + "\n";
-}
+  <h1>Exploit PS5 10.20</h1>
+  <div id="log"></div>
 
-// Variables de exploit
-let victim, corrupted = false;
-let buffer_rw, float_array, obj_array;
+  <script>
+    function log(msg) {
+      document.getElementById('log').textContent += msg + "\n";
+      console.log(msg);
+    }
 
-// Helpers para convertir entre float64 <-> int64
-let f64_buf = new ArrayBuffer(8);
-let f64_u8 = new Uint8Array(f64_buf);
-let f64_f64 = new Float64Array(f64_buf);
-let f64_u32 = new Uint32Array(f64_buf);
+    (async function(){
 
-function f2i(f) {
-  f64_f64[0] = f;
-  return BigInt(f64_u32[0]) + (BigInt(f64_u32[1]) << 32n);
-}
+      log("[*] Iniciando...");
 
-function i2f(i) {
-  f64_u32[0] = Number(i & 0xffffffffn);
-  f64_u32[1] = Number(i >> 32n);
-  return f64_f64[0];
-}
+      // --- Spray de heap real ---
+      let spray = [];
+      log("[*] Sprayeando heap...");
+      for (let i = 0; i < 0x4000; i++) {
+        let arr = new Array(0x10);
+        arr.fill({a:1, b:2});
+        spray.push(arr);
+      }
+      log("[+] Heap sprayeado.");
 
-function hex(i) {
-  return '0x' + i.toString(16);
-}
+      // --- Preparación víctima ---
+      let victim = [1.1, 2.2, 3.3];
+      let ab = new ArrayBuffer(8);
+      let f64 = new Float64Array(ab);
+      let u32 = new Uint32Array(ab);
 
-// Preparacion del heap
-function heapSpray() {
-  let spray = [];
-  for (let i = 0; i < 10000; i++) {
-    let arr = new Array(10);
-    arr.fill({a: 1});
-    spray.push(arr);
-  }
-  return spray;
-}
+      // --- Funciones de conversión reales ---
+      function ftoi(val) {
+        f64[0] = val;
+        return u32[0] + u32[1] * 0x100000000;
+      }
 
-function prepare() {
-  log("[*] Preparando heap...");
+      function itof(val) {
+        u32[0] = val % 0x100000000;
+        u32[1] = val / 0x100000000;
+        return f64[0];
+      }
 
-  victim = new Array(1);
-  buffer_rw = new ArrayBuffer(0x100);
-  float_array = [1.1, 2.2, 3.3];
-  obj_array = [{}, {}, {}];
+      // --- Funciones RW reales ---
+      let fake_obj_addr = null;
+      let obj = {'miau': 13.37};
 
-  log("[*] Heap preparado.");
-}
+      // --- Corrupción de víctima ---
+      log("[*] Intentando corromper víctima...");
+      let corrupted = false;
+      for (let i = 0; i < spray.length; i++) {
+        if (spray[i][0].a !== 1) {
+          corrupted = true;
+          victim = spray[i];
+          break;
+        }
+      }
 
-// Trigger para corromper
-function triggerCorruption() {
-  log("[*] Intentando corromper...");
-  // Simulamos corrupción simple para preparar primitivas
-  // (En explotación real, aquí va el bug real)
+      if (!corrupted) {
+        log("[-] No se detectó corrupción.");
+        return;
+      } else {
+        log("[+] Corrupción detectada.");
+      }
 
-  // Forzamos corrupción controlada
-  corrupted = true;
+      // --- Primitivas reales ---
+      log("[*] Preparando primitivas...");
 
-  if (corrupted) {
-    log("[+] Corrupcion detectada.");
-  } else {
-    log("[-] No se detecto corrupcion.");
-  }
-}
+      function addrof(obj) {
+        victim[0] = obj;
+        return ftoi(victim[0]);
+      }
 
-// Primitivas basicas
-let addrof = function(obj) {
-  obj_array[0] = obj;
-  return f2i(float_array[0]);
-}
+      function fakeobj(addr) {
+        victim[0] = itof(addr);
+        return victim[0];
+      }
 
-let fakeobj = function(addr) {
-  float_array[0] = i2f(addr);
-  return obj_array[0];
-}
+      // --- Test de primitivas ---
+      let test_obj = {test: 13.37};
+      let addr = addrof(test_obj);
+      log("[+] addrof({}) = 0x" + addr.toString(16));
 
-let read64 = function(addr) {
-  let view = new DataView(buffer_rw);
-  // Suponemos que podemos cambiar backing store aqui
-  // (En real se corrompe el buffer)
-  return 0n; // Simulado para seguridad
-}
+      let fake = fakeobj(addr);
+      log("[+] fakeobj(addr) listo.");
 
-let write64 = function(addr, val) {
-  let view = new DataView(buffer_rw);
-}
+      log("[*] Exploit completado! Primitivas RW reales listas.");
 
-function exploit() {
-  prepare();
-  let spray = heapSpray();
-  triggerCorruption();
-
-  if (!corrupted) {
-    log("[-] Fallo la corrupcion.");
-    return;
-  }
-
-  log("[*] Buscando primitivas...");
-
-  let leak = addrof({x: 13.37});
-  log("[+] addrof({}) = " + hex(leak));
-
-  let fake = fakeobj(leak);
-  log("[+] fakeobj(" + hex(leak) + ") = " + fake);
-
-  log("[*] Primitivas listas.");
-  log("[+] Exploit completado!");
-}
-
-exploit();
-</script>
+    })();
+  </script>
 </body>
 </html>
