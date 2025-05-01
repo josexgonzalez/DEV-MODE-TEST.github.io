@@ -1,92 +1,65 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>PS5 Network Bruteforce - Max Power</title>
-    <style>
-        body {
-            background-color: black;
-            color: lime;
-            font-family: monospace;
-            padding: 20px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>PS5 LockdownMode PoC</title>
+  <style>
+    body {
+      background-color: #111;
+      color: #0f0;
+      font-family: monospace;
+      padding: 20px;
+    }
+    img {
+      max-width: 100px;
+      display: block;
+      margin: 10px 0;
+    }
+    .result {
+      margin: 5px 0;
+    }
+  </style>
 </head>
 <body>
-    <h1>PS5 Network Bruteforce - Max Power</h1>
-    <div id="status">Preparando...</div>
+  <h1>PS5 10.20 LockdownMode Test</h1>
+  <div id="log"></div>
 
-    <script>
-        const PS5_IP = "192.168.137.200";
+  <script>
+    const log = (msg) => {
+      document.getElementById('log').innerHTML += `<div class="result">${msg}</div>`;
+    };
 
-        function randomString(length) {
-            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-=_+[]{}|;:',.<>/?`~";
-            let result = '';
-            for (let i = 0; i < length; i++) {
-                result += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            return result;
-        }
+    const testImage = (src, label) => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          log(`✅ ${label} loaded`);
+          resolve({ label, success: true });
+        };
+        img.onerror = () => {
+          log(`❌ ${label} blocked`);
+          resolve({ label, success: false });
+        };
+        img.src = src;
+        document.body.appendChild(img);
+      });
+    };
 
-        function crashFetch() {
-            for (let i = 0; i < 500; i++) {
-                fetch(`http://${PS5_IP}/${randomString(500)}`, {
-                    method: 'POST',
-                    headers: {
-                        [randomString(100)]: randomString(10000),  // Header corrupto gigante
-                        "Content-Length": "99999999" // Header absurdo
-                    },
-                    body: randomString(200000),
-                    mode: 'no-cors',
-                    cache: 'no-store',
-                    keepalive: true,
-                }).catch(() => {});
-            }
-        }
+    (async () => {
+      log("🔍 Testing image formats...");
 
-        function crashWebSocket() {
-            for (let i = 0; i < 100; i++) {
-                try {
-                    let ws = new WebSocket(`ws://${PS5_IP}/${randomString(100)}`);
-                    ws.onopen = () => {
-                        ws.send(randomString(65535)); // Frame WebSocket gigante
-                        ws.send("\x80\xff\xff\xff");   // Frame WebSocket mal formado
-                        ws.close();
-                    };
-                    ws.onerror = () => {};
-                } catch (e) {}
-            }
-        }
+      const results = await Promise.all([
+        testImage("https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png", "PNG"),
+        testImage("https://upload.wikimedia.org/wikipedia/commons/2/24/Blue_square_JPEG_example.jpg", "JPEG"),
+        testImage("https://upload.wikimedia.org/wikipedia/commons/f/fd/Ghostscript_Tiger.svg", "SVG"),
+        testImage("https://www.gstatic.com/webp/gallery/1.webp", "WebP"),
+        testImage("https://file-examples.com/wp-content/uploads/2017/10/file_example_JPG_1MB.jpg", "JPG"),
+        testImage("https://www.fileformat.info/format/jp2/sample/fd6f37d6a86143c8abf9e0dc66c597c4.jp2", "JPEG2000")
+      ]);
 
-        function crashWebRTC() {
-            for (let i = 0; i < 100; i++) {
-                try {
-                    const pc = new RTCPeerConnection({
-                        iceServers: [{ urls: `stun:${PS5_IP}:3478` }]
-                    });
-                    const channel = pc.createDataChannel(randomString(50));
-                    channel.onopen = () => {
-                        channel.send(randomString(65535)); // Paquetes gigantes
-                        channel.send("\xff\xff\xff\xff"); // Datos rotos
-                    };
-                    pc.createOffer().then(offer => pc.setLocalDescription(offer)).catch(() => {});
-                } catch (e) {}
-            }
-        }
-
-        function crashLoop() {
-            crashFetch();
-            crashWebSocket();
-            crashWebRTC();
-        }
-
-        function startAttack() {
-            document.getElementById('status').textContent = `¡Atacando ${PS5_IP}!`;
-
-            // Lanza cada 100ms (¡rápido!)
-            setInterval(crashLoop, 100);
-        }
-
-        window.onload = startAttack;
-    </script>
+      const blocked = results.filter(r => !r.success).map(r => r.label);
+      log(`<hr>Blocked formats: ${blocked.length ? blocked.join(', ') : 'None 🎉'}`);
+    })();
+  </script>
 </body>
 </html>
