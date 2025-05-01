@@ -2,64 +2,135 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>PS5 LockdownMode PoC</title>
+  <title>PS5 Image Format Support Test</title>
   <style>
     body {
-      background-color: #111;
+      background: #111;
       color: #0f0;
       font-family: monospace;
-      padding: 20px;
+      padding: 10px;
     }
-    img {
-      max-width: 100px;
-      display: block;
-      margin: 10px 0;
+    .log {
+      background: #222;
+      border: 1px solid #444;
+      padding: 10px;
+      margin-top: 20px;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
     }
-    .result {
-      margin: 5px 0;
+    .img-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .box {
+      border: 1px solid #333;
+      background: #1a1a1a;
+      padding: 5px;
+      text-align: center;
+      font-size: 12px;
+    }
+    canvas {
+      background: #000;
     }
   </style>
 </head>
 <body>
-  <h1>PS5 10.20 LockdownMode Test</h1>
-  <div id="log"></div>
 
-  <script>
-    const log = (msg) => {
-      document.getElementById('log').innerHTML += `<div class="result">${msg}</div>`;
+<h1>PS5 Image Format Support Detection</h1>
+
+<div class="img-grid" id="images"></div>
+
+<h2>Console Logs</h2>
+<div class="log" id="log"></div>
+
+<script>
+const formats = [
+  {
+    name: "PNG",
+    url: "https://via.placeholder.com/100x100.png",
+    mime: "image/png"
+  },
+  {
+    name: "JPEG",
+    url: "https://via.placeholder.com/100x100.jpeg",
+    mime: "image/jpeg"
+  },
+  {
+    name: "JPG",
+    url: "https://via.placeholder.com/100x100.jpg",
+    mime: "image/jpeg"
+  },
+  {
+    name: "SVG",
+    url: "https://upload.wikimedia.org/wikipedia/commons/f/fd/Ghostscript_Tiger.svg",
+    mime: "image/svg+xml"
+  },
+  {
+    name: "WebP",
+    url: "https://www.gstatic.com/webp/gallery/1.webp",
+    mime: "image/webp"
+  },
+  {
+    name: "JPEG2000",
+    url: "https://image.ibb.co/cBMMBm/test-jp2.jp2",
+    mime: "image/jp2"
+  }
+];
+
+const logEl = document.getElementById('log');
+const gridEl = document.getElementById('images');
+
+function log(msg) {
+  console.log(msg);
+  logEl.textContent += msg + "\n";
+}
+
+function checkCanvasSupport(mime) {
+  const canvas = document.createElement("canvas");
+  const dataURL = canvas.toDataURL(mime);
+  return !dataURL.includes("data:application/octet-stream");
+}
+
+formats.forEach(format => {
+  const container = document.createElement("div");
+  container.className = "box";
+  container.innerHTML = `<strong>${format.name}</strong><br>Loading...`;
+
+  const img = new Image();
+  img.src = format.url;
+  img.onload = () => {
+    container.innerHTML = `<strong>${format.name}</strong><br><img src="${format.url}" width="100" height="100"><br>✅ IMG tag supported`;
+    log(`${format.name}: IMG tag ✅ supported`);
+  };
+  img.onerror = () => {
+    container.innerHTML = `<strong>${format.name}</strong><br>❌ IMG failed<br>Trying object...`;
+
+    const object = document.createElement("object");
+    object.data = format.url;
+    object.type = format.mime;
+    object.width = 100;
+    object.height = 100;
+    object.onload = () => {
+      container.innerHTML += "<br>✅ OBJECT supported";
+      log(`${format.name}: OBJECT ✅ supported`);
     };
-
-    const testImage = (src, label) => {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-          log(`✅ ${label} loaded`);
-          resolve({ label, success: true });
-        };
-        img.onerror = () => {
-          log(`❌ ${label} blocked`);
-          resolve({ label, success: false });
-        };
-        img.src = src;
-        document.body.appendChild(img);
-      });
+    object.onerror = () => {
+      container.innerHTML += "<br>❌ OBJECT failed";
+      log(`${format.name}: OBJECT ❌ failed`);
     };
+    container.appendChild(object);
+  };
 
-    (async () => {
-      log("🔍 Testing image formats...");
+  // Canvas support check
+  const canvasSupport = checkCanvasSupport(format.mime);
+  log(`${format.name}: Canvas encoding support = ${canvasSupport ? "✅" : "❌"}`);
 
-      const results = await Promise.all([
-        testImage("https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png", "PNG"),
-        testImage("https://upload.wikimedia.org/wikipedia/commons/2/24/Blue_square_JPEG_example.jpg", "JPEG"),
-        testImage("https://upload.wikimedia.org/wikipedia/commons/f/fd/Ghostscript_Tiger.svg", "SVG"),
-        testImage("https://www.gstatic.com/webp/gallery/1.webp", "WebP"),
-        testImage("https://file-examples.com/wp-content/uploads/2017/10/file_example_JPG_1MB.jpg", "JPG"),
-        testImage("https://www.fileformat.info/format/jp2/sample/fd6f37d6a86143c8abf9e0dc66c597c4.jp2", "JPEG2000")
-      ]);
+  gridEl.appendChild(container);
+});
+</script>
 
-      const blocked = results.filter(r => !r.success).map(r => r.label);
-      log(`<hr>Blocked formats: ${blocked.length ? blocked.join(', ') : 'None 🎉'}`);
-    })();
-  </script>
 </body>
 </html>
