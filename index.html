@@ -1,24 +1,46 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>WebKit Type Confusion Test</title>
+  <title>Type Confusion Aggressive Test</title>
 </head>
 <body>
-  <h1>Test para posible Type Confusion</h1>
+  <h1>Type Confusion - Advanced PoC</h1>
+  <pre id="log"></pre>
   <script>
+    const log = (msg) => document.getElementById("log").textContent += msg + "\n";
+
+    function hex(x) {
+      return "0x" + x.toString(16);
+    }
+
     function trigger() {
-      let obj = {a: 1};
-      let arr = [1.1, 2.2, 3.3];
+      let float_array = [1.1, 2.2, 3.3, 4.4];
+      let obj_array = [{}, {}, {}, {}];
 
-      function confuse(o, a) {
-        for (let i = 0; i < 10000; i++) {}  // Calentamiento JIT
-
-        a[0] = o;  // intento de confusión de tipos
-        return a[0];
+      function confuse(arr, val) {
+        for (let i = 0; i < 10000; i++) {
+          arr[0] = 1.1;  // entrenamiento para JIT como float
+        }
+        arr[0] = val; // de pronto insertamos un objeto
+        return arr[0];
       }
 
-      let result = confuse(obj, arr);
-      console.log("Resultado:", result);
+      let res = confuse(float_array, {a: 42});
+
+      log("[*] Resultado: " + res);
+      if (typeof res === "object") {
+        log("[+] Type confusion detectada: se insertó un objeto en un array de floats");
+      } else {
+        log("[-] No se detectó confusión");
+      }
+
+      // Prueba adicional: ver el valor de la primera celda
+      float_array[0] = 13.37;
+      let view = new DataView(new ArrayBuffer(8));
+      view.setFloat64(0, float_array[0], true);
+      let low = view.getUint32(0, true);
+      let high = view.getUint32(4, true);
+      log("[*] Representación en memoria de 13.37: low=" + hex(low) + " high=" + hex(high));
     }
 
     trigger();
