@@ -1,37 +1,39 @@
 <!DOCTYPE html>
 <html>
-<head><title>PoC: Buffer Overflow</title></head>
+<head><title>ROP Chain PoC</title></head>
 <body>
-  <h1>PoC: Buffer Overflow</h1>
+  <h1>ROP Chain PoC</h1>
   <pre id="log"></pre>
   <script>
     const log = (msg) => document.getElementById("log").textContent += msg + "\n";
 
+    // Simulando una cadena ROP simple
     let buffer = [];
-    let targetBuffer = [];
+    let ropChain = [];
 
-    // Functión para llenar el buffer con datos y causarle un desbordamiento
-    function fillBuffer() {
-      for (let i = 0; i < 10000; i++) {
-        buffer.push(i); // Llenamos con valores que nos ayudarán a sobrepasar límites
+    // Vamos a suponer que estos son gadgets encontrados
+    const gadget1 = 0xdeadbeef;  // Dirección de un gadget que prepara los registros
+    const gadget2 = 0xdeadbeef + 0x10;  // Dirección de un gadget que ejecuta una syscall
+
+    // Añadimos los gadgets a la cadena ROP
+    ropChain.push(gadget1);  // Preparamos los registros
+    ropChain.push(gadget2);  // Ejecutamos una syscall
+
+    // Simulamos la ejecución de la ROP chain (escribir en la memoria de destino)
+    function executeROPChain() {
+      for (let i = 0; i < ropChain.length; i++) {
+        buffer.push(ropChain[i]); // Añadimos la dirección del gadget
       }
     }
 
-    // Función para intentar escribir fuera de los límites del buffer
-    function overflow() {
-      for (let i = 0; i < 100; i++) {
-        targetBuffer[i] = 13.37; // Intentamos escribir fuera de los límites
-      }
-    }
+    // Ejecutamos la ROP chain
+    executeROPChain();
 
-    // Llamamos a las funciones
-    fillBuffer();
-    overflow();
-
-    // Escaneo de memoria para detectar cambios
-    log("=== Escaneo de Buffer ===");
-    for (let i = 0; i < targetBuffer.length; i++) {
-      log(`targetBuffer[${i}] = ${targetBuffer[i]}`);
+    // Ver el resultado de la ejecución
+    log("=== Resultado de la ROP Chain ===");
+    log("Buffer con direcciones de gadgets:");
+    for (let i = 0; i < buffer.length; i++) {
+      log(`buffer[${i}] = 0x${buffer[i].toString(16)}`);
     }
   </script>
 </body>
