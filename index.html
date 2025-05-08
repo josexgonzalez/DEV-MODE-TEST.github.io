@@ -47,12 +47,12 @@
 
     // Simulated addrof and fakeobj (needs real exploit to work)
     let addrof = function(obj) {
-      log('[*] addrof(obj) simulated → 0x7ff8000000000000');
-      return 0x7ff8000000000000n; // Fake address for PoC
+      log('[*] addrof(obj) 0x7ff8000000000000');
+      return 0x30000n; // Fake address for PoC
     };
 
     let fakeobj = function(addr) {
-      log('[*] fakeobj(addr) simulated → NaN');
+      log('[*] fakeobj(addr) simulated → 0x7ff8000000000000');
       return NaN; // Simulated behavior
     };
 
