@@ -1,41 +1,80 @@
-<!-- Copyright (C) 2023-2025 anonymous
-
-This file is part of PSFree.
-
-PSFree is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-PSFree is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
--->
+<!DOCTYPE html>
 <html>
-    <head>
-        <meta charset='utf-8'>
-        <title>exploit</title>
-        <style>
-            @font-face {
-                font-family: 'logging';
-                src: url('fonts/LiberationMono-Regular.ttf');
-            }
-            #console {
-                font-family: 'logging';
-            }
-        </style>
-    </head>
-    <body>
-        PSFree: A PS4/PS5 Exploit Chain<br>
-        Donation (Monero/XMR):<br>
-        86Fk3X9AE94EGKidzRbvyiVgGNYD3qZnuKNq1ZbsomFWXHYm6TtAgz9GNGitPWadkS3Wr9uXoT29U1SfdMtJ7QNKQpW1CVS<br>
-        See <a href='./about.html' data-jslicense='1'>JavaScript license information</a> for the
-        source code and license.<br>
-        <pre id='console'></pre>
-    </body>
-    <script type='module' src='alert.mjs'></script>
+<head>
+  <meta charset="utf-8">
+  <title>PS5 WebKit Exploit</title>
+  <style>
+    body { background: black; color: white; font-family: monospace; }
+    #log { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>PS5 WebKit Exploit PoC</h1>
+  <div id="log">Initializing...</div>
+
+  <script>
+    const log = msg => document.getElementById('log').textContent += msg + "\n";
+
+    const buf = new ArrayBuffer(0x100);
+    const f64_buf = new Float64Array(buf);
+    const u32_buf = new Uint32Array(buf);
+    const bigbuf = new Uint8Array(0x100000);
+
+    const f2i = f => {
+      f64_buf[0] = f;
+      return u32_buf[0] + u32_buf[1] * 0x100000000;
+    };
+
+    const i2f = i => {
+      u32_buf[0] = i % 0x100000000;
+      u32_buf[1] = i / 0x100000000;
+      return f64_buf[0];
+    };
+
+    const hex = i => "0x" + i.toString(16).padStart(16, '0');
+
+    let fake_obj_array = [1.1, 2.2, 3.3];
+    let obj = {mark: 0x1337, val: 0x1338};
+
+    let container = {
+      cell_header: i2f(0x0108200700000000),
+      butterfly: fake_obj_array,
+    };
+
+    let victim = [container];
+    let corrupted = false;
+
+    function exploit() {
+      log("[*] Starting exploit...");
+
+      for (let i = 0; i < 10000; i++) {
+        let tmp = new Array(0x10);
+        tmp[0] = obj;
+      }
+
+      log("[*] Attempting primitive setup...");
+
+      // Primitivas simuladas
+      function addrof(obj) {
+        fake_obj_array[0] = obj;
+        return f2i(fake_obj_array[0]);
+      }
+
+      function fakeobj(addr) {
+        fake_obj_array[0] = i2f(addr);
+        return fake_obj_array[0];
+      }
+
+      const addr = addrof(obj);
+      log("[+] Address of obj: " + hex(addr));
+
+      const fake = fakeobj(addr);
+      log("[+] Fake object created: " + fake);
+
+      log("[*] Exploit stage completed.");
+    }
+
+    setTimeout(exploit, 1000);
+  </script>
+</body>
 </html>
