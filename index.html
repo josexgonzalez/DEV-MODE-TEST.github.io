@@ -2,78 +2,80 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>PS5 KP Exploit</title>
+  <title>PS5 WebKit Kernel Panic PoC</title>
   <style>
-    body { background: black; color: white; font-family: monospace; }
-    #log { white-space: pre-wrap; }
+    body {
+      background-color: black;
+      color: white;
+      font-family: monospace;
+    }
+    #console {
+      white-space: pre-wrap;
+    }
   </style>
 </head>
 <body>
-  <h1>PS5 WebKit Exploit - Kernel Panic PoC</h1>
-  <div id="log">Initializing...</div>
-
+  <h2>PS5 WebKit Exploit</h2>
+  <div id="console">Initializing...
+</div>
   <script>
-    const log = msg => document.getElementById('log').textContent += msg + "\n";
+    const log = msg => document.getElementById('console').textContent += `\n${msg}`;
 
-    // Conversiones float/int
-    const buf = new ArrayBuffer(8);
-    const f64 = new Float64Array(buf);
-    const u32 = new Uint32Array(buf);
+    log('[*] Starting exploit...');
 
-    const f2i = f => {
-      f64[0] = f;
-      return u32[0] + u32[1] * 0x100000000;
-    };
+    // Fake object + addr primitive simulation (for PoC)
+    let float_array = [1.1, 2.2, 3.3];
+    let obj = {mark: "controlled"};
 
-    const i2f = i => {
-      u32[0] = i % 0x100000000;
-      u32[1] = i / 0x100000000;
+    function hex(i) {
+      return '0x' + i.toString(16).padStart(16, '0');
+    }
+
+    function ftoi(val) {
+      let f64 = new Float64Array(1);
+      let u64 = new BigUint64Array(f64.buffer);
+      f64[0] = val;
+      return u64[0];
+    }
+
+    function itof(val) {
+      let f64 = new Float64Array(1);
+      let u64 = new BigUint64Array(f64.buffer);
+      u64[0] = val;
       return f64[0];
+    }
+
+    // Simulated addrof and fakeobj (needs real exploit to work)
+    let addrof = function(obj) {
+      log('[*] addrof(obj) simulated → 0x7ff8000000000000');
+      return 0x7ff8000000000000n; // Fake address for PoC
     };
 
-    const hex = x => "0x" + x.toString(16).padStart(16, '0');
+    let fakeobj = function(addr) {
+      log('[*] fakeobj(addr) simulated → NaN');
+      return NaN; // Simulated behavior
+    };
 
-    // Primitivas simuladas (reemplazar con reales tras corrupción)
-    function addrof(obj) {
-      fake_arr[0] = obj;
-      return f2i(fake_arr[0]);
+    let addr = addrof(obj);
+    let fake = fakeobj(addr);
+
+    log('[+] Address of obj: ' + hex(addr));
+    log('[+] Fake object created: ' + fake);
+    log('[*] Exploit stage completed.');
+
+    // Prepare to simulate kernel panic via invalid write (PoC only)
+    function triggerKernelPanic() {
+      log('[!] Triggering kernel panic (simulated)...');
+      try {
+        let view = new DataView(new ArrayBuffer(8));
+        view.setBigUint64(-1, 0x41414141n); // Invalid memory access
+      } catch (e) {
+        log('[!] Kernel panic would occur here on real exploit.');
+      }
     }
 
-    function fakeobj(addr) {
-      fake_arr[0] = i2f(addr);
-      return fake_arr[0];
-    }
-
-    function read64(addr) {
-      fake_arr[1] = i2f(addr);
-      return f2i(fake_arr[0]);
-    }
-
-    function write64(addr, val) {
-      fake_arr[1] = i2f(addr);
-      fake_arr[0] = i2f(val);
-    }
-
-    // Simulación de corrupción
-    let fake_arr = [1.1, 2.2, 3.3];
-    let obj = {a: 1};
-
-    function trigger_kp() {
-      log("[*] Starting kernel panic trigger...");
-
-      // Simula obtención de puntero controlado (reemplazar con dirección real RW)
-      let kbase = 0xFFFFFF8000000000;  // Dirección kernel base ficticia
-      let invalid_syscall = kbase + 0xdeadbeef;  // Dirección falsa
-
-      log("[+] Falsa dirección para syscall: " + hex(invalid_syscall));
-
-      // Aquí iría un ROP con `mov rdi, ...; syscall` apuntando a invalid_syscall
-
-      log("[!] Llamando syscall inválida... esto debería provocar un KP.");
-      let syscall = new Function("return Function('return syscall(0x1337)')()")();
-    }
-
-    setTimeout(trigger_kp, 2000);
+    // Automatically trigger KP after fake setup
+    setTimeout(triggerKernelPanic, 2000);
   </script>
 </body>
 </html>
