@@ -9,7 +9,7 @@
     }
 
     function addrof(obj) {
-      return obj.__proto__ ? obj.__proto__ : null;  // Obtener dirección del objeto
+      return obj.__proto__ ? obj.__proto__ : null;
     }
 
     function fakeobj(addr) {
@@ -21,77 +21,60 @@
     }
 
     function read64(addr) {
-      // Aquí usamos un hack simple con un ArrayBuffer para simular lectura desde una dirección
       let ab = new ArrayBuffer(8);
       let dv = new DataView(ab);
       dv.setUint32(0, addr & 0xFFFFFFFF, true);
       dv.setUint32(4, addr >> 32, true);
-      return dv.getFloat64(0, true); // Leemos como un 64-bit float
+      return dv.getFloat64(0, true);
     }
 
     function write64(addr, value) {
-      // Escribir un valor de 64 bits en una dirección (similar a un buffer OOB)
       let ab = new ArrayBuffer(8);
       let dv = new DataView(ab);
       dv.setFloat64(0, value, true);
-      // Supongamos que logramos colocar esto en una dirección específica
-      let target = fakeobj(addr);  // Fake objeto para redirigir
-      target[0] = ab[0]; // Corrompemos el target con el valor deseado
+      let target = fakeobj(addr);
+      target[0] = ab[0];
     }
 
-    // Fase 1: Grooming del heap
     function groomHeap() {
       let heapSpray = [];
-      // Llena el heap con objetos manipulables
       for (let i = 0; i < 1000; i++) {
-        let arr = new Uint32Array(256); // Usamos typed array para controlar los límites
+        let arr = new Uint32Array(256); 
         heapSpray.push(arr);
       }
+      document.body.innerHTML = "<h1>Heap Grooming completado</h1>";
       return heapSpray;
     }
 
-    // Fase 2: Crear ROP Chain mínima
     function buildROP() {
-      // Para la ROP Chain necesitamos colocar gadgets útiles
       let rop = [];
-      // Estos valores de prueba son para ilustración. Tendrías que reemplazar con valores reales.
-      rop.push(0xdeadbeef);  // Ejemplo de gadget de retorno
-      rop.push(0x12345678);  // Dirección de retorno
-      rop.push(0xabcdef00);  // Otra dirección de gadget
+      rop.push(0xdeadbeef);  // Gadget de ejemplo
+      rop.push(0x12345678);  // Dirección para llamar a syscall
+      rop.push(0xabcdef00);  // Otro gadget
+      console.log("ROP Chain: ", rop.map(hex));
       return rop;
     }
 
-    // Fase 3: Desbordamiento para redirigir el flujo
     function exploit() {
-      let spray = groomHeap(); // Grooming del heap
-      let ropChain = buildROP(); // Construcción de la ROP chain
+      let spray = groomHeap();
+      let ropChain = buildROP();
 
-      // Sobrescribir direcciones con valores controlados
-      write64(ropChain[0], 0x100000000); // Dirección donde hacer la escritura
-      let leaked = read64(ropChain[0]); // Leer la dirección que fue modificada
+      write64(ropChain[0], 0x100000000); // Sobrescribir memoria
+      let leaked = read64(ropChain[0]); 
 
-      // Comprobar si el PoC tuvo éxito
       if (leaked !== 0) {
-        document.body.innerHTML = `<h1 style="color:red;">🚨 ROP Chain activada!</h1>`;
+        document.body.innerHTML = "<h1 style='color:red;'>🚨 ROP Chain activada!</h1>";
         console.log(`Valor de la dirección: ${hex(leaked)}`);
-        
-        // Ahora ejecutamos la syscall
-        executeSyscall(); // Llamamos a la función que ejecuta la syscall
+        executeSyscall();
       } else {
-        document.body.innerHTML = `<h1 style="color:green;">Exploit no exitoso</h1>`;
+        document.body.innerHTML = "<h1 style='color:green;'>Exploit no exitoso</h1>";
       }
     }
 
-    // Fase 4: Ejecutar una syscall (ejemplo: sys_getpid)
     function executeSyscall() {
-      // Dirección de la syscall sys_getpid (esto depende de los offsets reales de PS5)
-      let syscallAddr = 0x...;  // Debes poner la dirección real de sys_getpid aquí
+      let syscallAddr = 0x...;  // Dirección de la syscall real
       let ropChain = buildROP();
-
-      // Sobrescribir la dirección de la syscall en la ROP chain
       write64(ropChain[0], syscallAddr);
-      
-      // Intentamos ejecutar la syscall y leer el resultado
       let result = read64(syscallAddr);
       console.log(`Resultado de la syscall: ${result}`);
       document.body.innerHTML = `<h1>Resultado de la syscall: ${result}</h1>`;
