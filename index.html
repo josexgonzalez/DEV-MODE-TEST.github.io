@@ -1,89 +1,29 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Exploit PS5 - Heap Grooming + ROP + Syscall</title>
-  <script>
-    // Funciones auxiliares para manipulación de objetos en el heap
-    function hex(n) {
-      return n.toString(16).padStart(16, "0");
-    }
-
-    function addrof(obj) {
-      return obj.__proto__ ? obj.__proto__ : null;
-    }
-
-    function fakeobj(addr) {
-      const fake = {};
-      Object.defineProperty(fake, "__proto__", {
-        get: () => addr
-      });
-      return fake;
-    }
-
-    function read64(addr) {
-      let ab = new ArrayBuffer(8);
-      let dv = new DataView(ab);
-      dv.setUint32(0, addr & 0xFFFFFFFF, true);
-      dv.setUint32(4, addr >> 32, true);
-      return dv.getFloat64(0, true);
-    }
-
-    function write64(addr, value) {
-      let ab = new ArrayBuffer(8);
-      let dv = new DataView(ab);
-      dv.setFloat64(0, value, true);
-      let target = fakeobj(addr);
-      target[0] = ab[0];
-    }
-
-    function groomHeap() {
-      let heapSpray = [];
-      for (let i = 0; i < 1000; i++) {
-        let arr = new Uint32Array(256); 
-        heapSpray.push(arr);
-      }
-      document.body.innerHTML = "<h1>Heap Grooming completado</h1>";
-      return heapSpray;
-    }
-
-    function buildROP() {
-      let rop = [];
-      rop.push(0xB6130);  // Gadget de ejemplo
-      rop.push(0xAF920);  // Dirección para llamar a syscall
-      rop.push(0x70EB0);  // Otro gadget
-      console.log("ROP Chain: ", rop.map(hex));
-      return rop;
-    }
-
-    function exploit() {
-      let spray = groomHeap();
-      let ropChain = buildROP();
-
-      write64(ropChain[0], 0x100000000); // Sobrescribir memoria
-      let leaked = read64(ropChain[0]); 
-
-      if (leaked !== 0) {
-        document.body.innerHTML = "<h1 style='color:red;'>🚨 ROP Chain activada!</h1>";
-        console.log(`Valor de la dirección: ${hex(leaked)}`);
-        executeSyscall();
-      } else {
-        document.body.innerHTML = "<h1 style='color:green;'>Exploit no exitoso</h1>";
-      }
-    }
-
-    function executeSyscall() {
-      let syscallAddr = 0x...;  // Dirección de la syscall real
-      let ropChain = buildROP();
-      write64(ropChain[0], syscallAddr);
-      let result = read64(syscallAddr);
-      console.log(`Resultado de la syscall: ${result}`);
-      document.body.innerHTML = `<h1>Resultado de la syscall: ${result}</h1>`;
-    }
-
-    window.onload = exploit;
-  </script>
+  <title>PS5 WebKit PoC - SetMockWebAuthenticationConfiguration</title>
 </head>
 <body>
-  <h1>Ejecutando Exploit de Heap Grooming + ROP + Syscall en PS5 FW 10.20...</h1>
+  <h1>PS5 PoC - API Check</h1>
+  <pre id="result">Checking...</pre>
+
+  <script>
+    function checkVulnerability() {
+      let result = document.getElementById('result');
+      try {
+        // Intento de acceso a la API posiblemente restringida
+        if (typeof internals !== "undefined" &&
+            typeof internals.setMockWebAuthenticationConfiguration === "function") {
+          result.textContent = "✅ Vulnerable: SetMockWebAuthenticationConfiguration está disponible.";
+        } else {
+          result.textContent = "❌ No vulnerable: API no disponible o ha sido restringida.";
+        }
+      } catch (e) {
+        result.textContent = "❌ Error al intentar acceder a la API: " + e;
+      }
+    }
+
+    checkVulnerability();
+  </script>
 </body>
 </html>
