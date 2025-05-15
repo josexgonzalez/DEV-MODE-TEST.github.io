@@ -1,84 +1,97 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>PS5 WebKit Bomb</title>
+  <title>PS5 WebKit Max Stress</title>
   <style>
     body {
       background: black;
       color: lime;
       font-family: monospace;
       overflow: hidden;
+      margin: 0;
+      padding: 0;
     }
     .boom {
-      animation: scaleup 0.05s infinite alternate;
+      display: inline-block;
+      margin: 1px;
+      animation: scaleup 0.1s infinite alternate;
       will-change: transform;
+      color: #0f0;
     }
     @keyframes scaleup {
       0% { transform: scale(1); }
-      100% { transform: scale(5); }
+      100% { transform: scale(3); }
     }
   </style>
 </head>
 <body>
-  <pre id="log">[+] PS5 WebKit Crash Bomb Loaded...</pre>
+  <pre id="log">[+] PS5 WebKit Max Stress Loaded...</pre>
 
   <script>
-    const log = msg => document.getElementById("log").textContent += "\n" + msg;
+    const log = msg => {
+      const el = document.getElementById("log");
+      el.textContent += "\n" + msg;
+      if (el.textContent.length > 10000) el.textContent = el.textContent.slice(-8000);
+    };
 
-    // 1. Heap spray con strings
+    // String gigante para heap spray
+    const bigStr = "💥".repeat(1000);
+
+    // Arreglo para heap spray
     const spray = [];
-    try {
-      for (let i = 0; i < 200000; i++) {
-        spray.push("💥".repeat(1000));
-        if (i % 1000 === 0) log(`[+] Heap spray ${i}`);
+
+    // Crear nodos con múltiples niveles de Shadow DOM anidados
+    function createNestedShadow(host, depth) {
+      if (depth === 0) return;
+      const shadow = host.attachShadow({ mode: "open" });
+      const wrapper = document.createElement("div");
+      wrapper.style.display = "contents";
+      for (let i = 0; i < 5; i++) {
+        const span = document.createElement("span");
+        span.textContent = `🔥Level${depth}-${i} ` + bigStr;
+        wrapper.appendChild(span);
       }
-    } catch (e) {
-      log("[!] Heap spray error: " + e);
+      shadow.appendChild(wrapper);
+      createNestedShadow(wrapper, depth - 1);
     }
 
-    // 2. DOM mass spam + Shadow DOM abuse
-    function domFlood() {
-      for (let i = 0; i < 100; i++) {
-        const host = document.createElement("div");
-        host.className = "boom";
-        host.style.color = "#0f0";
-        host.textContent = "💣".repeat(100);
-        document.body.appendChild(host);
+    let frame = 0;
+    function stressLoop() {
+      try {
+        // Heap spray con strings muy grandes
+        for (let i = 0; i < 1000; i++) {
+          spray.push(bigStr + frame + i);
+        }
 
-        const shadow = host.attachShadow({ mode: "open" });
-        const inner = document.createElement("span");
-        inner.textContent = "🧨".repeat(50);
-        shadow.appendChild(inner);
+        // Crear muchos hosts con Shadow DOM anidados
+        for (let i = 0; i < 50; i++) {
+          const host = document.createElement("div");
+          host.className = "boom";
+          host.textContent = "💣" + frame + "_" + i;
+          document.body.appendChild(host);
+          createNestedShadow(host, 8); // 8 niveles anidados
+        }
+
+        // Destruir aleatoriamente nodos antiguos para forzar GC y memoria fragmentada
+        if (document.body.children.length > 3000) {
+          for (let i = 0; i < 500; i++) {
+            const child = document.body.children[Math.floor(Math.random() * document.body.children.length)];
+            if (child) child.remove();
+          }
+          log(`[+] Cleaned nodes at frame ${frame}`);
+        }
+
+        frame++;
+        if (frame % 10 === 0) log(`[+] Frame ${frame} running...`);
+      } catch (e) {
+        log(`[!] Exception: ${e.message}`);
       }
-      requestAnimationFrame(domFlood);
+      requestAnimationFrame(stressLoop);
     }
 
-    // 3. Canvas stress (solo si soportado)
-    for (let i = 0; i < 3; i++) {
-      const canvas = document.createElement("canvas");
-      canvas.width = canvas.height = 4096;
-      const ctx = canvas.getContext("2d");
-      document.body.appendChild(canvas);
-      setInterval(() => {
-        ctx.fillStyle = "#" + Math.floor(Math.random() * 0xffffff).toString(16);
-        ctx.fillRect(Math.random()*4096, Math.random()*4096, 1024, 1024);
-      }, 0);
-    }
-
-    // 4. Mutation Observer para trigger loops
-    const obs = new MutationObserver(() => {
-      if (Math.random() < 0.5) {
-        const n = document.createElement("div");
-        n.textContent = "🔁" + "X".repeat(5000);
-        document.body.appendChild(n);
-      }
-    });
-    obs.observe(document.body, { childList: true, subtree: true });
-
-    // Ejecutar bomba
     setTimeout(() => {
-      log("[+] Starting DOM flood...");
-      domFlood();
+      log("[+] Starting stress loop...");
+      stressLoop();
     }, 100);
   </script>
 </body>
