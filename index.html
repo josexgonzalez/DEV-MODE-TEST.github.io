@@ -1,90 +1,95 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>WebKit Fuzzer with Shadow DOM</title>
+  <title>Multi-Iframe WebKit Fuzzer</title>
   <style>
     body {
       background: black;
-      color: #00ff00;
+      color: #0f0;
       font-family: monospace;
     }
     #log {
       white-space: pre;
     }
+    iframe {
+      width: 0;
+      height: 0;
+      border: none;
+    }
   </style>
 </head>
 <body>
-  <div id="log">[+] Starting Shadow DOM fuzzer...</div>
+  <div id="log">[+] Starting multi-iframe fuzzer...</div>
 
   <script>
-    const log = (msg) => {
+    const log = msg => {
       const el = document.getElementById("log");
       el.textContent += msg + "\n";
     };
 
-    let frame = 0;
-    const maxNodes = 500;
+    const iframeCode = `
+      <!DOCTYPE html>
+      <html>
+      <body style="background: black; color: #0f0; font-family: monospace;">
+        <script>
+          let frame = 0;
 
-    function createShadowNode(id) {
-      let host = document.createElement("div");
-      host.id = "host_" + id;
-      document.body.appendChild(host);
+          function createShadowNode(id) {
+            const host = document.createElement("div");
+            host.id = "host_" + id;
+            document.body.appendChild(host);
 
-      let shadow = host.attachShadow({ mode: "open" });
+            const shadow = host.attachShadow({ mode: "open" });
 
-      let wrapper = document.createElement("div");
-      wrapper.style.display = "contents";
+            const wrapper = document.createElement("div");
+            wrapper.style.display = "contents";
 
-      for (let i = 0; i < 10; i++) {
-        let span = document.createElement("span");
-        span.textContent = `SHADOW${id}-${i}`;
-        wrapper.appendChild(span);
-      }
+            for (let i = 0; i < 10; i++) {
+              const span = document.createElement("span");
+              span.textContent = "FZ" + id + "-" + i;
+              wrapper.appendChild(span);
+            }
 
-      shadow.appendChild(wrapper);
+            shadow.appendChild(wrapper);
+            getComputedStyle(wrapper).color;
 
-      // Force layout
-      getComputedStyle(wrapper).color;
+            if (Math.random() < 0.3) wrapper.innerHTML = "";
+            if (Math.random() < 0.2) host.remove();
+            if (Math.random() < 0.1) document.body.innerHTML = "";
 
-      // Mutate
-      if (Math.random() < 0.3) {
-        wrapper.innerHTML = ""; // sudden destruction
-      }
+            if (typeof gc === "function") gc();
+          }
 
-      if (Math.random() < 0.2) {
-        host.remove(); // shadow host removal
-      }
+          function fuzzLoop() {
+            for (let i = 0; i < 20; i++) {
+              createShadowNode(frame + "_" + i);
+            }
+            frame++;
+            requestAnimationFrame(fuzzLoop);
+          }
 
-      if (Math.random() < 0.1) {
-        document.body.innerHTML = "<div id='log'>[+] DOM wiped</div>";
-      }
+          new MutationObserver(() => {
+            if (Math.random() < 0.3)
+              document.body.innerHTML = "";
+          }).observe(document.body, { childList: true, subtree: true });
+
+          setTimeout(() => requestAnimationFrame(fuzzLoop), 200);
+        </script>
+      </body>
+      </html>
+    `;
+
+    const NUM_IFRAMES = 6;
+
+    for (let i = 0; i < NUM_IFRAMES; i++) {
+      const iframe = document.createElement("iframe");
+      iframe.setAttribute("sandbox", "allow-scripts");
+      document.body.appendChild(iframe);
+      iframe.contentDocument.open();
+      iframe.contentDocument.write(iframeCode);
+      iframe.contentDocument.close();
+      log("[+] Iframe " + i + " injected");
     }
-
-    function fuzzLoop() {
-      if (frame % 10 === 0) log(`[+] Frame ${frame}`);
-
-      for (let i = 0; i < 20; i++) {
-        createShadowNode(frame + "_" + i);
-      }
-
-      if (window.gc) window.gc();
-
-      frame++;
-      requestAnimationFrame(fuzzLoop);
-    }
-
-    const observer = new MutationObserver(() => {
-      if (Math.random() < 0.3) {
-        document.body.innerHTML = "<div id='log'>[+] Mutated by observer</div>";
-      }
-    });
-
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    // Start fuzzing after 1s delay
-    setTimeout(() => {
-      requestAnimationFrame(fuzzLoop);
-    }, 1000);
   </script>
 </body>
 </html>
