@@ -25,14 +25,8 @@
     const log = msg => {
       const el = document.getElementById("log");
       el.textContent += msg + "\n";
-    };
 
-    const iframeCode = `
-      <!DOCTYPE html>
-      <html>
-      <body style="background: black; color: #0f0; font-family: monospace;">
-        <script>
-          let frame = 0;
+
 
           function createShadowNode(id) {
             const host = document.createElement("div");
