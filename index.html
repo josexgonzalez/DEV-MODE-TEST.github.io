@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>WebKit PS5 Fuzzer - display: contents</title>
+  <title>WebKit Fuzzer with Shadow DOM</title>
   <style>
     body {
-      background: #000;
-      color: #0f0;
+      background: black;
+      color: #00ff00;
       font-family: monospace;
     }
     #log {
@@ -14,82 +14,77 @@
   </style>
 </head>
 <body>
-  <div id="log">[+] Starting fuzzer...\n</div>
+  <div id="log">[+] Starting Shadow DOM fuzzer...</div>
 
   <script>
     const log = (msg) => {
-      document.getElementById('log').textContent += msg + '\n';
+      const el = document.getElementById("log");
+      el.textContent += msg + "\n";
     };
 
-    let runCount = 0;
-    let keepFuzzing = true;
+    let frame = 0;
+    const maxNodes = 500;
 
-    function createRandomNode() {
-      let d = document.createElement('div');
-      d.style.display = 'contents';
-      for (let i = 0; i < Math.random() * 10; i++) {
-        let s = document.createElement('span');
-        s.textContent = 'FUZZ' + Math.random();
-        d.appendChild(s);
-      }
-      return d;
-    }
+    function createShadowNode(id) {
+      let host = document.createElement("div");
+      host.id = "host_" + id;
+      document.body.appendChild(host);
 
-    function fuzzCycle() {
-      if (!keepFuzzing) return;
+      let shadow = host.attachShadow({ mode: "open" });
 
-      try {
-        let container = document.createElement('div');
-        container.id = 'container_' + runCount;
-        document.body.appendChild(container);
+      let wrapper = document.createElement("div");
+      wrapper.style.display = "contents";
 
-        // Spray nodes
-        for (let i = 0; i < 500; i++) {
-          let node = createRandomNode();
-          container.appendChild(node);
-        }
-
-        // Trigger layout
-        [...container.querySelectorAll('span')].forEach(el => {
-          getComputedStyle(el).color;
-        });
-
-        // Randomize removal
-        if (runCount % 2 === 0) {
-          container.innerHTML = '';
-        } else {
-          container.remove();
-        }
-
-        // Occasionally clear entire DOM
-        if (runCount % 5 === 0) {
-          document.body.innerHTML = '<div id="log">[+] Reset DOM</div>';
-        }
-
-        // Force GC if available
-        if (window.gc) window.gc();
-
-        log(`[+] Fuzz cycle ${runCount} complete`);
-
-        runCount++;
-      } catch (e) {
-        log('[!] Exception: ' + e.message);
+      for (let i = 0; i < 10; i++) {
+        let span = document.createElement("span");
+        span.textContent = `SHADOW${id}-${i}`;
+        wrapper.appendChild(span);
       }
 
-      setTimeout(fuzzCycle, 50);
+      shadow.appendChild(wrapper);
+
+      // Force layout
+      getComputedStyle(wrapper).color;
+
+      // Mutate
+      if (Math.random() < 0.3) {
+        wrapper.innerHTML = ""; // sudden destruction
+      }
+
+      if (Math.random() < 0.2) {
+        host.remove(); // shadow host removal
+      }
+
+      if (Math.random() < 0.1) {
+        document.body.innerHTML = "<div id='log'>[+] DOM wiped</div>";
+      }
     }
 
-    // Optional: DOM mutation observer to add race conditions
+    function fuzzLoop() {
+      if (frame % 10 === 0) log(`[+] Frame ${frame}`);
+
+      for (let i = 0; i < 20; i++) {
+        createShadowNode(frame + "_" + i);
+      }
+
+      if (window.gc) window.gc();
+
+      frame++;
+      requestAnimationFrame(fuzzLoop);
+    }
+
     const observer = new MutationObserver(() => {
-      if (Math.random() < 0.5) {
-        document.body.innerHTML = '<div id="log">[+] Mutation Reset</div>';
+      if (Math.random() < 0.3) {
+        document.body.innerHTML = "<div id='log'>[+] Mutated by observer</div>";
       }
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
 
-    // Start
-    setTimeout(fuzzCycle, 500);
+    // Start fuzzing after 1s delay
+    setTimeout(() => {
+      requestAnimationFrame(fuzzLoop);
+    }, 1000);
   </script>
 </body>
 </html>
