@@ -20,7 +20,7 @@
       width: 0;
       height: 0;
       border: none;
-      display: none; /* oculta los iframes */
+      display: none;
     }
   </style>
 </head>
@@ -34,14 +34,17 @@
       el.scrollTop = el.scrollHeight;
     };
 
-    const NUM_IFRAMES = 20;
-    let iframeResponses = new Array(NUM_IFRAMES).fill(true);
+    const NUM_IFRAMES = 6; // Empieza con 6, luego puedes aumentar
 
     const iframeCode = `
       <!DOCTYPE html>
       <html>
       <body style="background: black; color: #0f0; font-family: monospace;">
         <script>
+          window.onerror = function(message, source, lineno, colno, error) {
+            parent.postMessage({ type: 'iframe-error', message, source, lineno, colno, error: error ? error.toString() : null }, "*");
+          };
+
           let frame = 0;
 
           function createShadowNode(id) {
@@ -54,7 +57,7 @@
             const wrapper = document.createElement("div");
             wrapper.style.display = "contents";
 
-            for (let i = 0; i < 20; i++) {  // Más nodos (20 spans)
+            for (let i = 0; i < 20; i++) {
               const span = document.createElement("span");
               span.textContent = "FZ" + id + "-" + i;
               wrapper.appendChild(span);
@@ -71,7 +74,7 @@
           }
 
           function fuzzLoop() {
-            for (let i = 0; i < 50; i++) { // Más nodos por ciclo (50)
+            for (let i = 0; i < 50; i++) {
               createShadowNode(frame + "_" + i);
             }
             frame++;
@@ -94,9 +97,11 @@
       </html>
     `;
 
+    let iframeResponses = new Array(NUM_IFRAMES).fill(false);
+
     function createIframe(i) {
       const iframe = document.createElement("iframe");
-      iframe.setAttribute("sandbox", "allow-scripts");
+      iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
       document.body.appendChild(iframe);
       iframe.contentDocument.open();
       iframe.contentDocument.write(iframeCode);
@@ -110,17 +115,22 @@
       iframes.push(createIframe(i));
     }
 
-    // Escuchar mensajes de los iframes (ping)
+    // Escuchar mensajes de los iframes (ping y errores)
     window.addEventListener("message", e => {
-      if (e.data && e.data.type === "ping") {
-        // marcar que el iframe respondió
-        iframeResponses.fill(true);
+      if (!e.data) return;
+
+      if (e.data.type === "ping") {
+        // marcar que algún iframe respondió (simplificado)
+        for (let i = 0; i < iframeResponses.length; i++) {
+          iframeResponses[i] = true;
+        }
+      } else if (e.data.type === "iframe-error") {
+        log(`[!] Iframe error: ${e.data.message} at ${e.data.source}:${e.data.lineno}:${e.data.colno}`);
       }
     });
 
     // Monitor simple para detectar cuelgues
     setInterval(() => {
-      // si algún iframe no responde, log
       for(let i = 0; i < iframeResponses.length; i++) {
         if (!iframeResponses[i]) {
           log(`[!] No response from iframe ${i}, possible freeze/crash`);
@@ -128,6 +138,7 @@
         iframeResponses[i] = false; // reset para la siguiente ronda
       }
     }, 3000);
+
   </script>
 </body>
 </html>
