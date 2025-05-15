@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Multi-Iframe WebKit Stress Test</title>
+  <title>Multi-Iframe Stress Test</title>
   <style>
     body {
       background: black;
@@ -9,7 +9,7 @@
       font-family: monospace;
     }
     #log {
-      white-space: pre;
+      white-space: pre-wrap;
       max-height: 300px;
       overflow-y: auto;
       border: 1px solid #0f0;
@@ -17,9 +17,6 @@
       margin-bottom: 20px;
     }
     iframe {
-      width: 0;
-      height: 0;
-      border: none;
       display: none;
     }
   </style>
@@ -34,111 +31,71 @@
       el.scrollTop = el.scrollHeight;
     };
 
-    const NUM_IFRAMES = 6; // Empieza con 6, luego puedes aumentar
-
     const iframeCode = `
-      <!DOCTYPE html>
-      <html>
-      <body style="background: black; color: #0f0; font-family: monospace;">
-        <script>
-          window.onerror = function(message, source, lineno, colno, error) {
-            parent.postMessage({ type: 'iframe-error', message, source, lineno, colno, error: error ? error.toString() : null }, "*");
-          };
+<!DOCTYPE html>
+<html>
+  <body style='background:black; color:#0f0; font-family:monospace;'>
+    <script>
+      let frame = 0;
+      function createShadowNode(id) {
+        const host = document.createElement("div");
+        host.id = "host_" + id;
+        document.body.appendChild(host);
 
-          let frame = 0;
+        const shadow = host.attachShadow({ mode: "open" });
+        const wrapper = document.createElement("div");
+        wrapper.style.display = "contents";
 
-          function createShadowNode(id) {
-            const host = document.createElement("div");
-            host.id = "host_" + id;
-            document.body.appendChild(host);
+        for (let i = 0; i < 10; i++) {
+          const span = document.createElement("span");
+          span.textContent = "FZ" + id + "-" + i;
+          wrapper.appendChild(span);
+        }
 
-            const shadow = host.attachShadow({ mode: "open" });
+        shadow.appendChild(wrapper);
+        getComputedStyle(wrapper).color;
 
-            const wrapper = document.createElement("div");
-            wrapper.style.display = "contents";
+        if (Math.random() < 0.3) wrapper.innerHTML = "";
+        if (Math.random() < 0.2) host.remove();
+        if (Math.random() < 0.1) document.body.innerHTML = "";
 
-            for (let i = 0; i < 20; i++) {
-              const span = document.createElement("span");
-              span.textContent = "FZ" + id + "-" + i;
-              wrapper.appendChild(span);
-            }
+        if (typeof gc === "function") gc();
+      }
 
-            shadow.appendChild(wrapper);
-            getComputedStyle(wrapper).color;
+      function fuzzLoop() {
+        for (let i = 0; i < 20; i++) {
+          createShadowNode(frame + "_" + i);
+        }
+        frame++;
+        requestAnimationFrame(fuzzLoop);
+      }
 
-            if (Math.random() < 0.5) wrapper.innerHTML = "";
-            if (Math.random() < 0.3) host.remove();
-            if (Math.random() < 0.1) document.body.innerHTML = "";
+      new MutationObserver(() => {
+        if (Math.random() < 0.3)
+          document.body.innerHTML = "";
+      }).observe(document.body, { childList: true, subtree: true });
 
-            if (typeof gc === "function") gc();
-          }
+      setTimeout(() => requestAnimationFrame(fuzzLoop), 200);
+      parent.postMessage("iframe-ready", "*");
+    <\/script>
+  </body>
+</html>
+    `.trim();
 
-          function fuzzLoop() {
-            for (let i = 0; i < 50; i++) {
-              createShadowNode(frame + "_" + i);
-            }
-            frame++;
-            requestAnimationFrame(fuzzLoop);
-          }
-
-          new MutationObserver(() => {
-            if (Math.random() < 0.4)
-              document.body.innerHTML = "";
-          }).observe(document.body, { childList: true, subtree: true });
-
-          // Enviar pings a la ventana padre para monitorizar
-          setInterval(() => {
-            parent.postMessage({ type: "ping" }, "*");
-          }, 1000);
-
-          setTimeout(() => requestAnimationFrame(fuzzLoop), 100);
-        <\/script>
-      </body>
-      </html>
-    `;
-
-    let iframeResponses = new Array(NUM_IFRAMES).fill(false);
-
-    function createIframe(i) {
+    const NUM_IFRAMES = 6;
+    for (let i = 0; i < NUM_IFRAMES; i++) {
       const iframe = document.createElement("iframe");
       iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
+      iframe.srcdoc = iframeCode;
       document.body.appendChild(iframe);
-      iframe.contentDocument.open();
-      iframe.contentDocument.write(iframeCode);
-      iframe.contentDocument.close();
       log("[+] Iframe " + i + " injected");
-      return iframe;
     }
 
-    const iframes = [];
-    for (let i = 0; i < NUM_IFRAMES; i++) {
-      iframes.push(createIframe(i));
-    }
-
-    // Escuchar mensajes de los iframes (ping y errores)
     window.addEventListener("message", e => {
-      if (!e.data) return;
-
-      if (e.data.type === "ping") {
-        // marcar que algún iframe respondió (simplificado)
-        for (let i = 0; i < iframeResponses.length; i++) {
-          iframeResponses[i] = true;
-        }
-      } else if (e.data.type === "iframe-error") {
-        log(`[!] Iframe error: ${e.data.message} at ${e.data.source}:${e.data.lineno}:${e.data.colno}`);
+      if (e.data === "iframe-ready") {
+        log("[+] Iframe responded and is running");
       }
     });
-
-    // Monitor simple para detectar cuelgues
-    setInterval(() => {
-      for(let i = 0; i < iframeResponses.length; i++) {
-        if (!iframeResponses[i]) {
-          log(`[!] No response from iframe ${i}, possible freeze/crash`);
-        }
-        iframeResponses[i] = false; // reset para la siguiente ronda
-      }
-    }, 3000);
-
   </script>
 </body>
 </html>
