@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Multi-Iframe WebKit Fuzzer</title>
+  <title>Multi-Iframe WebKit Stress Test</title>
   <style>
     body {
       background: black;
@@ -10,85 +10,124 @@
     }
     #log {
       white-space: pre;
-      margin-bottom: 1em;
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #0f0;
+      padding: 10px;
+      margin-bottom: 20px;
     }
     iframe {
       width: 0;
       height: 0;
       border: none;
+      display: none; /* oculta los iframes */
     }
   </style>
 </head>
 <body>
-  <div id="log">[+] Starting multi-iframe fuzzer...</div>
+  <div id="log">[+] Starting multi-iframe stress test...</div>
 
   <script>
     const log = msg => {
       const el = document.getElementById("log");
       el.textContent += msg + "\n";
+      el.scrollTop = el.scrollHeight;
     };
+
+    const NUM_IFRAMES = 20;
+    let iframeResponses = new Array(NUM_IFRAMES).fill(true);
 
     const iframeCode = `
       <!DOCTYPE html>
       <html>
-        <body style="background: black; color: #0f0; font-family: monospace;">
-          <script>
-            let frame = 0;
+      <body style="background: black; color: #0f0; font-family: monospace;">
+        <script>
+          let frame = 0;
 
-            function createShadowNode(id) {
-              const host = document.createElement("div");
-              host.id = "host_" + id;
-              document.body.appendChild(host);
+          function createShadowNode(id) {
+            const host = document.createElement("div");
+            host.id = "host_" + id;
+            document.body.appendChild(host);
 
-              const shadow = host.attachShadow({ mode: "open" });
+            const shadow = host.attachShadow({ mode: "open" });
 
-              const wrapper = document.createElement("div");
-              wrapper.style.display = "contents";
+            const wrapper = document.createElement("div");
+            wrapper.style.display = "contents";
 
-              for (let i = 0; i < 10; i++) {
-                const span = document.createElement("span");
-                span.textContent = "FZ" + id + "-" + i;
-                wrapper.appendChild(span);
-              }
-
-              shadow.appendChild(wrapper);
-              getComputedStyle(wrapper).color;
-
-              if (Math.random() < 0.3) wrapper.innerHTML = "";
-              if (Math.random() < 0.2) host.remove();
-              if (Math.random() < 0.1) document.body.innerHTML = "";
-
-              if (typeof gc === "function") gc();
+            for (let i = 0; i < 20; i++) {  // Más nodos (20 spans)
+              const span = document.createElement("span");
+              span.textContent = "FZ" + id + "-" + i;
+              wrapper.appendChild(span);
             }
 
-            function fuzzLoop() {
-              for (let i = 0; i < 20; i++) {
-                createShadowNode(frame + "_" + i);
-              }
-              frame++;
-              requestAnimationFrame(fuzzLoop);
+            shadow.appendChild(wrapper);
+            getComputedStyle(wrapper).color;
+
+            if (Math.random() < 0.5) wrapper.innerHTML = "";
+            if (Math.random() < 0.3) host.remove();
+            if (Math.random() < 0.1) document.body.innerHTML = "";
+
+            if (typeof gc === "function") gc();
+          }
+
+          function fuzzLoop() {
+            for (let i = 0; i < 50; i++) { // Más nodos por ciclo (50)
+              createShadowNode(frame + "_" + i);
             }
+            frame++;
+            requestAnimationFrame(fuzzLoop);
+          }
 
-            new MutationObserver(() => {
-              if (Math.random() < 0.3)
-                document.body.innerHTML = "";
-            }).observe(document.body, { childList: true, subtree: true });
+          new MutationObserver(() => {
+            if (Math.random() < 0.4)
+              document.body.innerHTML = "";
+          }).observe(document.body, { childList: true, subtree: true });
 
-            setTimeout(() => requestAnimationFrame(fuzzLoop), 200);
-          <\/script>
-        </body>
+          // Enviar pings a la ventana padre para monitorizar
+          setInterval(() => {
+            parent.postMessage({ type: "ping" }, "*");
+          }, 1000);
+
+          setTimeout(() => requestAnimationFrame(fuzzLoop), 100);
+        <\/script>
+      </body>
       </html>
     `;
 
-    const NUM_IFRAMES = 6;
-
-    for (let i = 0; i < NUM_IFRAMES; i++) {
+    function createIframe(i) {
       const iframe = document.createElement("iframe");
-      iframe.sandbox = "allow-scripts";
-      iframe.srcdoc = iframeCode;
+      iframe.setAttribute("sandbox", "allow-scripts");
       document.body.appendChild(iframe);
-      log(`[+] Iframe ${i} injected`);
+      iframe.contentDocument.open();
+      iframe.contentDocument.write(iframeCode);
+      iframe.contentDocument.close();
+      log("[+] Iframe " + i + " injected");
+      return iframe;
     }
+
+    const iframes = [];
+    for (let i = 0; i < NUM_IFRAMES; i++) {
+      iframes.push(createIframe(i));
+    }
+
+    // Escuchar mensajes de los iframes (ping)
+    window.addEventListener("message", e => {
+      if (e.data && e.data.type === "ping") {
+        // marcar que el iframe respondió
+        iframeResponses.fill(true);
+      }
+    });
+
+    // Monitor simple para detectar cuelgues
+    setInterval(() => {
+      // si algún iframe no responde, log
+      for(let i = 0; i < iframeResponses.length; i++) {
+        if (!iframeResponses[i]) {
+          log(`[!] No response from iframe ${i}, possible freeze/crash`);
+        }
+        iframeResponses[i] = false; // reset para la siguiente ronda
+      }
+    }, 3000);
   </script>
 </body>
 </html>
