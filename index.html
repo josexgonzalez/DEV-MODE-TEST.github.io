@@ -10,6 +10,7 @@
     }
     #log {
       white-space: pre;
+      margin-bottom: 1em;
     }
     iframe {
       width: 0;
@@ -25,51 +26,57 @@
     const log = msg => {
       const el = document.getElementById("log");
       el.textContent += msg + "\n";
+    };
 
+    const iframeCode = `
+      <!DOCTYPE html>
+      <html>
+        <body style="background: black; color: #0f0; font-family: monospace;">
+          <script>
+            let frame = 0;
 
+            function createShadowNode(id) {
+              const host = document.createElement("div");
+              host.id = "host_" + id;
+              document.body.appendChild(host);
 
-          function createShadowNode(id) {
-            const host = document.createElement("div");
-            host.id = "host_" + id;
-            document.body.appendChild(host);
+              const shadow = host.attachShadow({ mode: "open" });
 
-            const shadow = host.attachShadow({ mode: "open" });
+              const wrapper = document.createElement("div");
+              wrapper.style.display = "contents";
 
-            const wrapper = document.createElement("div");
-            wrapper.style.display = "contents";
+              for (let i = 0; i < 10; i++) {
+                const span = document.createElement("span");
+                span.textContent = "FZ" + id + "-" + i;
+                wrapper.appendChild(span);
+              }
 
-            for (let i = 0; i < 10; i++) {
-              const span = document.createElement("span");
-              span.textContent = "FZ" + id + "-" + i;
-              wrapper.appendChild(span);
+              shadow.appendChild(wrapper);
+              getComputedStyle(wrapper).color;
+
+              if (Math.random() < 0.3) wrapper.innerHTML = "";
+              if (Math.random() < 0.2) host.remove();
+              if (Math.random() < 0.1) document.body.innerHTML = "";
+
+              if (typeof gc === "function") gc();
             }
 
-            shadow.appendChild(wrapper);
-            getComputedStyle(wrapper).color;
-
-            if (Math.random() < 0.3) wrapper.innerHTML = "";
-            if (Math.random() < 0.2) host.remove();
-            if (Math.random() < 0.1) document.body.innerHTML = "";
-
-            if (typeof gc === "function") gc();
-          }
-
-          function fuzzLoop() {
-            for (let i = 0; i < 20; i++) {
-              createShadowNode(frame + "_" + i);
+            function fuzzLoop() {
+              for (let i = 0; i < 20; i++) {
+                createShadowNode(frame + "_" + i);
+              }
+              frame++;
+              requestAnimationFrame(fuzzLoop);
             }
-            frame++;
-            requestAnimationFrame(fuzzLoop);
-          }
 
-          new MutationObserver(() => {
-            if (Math.random() < 0.3)
-              document.body.innerHTML = "";
-          }).observe(document.body, { childList: true, subtree: true });
+            new MutationObserver(() => {
+              if (Math.random() < 0.3)
+                document.body.innerHTML = "";
+            }).observe(document.body, { childList: true, subtree: true });
 
-          setTimeout(() => requestAnimationFrame(fuzzLoop), 200);
-        </script>
-      </body>
+            setTimeout(() => requestAnimationFrame(fuzzLoop), 200);
+          <\/script>
+        </body>
       </html>
     `;
 
@@ -77,12 +84,10 @@
 
     for (let i = 0; i < NUM_IFRAMES; i++) {
       const iframe = document.createElement("iframe");
-      iframe.setAttribute("sandbox", "allow-scripts");
+      iframe.sandbox = "allow-scripts";
+      iframe.srcdoc = iframeCode;
       document.body.appendChild(iframe);
-      iframe.contentDocument.open();
-      iframe.contentDocument.write(iframeCode);
-      iframe.contentDocument.close();
-      log("[+] Iframe " + i + " injected");
+      log(`[+] Iframe ${i} injected`);
     }
   </script>
 </body>
