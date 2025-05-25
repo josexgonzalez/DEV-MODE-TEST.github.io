@@ -1,70 +1,63 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <meta charset="utf-8">
-  <title>PS5 Exploit Fase 1: Heap Grooming</title>
+  <meta charset="UTF-8" />
+  <title>PS5 Exploit Fase 2: Corrupción OOB</title>
   <style>
-    body {
-      background: #000;
-      color: #0f0;
-      font-family: monospace;
-      padding: 1em;
-    }
+    body { background: black; color: #0f0; font-family: monospace; padding: 1em; }
     #log { white-space: pre-wrap; }
   </style>
 </head>
 <body>
-  <h1>🚧 PS5 Exploit Fase 1: Heap Grooming</h1>
+  <h1>PS5 Exploit Fase 2: Corrupción OOB (Out of Bounds)</h1>
   <div id="log"></div>
 
   <script>
-    const log = (msg) => document.getElementById('log').textContent += msg + "\n";
+    const log = (msg) => document.getElementById("log").textContent += msg + "\n";
 
-    let buf, f64_buf, u32_buf;
-
-    function setupConversionPrimitives() {
-      buf = new ArrayBuffer(8);
-      f64_buf = new Float64Array(buf);
-      u32_buf = new Uint32Array(buf);
-      log("🧠 Conversiones float <-> int listas.");
-    }
+    let buf = new ArrayBuffer(8);
+    let f64 = new Float64Array(buf);
+    let u32 = new Uint32Array(buf);
 
     function f2i(f) {
-      f64_buf[0] = f;
-      return u32_buf[0] + u32_buf[1] * 0x100000000;
+      f64[0] = f;
+      return u32[0] + u32[1] * 0x100000000;
     }
 
     function i2f(i) {
-      u32_buf[0] = i % 0x100000000;
-      u32_buf[1] = i / 0x100000000;
-      return f64_buf[0];
+      u32[0] = i % 0x100000000;
+      u32[1] = i / 0x100000000;
+      return f64[0];
     }
 
-    function hex(i) {
-      return '0x' + i.toString(16);
+    // Grooming básico para tener arrays homogéneos
+    let arr = new Array(10).fill(13.37);
+    log("Array inicial: " + arr.length);
+
+    // Intenta corromper la propiedad length (en navegadores viejos con bug)
+    try {
+      Object.defineProperty(arr, "length", { value: 0x100, writable: true });
+      log("Corrupt length to 0x100");
+    } catch(e) {
+      log("No se pudo corromper length: " + e);
     }
 
-    function groomHeap() {
-      let spray = [];
-      let size = 0x1000;
-      for (let i = 0; i < 0x1000; i++) {
-        spray.push(new Array(size).fill(13.37));
-      }
-      log("🧽 Heap grooming listo con " + spray.length + " bloques.");
+    // Intenta leer fuera de límites
+    try {
+      let oobVal = arr[0x80];
+      log("OOB read arr[0x80]: " + oobVal);
+    } catch(e) {
+      log("No se pudo leer fuera de límites: " + e);
     }
 
-    function setup() {
-      setupConversionPrimitives();
-      groomHeap();
-
-      const victim = [1.1, 1.2, 1.3];
-      const container = { obj: { marker: 0x41414141 }, float: 13.37 };
-      log("📦 Objetos de víctima creados.");
-
-      // Aquí luego podríamos intentar corromper 'victim.length' u otro descriptor JSArray
+    // Intenta escribir fuera de límites
+    try {
+      arr[0x80] = 1337.1337;
+      log("OOB write arr[0x80] = 1337.1337");
+      log("arr[0x80]: " + arr[0x80]);
+    } catch(e) {
+      log("No se pudo escribir fuera de límites: " + e);
     }
-
-    window.onload = setup;
   </script>
 </body>
 </html>
