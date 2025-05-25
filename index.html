@@ -2,21 +2,13 @@
 <html>
 <head>
 <style>
-@keyframes keyframes {}
+@keyframes crash { from {} to {} }
 cite {
-  animation: keyframes 100ms;
-  animation-iteration-count: 1;
-}
-.status {
-  color: white;
-  background: #222;
-  padding: 1em;
-  font-family: sans-serif;
+  animation: crash 1ms infinite;
 }
 </style>
 </head>
 <body onload="main()">
-<div class="status" id="status">Running test...</div>
 
 <object type="image/png">
   <cite></cite>
@@ -27,31 +19,39 @@ cite {
 const object = document.querySelector("object");
 const cite = document.querySelector("cite");
 const dl = document.querySelector("dl");
-const status = document.getElementById("status");
 
 function main() {
-  try {
-    object.addEventListener("DOMSubtreeModified", subtreeModified);
-    object.data = "x";
-    cite.style.animationIterationCount = "infinite";
-    setTimeout(() => {
-      status.textContent = "✅ PASS: No crash detected.";
-    }, 1000);
-  } catch (e) {
-    status.textContent = "❌ FAIL: Exception caught.";
-  }
+  object.addEventListener("DOMSubtreeModified", onModify);
+
+  // Forzar animación infinita sobre <cite>
+  cite.style.animationIterationCount = "infinite";
+
+  // Cambiar el recurso para desencadenar el evento
+  object.data = "x";
+
+  // Iniciar bucle agresivo de reasignación
+  setInterval(() => {
+    try {
+      const anim = cite.getAnimations()[0];
+      if (anim) {
+        anim.effect = new KeyframeEffect(dl, {}, new AnimationEffectTiming());
+      }
+    } catch (e) {}
+  }, 1);
 }
 
-function subtreeModified() {
+function onModify() {
   try {
-    const animation = cite.getAnimations()[0];
     object.width = "1em";
-    object.codeBase; // obsoleto, pero usado como trigger
-    animation.effect = new KeyframeEffect(dl, {});
-  } catch (e) {
-    status.textContent = "❌ FAIL during animation manipulation.";
-  }
+    object.codeBase; // trigger legacy layout access
+    cite.style.animationDuration = Math.random() + "ms";
+  } catch (e) {}
 }
 </script>
+
+<p style="color:white;background:#111;font-family:sans-serif;padding:1em;">
+  Si ves este mensaje y el navegador no se ha colgado, la prueba ha fallado.
+</p>
+
 </body>
 </html>
