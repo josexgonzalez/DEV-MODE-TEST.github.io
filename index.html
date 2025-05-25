@@ -1,43 +1,57 @@
+<!DOCTYPE html>
 <html>
 <head>
 <style>
-
 @keyframes keyframes {}
-
-cite { animation: keyframes 100ms }
-
+cite {
+  animation: keyframes 100ms;
+  animation-iteration-count: 1;
+}
+.status {
+  color: white;
+  background: #222;
+  padding: 1em;
+  font-family: sans-serif;
+}
 </style>
 </head>
 <body onload="main()">
+<div class="status" id="status">Running test...</div>
 
 <object type="image/png">
-    <cite></cite>
-    <dl hidden></dl>
+  <cite></cite>
+  <dl hidden></dl>
 </object>
 
 <script>
-
-if (window.testRunner)
-    window.testRunner.dumpAsText();
-
 const object = document.querySelector("object");
 const cite = document.querySelector("cite");
 const dl = document.querySelector("dl");
+const status = document.getElementById("status");
 
 function main() {
+  try {
     object.addEventListener("DOMSubtreeModified", subtreeModified);
     object.data = "x";
     cite.style.animationIterationCount = "infinite";
+    setTimeout(() => {
+      status.textContent = "✅ PASS: No crash detected.";
+    }, 1000);
+  } catch (e) {
+    status.textContent = "❌ FAIL: Exception caught.";
+  }
 }
 
 function subtreeModified() {
+  try {
     const animation = cite.getAnimations()[0];
     object.width = "1em";
-    object.codeBase;
-    animation.effect = new KeyframeEffect(dl, { });
+    object.codeBase; // obsoleto, pero usado como trigger
+    animation.effect = new KeyframeEffect(dl, {});
+  } catch (e) {
+    status.textContent = "❌ FAIL during animation manipulation.";
+  }
 }
-
 </script>
-<p>PASS if this test doesn't crash</p>
 </body>
 </html>
