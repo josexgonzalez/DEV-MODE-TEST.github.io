@@ -1,4 +1,4 @@
-import { debug_log } from './module/utils.mjs';
+
 
 
 function debug_log(msg) {
@@ -64,7 +64,7 @@ if (container) {
   debug_log("Container element not found.");
 }
 
-
+import { debug_log } from './module/utils.mjs';
 
 const container = document.querySelector(".container");
 const child = document.querySelector(".child");
