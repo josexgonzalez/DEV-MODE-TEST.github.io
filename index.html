@@ -2,47 +2,60 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>🔥 PS5 WebKit Crash Test</title>
+  <title>💀 PS5 WebKit Crash Attempt</title>
   <style>
     body {
-      background: black;
-      color: lime;
+      background: #000;
+      color: #0f0;
       font-family: monospace;
-      padding: 20px;
+      padding: 10px;
     }
   </style>
 </head>
 <body>
-  <h1>Intentando crashear WebKit de PS5</h1>
-  <p>Si ves esto por más de unos segundos, probablemente no ha crasheado aún.</p>
+  <h1>🔥 PS5 WebKit Fuzz & Crash Test</h1>
+  <p>Si esto no crashea el navegador, WebKit está muy bien protegido...</p>
 
-  <video id="myvideo" preload="auto" autoplay loop muted></video>
+  <div id="container"></div>
 
   <script>
-    const video = document.getElementById("myvideo");
+    function generateGarbageBase64(length) {
+      let chars = '';
+      for (let i = 0; i < length; i++) {
+        chars += String.fromCharCode(Math.floor(Math.random() * 256));
+      }
+      return btoa(unescape(encodeURIComponent(chars)));
+    }
 
-    function fuzzPoster() {
-      try {
-        for (let i = 0; i < 10000; i++) {
-          // Genera una cadena malformada pseudo-aleatoria
-          const garbage = "data:image/jpeg;base64," + btoa(unescape(encodeURIComponent(String.fromCharCode(
-            ...Array.from({ length: 500 }, () => Math.floor(Math.random() * 255))
-          ))));
+    function spamVideos() {
+      const container = document.getElementById('container');
 
-          video.poster = garbage;
+      for (let i = 0; i < 50; i++) {
+        const vid = document.createElement('video');
+        vid.setAttribute('autoplay', '');
+        vid.setAttribute('loop', '');
+        vid.setAttribute('muted', '');
+        vid.setAttribute('preload', 'auto');
+        vid.width = 160;
+        vid.height = 120;
+        container.appendChild(vid);
 
-          // También cambiamos dinámicamente src para desestabilizar
-          video.src = garbage;
-          video.load();
-        }
-        document.body.innerHTML += "<p>✅ Fuzzing completado sin excepción.</p>";
-      } catch (e) {
-        document.body.innerHTML += `<p style="color:red;">❌ Error capturado: ${e}</p>`;
+        // Fuzzing loop por cada video
+        setInterval(() => {
+          const garbage = "data:image/jpeg;base64," + generateGarbageBase64(1024);
+          try {
+            vid.poster = garbage;
+            vid.src = garbage;
+            vid.load();
+          } catch (e) {
+            console.error("Error al asignar datos malformados:", e);
+          }
+        }, 50); // Intervalo corto para presión continua
       }
     }
 
     window.onload = () => {
-      setTimeout(fuzzPoster, 200); // Pequeña espera para asegurar carga inicial
+      setTimeout(spamVideos, 200); // Espera mínima para iniciar
     };
   </script>
 </body>
