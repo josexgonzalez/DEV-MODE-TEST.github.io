@@ -1,106 +1,49 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>PS5 4.03 WebKit Exploit</title>
+  <meta charset="utf-8">
+  <title>🔥 PS5 WebKit Crash Test</title>
   <style>
     body {
-      background: #111;
-      color: #0f0;
+      background: black;
+      color: lime;
       font-family: monospace;
-      padding: 1em;
-    }
-    #log {
-      white-space: pre-wrap;
-      background: #222;
-      border: 1px solid #0f0;
-      padding: 1em;
-      max-height: 90vh;
-      overflow-y: auto;
+      padding: 20px;
     }
   </style>
 </head>
 <body>
-  <h1>PS5 4.03 Exploit - CVE-2021-30858</h1>
-  <div id="log">[+] Cargando exploit...</div>
+  <h1>Intentando crashear WebKit de PS5</h1>
+  <p>Si ves esto por más de unos segundos, probablemente no ha crasheado aún.</p>
+
+  <video id="myvideo" preload="auto" autoplay loop muted></video>
 
   <script>
-    const log = msg => document.getElementById("log").textContent += "\n" + msg;
+    const video = document.getElementById("myvideo");
 
-    function hex(i) {
-      return '0x' + i.toString(16);
-    }
-
-    let ab = new ArrayBuffer(0x100);
-    let f64 = new Float64Array(ab);
-    let u32 = new Uint32Array(ab);
-
-    let buf = new ArrayBuffer(0x200);
-    let victim = {mark: 0x41414141};
-    let obj_arr = [victim];
-
-    let container = {
-      cellHeader: 0x00000008, // fake cell
-      butterfly: buf
-    };
-
-    let containerArray = [container];
-
-    let addrof = function(obj) {
-      obj_arr[0] = obj;
-      return ftoi(f64[0]);
-    };
-
-    let fakeobj = function(addr) {
-      f64[0] = itof(addr);
-      return obj_arr[0];
-    };
-
-    function ftoi(val) {
-      f64[0] = val;
-      return u32[0] + u32[1] * 0x100000000;
-    }
-
-    function itof(val) {
-      u32[0] = val % 0x100000000;
-      u32[1] = val / 0x100000000;
-      return f64[0];
-    }
-
-    function exploit() {
+    function fuzzPoster() {
       try {
-        log("[+] Ejecutando exploit...");
-
-        // Simular corrupción del heap
-        let spray = [];
         for (let i = 0; i < 10000; i++) {
-          spray.push(new Uint8Array(0x1000));
+          // Genera una cadena malformada pseudo-aleatoria
+          const garbage = "data:image/jpeg;base64," + btoa(unescape(encodeURIComponent(String.fromCharCode(
+            ...Array.from({ length: 500 }, () => Math.floor(Math.random() * 255))
+          ))));
+
+          video.poster = garbage;
+
+          // También cambiamos dinámicamente src para desestabilizar
+          video.src = garbage;
+          video.load();
         }
-
-        log("[+] Heap spray listo");
-
-        // Primitiva RW falsa (mockup de demostración)
-        let addr = addrof(victim);
-        log("[+] Dirección de victim: " + hex(addr));
-
-        let fake = fakeobj(addr);
-        log("[+] Objeto falso creado: " + fake);
-
-        // Preparar syscall
-        let syscall_num = 20; // getpid
-        log("[+] Intentando syscall(" + syscall_num + ")...");
-
-        // Aquí normalmente se usaría una ROP chain real, por ahora simulamos
-        log("[!] syscall() no implementado en este PoC. Necesita ROP real.");
-
-        log("[+] Exploit finalizado. Puedes extender con ROP ahora.");
-
+        document.body.innerHTML += "<p>✅ Fuzzing completado sin excepción.</p>";
       } catch (e) {
-        log("[!] Error: " + e);
+        document.body.innerHTML += `<p style="color:red;">❌ Error capturado: ${e}</p>`;
       }
     }
 
-    window.onload = exploit;
+    window.onload = () => {
+      setTimeout(fuzzPoster, 200); // Pequeña espera para asegurar carga inicial
+    };
   </script>
 </body>
 </html>
