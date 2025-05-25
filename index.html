@@ -2,61 +2,42 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>💀 PS5 WebKit Crash Attempt</title>
+  <title>🧠 DOM Crash Test</title>
   <style>
     body {
       background: #000;
       color: #0f0;
       font-family: monospace;
-      padding: 10px;
     }
   </style>
 </head>
 <body>
-  <h1>🔥 PS5 WebKit Fuzz & Crash Test</h1>
-  <p>Si esto no crashea el navegador, WebKit está muy bien protegido...</p>
-
-  <div id="container"></div>
+  <h1>🔁 DOM Mutation Flood</h1>
+  <div id="target"></div>
 
   <script>
-    function generateGarbageBase64(length) {
-      let chars = '';
-      for (let i = 0; i < length; i++) {
-        chars += String.fromCharCode(Math.floor(Math.random() * 256));
+    const target = document.getElementById("target");
+
+    const observer = new MutationObserver(() => {
+      // A veces el simple logging puede causar problemas si el buffer es demasiado grande
+      console.log("⚠️ Mutación detectada");
+    });
+
+    observer.observe(target, {
+      childList: true,
+      subtree: true
+    });
+
+    function floodDOM() {
+      for (let i = 0; i < 5000; i++) {
+        const el = document.createElement("div");
+        el.textContent = "N".repeat(1000);
+        target.appendChild(el);
       }
-      return btoa(unescape(encodeURIComponent(chars)));
+      target.innerHTML = ""; // Borra todos los nodos, causando mutaciones masivas
     }
 
-    function spamVideos() {
-      const container = document.getElementById('container');
-
-      for (let i = 0; i < 50; i++) {
-        const vid = document.createElement('video');
-        vid.setAttribute('autoplay', '');
-        vid.setAttribute('loop', '');
-        vid.setAttribute('muted', '');
-        vid.setAttribute('preload', 'auto');
-        vid.width = 160;
-        vid.height = 120;
-        container.appendChild(vid);
-
-        // Fuzzing loop por cada video
-        setInterval(() => {
-          const garbage = "data:image/jpeg;base64," + generateGarbageBase64(1024);
-          try {
-            vid.poster = garbage;
-            vid.src = garbage;
-            vid.load();
-          } catch (e) {
-            console.error("Error al asignar datos malformados:", e);
-          }
-        }, 50); // Intervalo corto para presión continua
-      }
-    }
-
-    window.onload = () => {
-      setTimeout(spamVideos, 200); // Espera mínima para iniciar
-    };
+    setInterval(floodDOM, 10); // Ejecuta sin parar
   </script>
 </body>
 </html>
