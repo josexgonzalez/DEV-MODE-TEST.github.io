@@ -1,53 +1,86 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <title>PS5 MemCorrupt PoC</title>
+  <meta charset="utf-8">
+  <title>💥 PS5 Nuke + OOB test</title>
   <style>
-    body { background:black; color:lime; font-family: monospace; padding:10px; }
-    #log { white-space: pre-wrap; }
+    body {
+      background: black;
+      color: lime;
+      font-family: monospace;
+    }
   </style>
 </head>
 <body>
-  <h1>PS5 MemCorrupt PoC</h1>
+  <h1>💥 PS5 Nuke + OOB test</h1>
+  <p>Ejecutando técnicas agresivas + corrupción Out-Of-Bounds tentativa</p>
   <pre id="log"></pre>
 
-<script>
-  const log = document.getElementById("log");
-  function print(msg) {
-    log.textContent += msg + "\n";
-    console.log(msg);
-  }
-
-  // Crear canvas y contexto
-  const canvas = document.createElement("canvas");
-  canvas.width = 512;
-  canvas.height = 512;
-  document.body.appendChild(canvas);
-  const ctx = canvas.getContext("2d");
-
-  function corruptImageData() {
-    print("[*] Intentando corrupción ImageData...");
-    try {
-      let img = ctx.createImageData(256, 256);
-      // Rellenar con valores inválidos intencionales para overflow
-      for(let i=0; i<img.data.length; i++) {
-        if(i % 4 === 3) img.data[i] = 300;  // alpha inválido (>255)
-        else img.data[i] = 500;             // valores inválidos
-      }
-      ctx.putImageData(img, 0, 0);
-      print("[+] putImageData ejecutado.");
-      // Leer datos para detectar corrupción
-      let check = img.data[100];
-      print("[*] Valor leído img.data[100]: " + check);
-    } catch(e) {
-      print("[!] Error corrupción ImageData: " + e);
+  <script>
+    const log = document.getElementById("log");
+    function print(msg) {
+      console.log(msg);
+      log.textContent += msg + "\n";
     }
-  }
 
-  window.onload = () => {
-    corruptImageData();
-  }
-</script>
+    // Convierte float64 <-> int64 (64bit)
+    const buf = new ArrayBuffer(8);
+    const f64 = new Float64Array(buf);
+    const u32 = new Uint32Array(buf);
+
+    function f2i(f) {
+      f64[0] = f;
+      return u32[0] + u32[1] * 0x100000000;
+    }
+
+    function i2f(i) {
+      u32[0] = i % 0x100000000;
+      u32[1] = i / 0x100000000;
+      return f64[0];
+    }
+
+    // 1. Saturar la memoria para preparar heap
+    function memoryFlood() {
+      const big = [];
+      try {
+        while (true) {
+          big.push(new Uint8Array(5_000_000));
+          if (big.length % 10 === 0) print(`💣 Memoria saturada: ${big.length * 5}MB aprox`);
+        }
+      } catch (e) {
+        print("💥 Memoria saturada capturada: " + e);
+      }
+      return big;
+    }
+
+    // 2. Corrupción OOB tentativa en array
+    function corruptArrayOOB() {
+      print("[*] Intentando corrupción OOB");
+      let arr = [1.1, 2.2, 3.3];
+      try {
+        Object.defineProperty(arr, 'length', { value: 0x100 });
+        print("[+] Corrupt length a 0x100");
+      } catch (e) {
+        print("[-] No se pudo corromper length: " + e);
+      }
+
+      try {
+        let leak = arr[0x80];
+        print("[+] Leak OOB en arr[0x80]: " + leak);
+      } catch (e) {
+        print("[-] No se pudo leer fuera de límites: " + e);
+      }
+    }
+
+    // Base agresiva (simplificada, solo memoria)
+    function aggressiveBase() {
+      memoryFlood();
+      corruptArrayOOB();
+    }
+
+    window.onload = () => {
+      setTimeout(aggressiveBase, 10);
+    };
+  </script>
 </body>
 </html>
