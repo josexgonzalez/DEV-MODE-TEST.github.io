@@ -29,8 +29,8 @@
       const big = [];
       try {
         for (let i = 0; i < 20; i++) {
-          big.push(new Uint8Array(1000_000_000)); // 200 MB total
-          if (i % 5 === 0) print(`  + ${i * 1000}MB asignados`);
+          big.push(new Uint8Array(100_000_000)); // 200 MB total
+          if (i % 5 === 0) print(`  + ${i * 100}MB asignados`);
         }
         print("[+] Memoria saturada parcialmente.");
       } catch (e) {
