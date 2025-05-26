@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>💥 PS5 Exploit PoC: Grooming + OOB</title>
+  <title>💥 PS5 Exploit PoC: Heap + TypedArray</title>
   <style>
     body {
       background: black;
@@ -14,7 +14,7 @@
   </style>
 </head>
 <body>
-  <h1>💥 PS5 Exploit PoC: Grooming + OOB</h1>
+  <h1>💥 PS5 Exploit PoC: Heap + TypedArray</h1>
   <pre id="log">[LOG]\n</pre>
 
   <script>
@@ -24,87 +24,82 @@
       logElem.textContent += msg + "\n";
     }
 
-    function memoryFloodLite() {
-      print("[1] Saturando parcialmente la memoria...");
-      const big = [];
-      try {
-        for (let i = 0; i < 20; i++) {
-          big.push(new Uint8Array(100_000_000)); // 200 MB total
-          if (i % 5 === 0) print(`  + ${i * 100}MB asignados`);
-        }
-        print("[+] Memoria saturada parcialmente.");
-      } catch (e) {
-        print("💥 Error al saturar memoria: " + e);
-      }
-      return big;
+    // Conversión float64 <-> int64 usando ArrayBuffer
+    const buf = new ArrayBuffer(8);
+    const f64 = new Float64Array(buf);
+    const u32 = new Uint32Array(buf);
+
+    function f2i(f) {
+      f64[0] = f;
+      return u32[0] + u32[1] * 0x100000000;
+    }
+
+    function i2f(i) {
+      u32[0] = i % 0x100000000;
+      u32[1] = Math.floor(i / 0x100000000);
+      return f64[0];
+    }
+
+    function hex(i) {
+      return '0x' + i.toString(16).padStart(16, '0');
     }
 
     function groomHeap() {
-      print("[2] Realizando heap grooming...");
-      let spray = [];
+      print("[1] Realizando heap spray...");
+      const spray = [];
       for (let i = 0; i < 1000; i++) {
-        spray.push([13.37, 13.37, 13.37, 13.37]);
+        const arr = new Array(100).fill(13.37);
+        spray.push(arr);
       }
-      print(`[+] Heap spray completo con ${spray.length} arrays.`);
+      print(`[+] Heap grooming completado con ${spray.length} arrays.`);
       return spray;
     }
 
-    function attemptOOB() {
-      print("[3] Intentando corrupción OOB...");
+    function prepareTypedArrays() {
+      print("[2] Preparando TypedArrays...");
+      const ab = new ArrayBuffer(0x100);
+      const f64_view = new Float64Array(ab);
+      const u32_view = new Uint32Array(ab);
 
-      let arr = [1.1, 2.2, 3.3];
-      try {
-        Object.defineProperty(arr, 'length', { value: 0x1000 });
-        print("[+] Length modificado a 0x1000");
-      } catch (e) {
-        print("[-] No se pudo modificar length: " + e);
-      }
+      f64_view[0] = 13.37;
+      u32_view[2] = 0xdeadbeef;
 
-      try {
-        const leak = arr[0x80];
-        print(`[+] arr[0x80] = ${leak}`);
-      } catch (e) {
-        print("[-] Error al leer fuera de límites: " + e);
-      }
-
-      try {
-        arr[0x80] = 42.42;
-        print("[+] Escrito 42.42 en arr[0x80]");
-
-        const check = arr[0x80];
-        print(`[+] Verificado arr[0x80]: ${check}`);
-      } catch (e) {
-        print("[-] Error al escribir fuera de límites: " + e);
-      }
+      print(`[+] f64_view[0] = ${f64_view[0]}`);
+      print(`[+] u32_view[2] (mismo buffer) = 0x${u32_view[2].toString(16)}`);
     }
 
-    function setupProxyWatch() {
-      print("[4] Activando proxy para detección de accesos...");
+    function attemptFakeOOB() {
+      print("[3] Intentando OOB en TypedArray...");
 
-      let victim = new Proxy([1.1, 2.2, 3.3], {
-        get(target, prop) {
-          print(`[Proxy GET] → ${prop}`);
-          return target[prop];
-        },
-        set(target, prop, val) {
-          print(`[Proxy SET] → ${prop} = ${val}`);
-          target[prop] = val;
-          return true;
-        }
-      });
+      const target = new Float64Array(10);
+      const corruptor = [];
 
-      victim[1000] = 1234.5678;
-      let leak = victim[1000];
-      print(`[Proxy] Confirmación arr[1000] = ${leak}`);
+      for (let i = 0; i < 10000; i++) {
+        corruptor.push([1.1, 2.2, 3.3]);
+      }
+
+      try {
+        // Intento de manipulación de propiedades internas (solo sirve si hay un bug real)
+        Object.defineProperty(target, 'length', { value: 0x1000 });
+        print("[+] Forzada longitud grande en Float64Array");
+
+        let val = target[0x200]; // lectura fuera de rango
+        print(`[+] target[0x200] = ${val}`);
+
+        target[0x200] = 42.4242;
+        print(`[+] Escritura OOB en target[0x200] completada`);
+
+        let check = target[0x200];
+        print(`[+] Verificado target[0x200] = ${check}`);
+      } catch (e) {
+        print("[-] Fallo durante intento OOB: " + e);
+      }
     }
 
     window.onload = () => {
-      setTimeout(() => {
-        groomHeap();
-        memoryFloodLite();
-        attemptOOB();
-        setupProxyWatch();
-      }, 100);
+      groomHeap();
+      prepareTypedArrays();
+      attemptFakeOOB();
     };
   </script>
 </body>
