@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>WebAssembly Check</title>
+  <meta charset="utf-8">
+  <title>PS5 10.20 WebKit PoC</title>
   <style>
     body {
       background: #111;
@@ -10,34 +10,48 @@
       font-family: monospace;
       padding: 20px;
     }
-    #status {
-      font-size: 20px;
+    #log {
+      white-space: pre-wrap;
+      font-size: 16px;
+      color: #0f0;
     }
   </style>
 </head>
 <body>
-  <h1>🧪 WebAssembly Check</h1>
-  <div id="status">Checking...</div>
+  <h1>🧪 PS5 10.20 WebKit PoC (sin WebAssembly)</h1>
+  <div id="log">Iniciando...</div>
 
   <script>
-    const status = document.getElementById('status');
+    const log = msg => {
+      document.getElementById("log").textContent += "\n" + msg;
+      console.log(msg);
+    };
 
     try {
-      const valid = WebAssembly.validate(new Uint8Array([
-        0x00, 0x61, 0x73, 0x6D, // '\0asm' magic
-        0x01, 0x00, 0x00, 0x00  // version 1
-      ]));
+      log("[+] Comenzando heap grooming...");
 
-      if (valid) {
-        status.textContent = "✅ WebAssembly is ENABLED.";
-        status.style.color = "#0f0";
-      } else {
-        status.textContent = "❌ WebAssembly is DISABLED.";
-        status.style.color = "#f00";
+      let spray = [];
+      for (let i = 0; i < 0x1000; i++) {
+        let arr = new ArrayBuffer(0x100);
+        let view = new Uint32Array(arr);
+        view[0] = 0x41414141;
+        spray.push(view);
       }
+
+      log("[+] Heap grooming completo.");
+      
+      // Prueba básica de corrupción (esto no causa crash directo pero sirve como test).
+      log("[*] Intentando manipular longitud de un TypedArray...");
+
+      let victim = new Uint8Array(0x100);
+      let fakeLength = { valueOf: () => { log("[!] valueOf() ejecutado"); return 0x200; } };
+
+      victim.length = fakeLength; // Esto no tiene efecto pero nos permite saber si JSCore permite override raros.
+
+      log("[+] PoC ejecutado. Si ves esto, no se bloqueó el navegador.");
+
     } catch (e) {
-      status.textContent = "❌ WebAssembly check failed: " + e;
-      status.style.color = "#f00";
+      log("[!] Excepción capturada: " + e);
     }
   </script>
 </body>
