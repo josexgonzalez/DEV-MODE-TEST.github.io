@@ -1,79 +1,57 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>WebKit Exploit Test - Heap Fragment + Canvas</title>
+  <meta charset="utf-8">
+  <title>WebRTC Detection PoC (PS5)</title>
   <style>
-    body { background: #000; color: #0f0; font-family: monospace; }
-    canvas { display: none; }
+    body {
+      background: #111;
+      color: #0f0;
+      font-family: monospace;
+      padding: 20px;
+    }
+    #log {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
   </style>
 </head>
 <body>
-  <h1>WebKit Aggressive Test (PS5)</h1>
-  <pre id="log">Iniciando...</pre>
+  <h1>WebRTC Detection</h1>
+  <div id="log">Checking for WebRTC support...</div>
 
   <script>
-    const log = msg => document.getElementById("log").textContent += "\n" + msg;
-
-    const buffers = [];
-    const holes = [];
-
-    function sprayMemory() {
-      log("Spray inicial: ArrayBuffer pequeños (fragmentación)");
-
-      for (let i = 0; i < 1000; i++) {
-        // Alternamos tamaños para crear huecos en el heap
-        let size = (i % 2 === 0) ? 0x1000 : 0x2000;
-        buffers.push(new ArrayBuffer(size));
-      }
-
-      // Liberar algunos bloques para crear huecos
-      for (let i = 0; i < buffers.length; i += 3) {
-        buffers[i] = null;
-        holes.push(i);
-      }
-
-      log("Fragmentación completa. Reservando bloques más grandes...");
-
-      for (let i = 0; i < 50; i++) {
-        buffers.push(new ArrayBuffer(1024 * 1024)); // 1 MB
-      }
-
-      log("Spray finalizado. Ejecutando presión gráfica...");
-      stressCanvas();
+    function log(msg) {
+      document.getElementById('log').textContent += '\n' + msg;
+      console.log(msg);
     }
 
-    function stressCanvas() {
-      let canvas = document.createElement("canvas");
-      canvas.width = 1024;
-      canvas.height = 1024;
-      document.body.appendChild(canvas);
-      let ctx = canvas.getContext("2d");
+    try {
+      const rtc = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
 
-      let frames = 0;
+      if (rtc) {
+        log("✅ WebRTC API detected.");
+        const pc = new rtc();
 
-      const interval = setInterval(() => {
-        for (let i = 0; i < 100; i++) {
-          ctx.fillStyle = `rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},1)`;
-          ctx.fillRect(Math.random()*1024, Math.random()*1024, 50, 50);
+        if (pc.createDataChannel) {
+          log("✅ createDataChannel is available.");
+        } else {
+          log("❌ createDataChannel is not available.");
         }
 
-        // Fuerza a WebKit a codificar el canvas a base64 (mucha presión de CPU y RAM)
-        try {
-          canvas.toDataURL("image/png");
-        } catch (e) {
-          log("Error en toDataURL: " + e.message);
+        if (pc.createOffer) {
+          log("✅ createOffer is available.");
+        } else {
+          log("❌ createOffer is not available.");
         }
 
-        frames++;
-        if (frames > 60) {
-          clearInterval(interval);
-          log("Finalizado. Si no se colgó, está bien parcheado.");
-        }
-      }, 100);
+        pc.close();
+      } else {
+        log("❌ WebRTC not supported.");
+      }
+    } catch (e) {
+      log("❌ Exception occurred: " + e.message);
     }
-
-    log("Iniciando test...");
-    setTimeout(sprayMemory, 500);
   </script>
 </body>
 </html>
