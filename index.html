@@ -2,17 +2,24 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<title>Prueba de onDrawPoints boundary check (Skia Ganesh)</title>
+<title>PoC Skia Ganesh / SkSL en PS5</title>
 <style>
   body { background: #111; color: #eee; font-family: monospace; text-align: center; }
   canvas { background: black; margin: 20px auto; display: block; border: 1px solid #666; }
   #log { max-width: 512px; margin: auto; white-space: pre-wrap; background: #222; padding: 10px; border-radius: 6px; }
+  button { margin: 10px; padding: 8px 16px; font-size: 1em; }
 </style>
 </head>
 <body>
-<h2>Prueba onDrawPoints con coordenadas extremas</h2>
+<h1>PoC Skia Ganesh / SkSL para PS5</h1>
+<div>
+  <button id="test1">Test 1: Dibujar muchos puntos extremos</button>
+  <button id="test2">Test 2: Dibujar puntos fuera de límites (onDrawPoints)</button>
+  <button id="test3">Test 3: Detección info navegador y WebGL</button>
+</div>
 <canvas id="canvas" width="512" height="512"></canvas>
-<div id="log">Iniciando prueba...</div>
+<div id="log">Log: Esperando acción...</div>
+
 <script>
   const canvas = document.getElementById("canvas");
   const ctx = canvas.getContext("2d");
@@ -20,34 +27,90 @@
 
   function logMsg(msg) {
     log.textContent += msg + "\n";
+    console.log(msg);
   }
 
-  function drawPoints() {
-    logMsg("Dibujando puntos con coordenadas extremas...");
+  function clearLog() {
+    log.textContent = "Log:\n";
+  }
+
+  // Test 1: Dibujar MUCHOS puntos con coordenadas extremas (para test Ganesh boundary check)
+  function test1() {
+    clearLog();
+    logMsg("Test 1: Dibujando 100,000 puntos con coordenadas extremas...");
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "lime";
 
-    // Intentamos dibujar 100,000 puntos con coordenadas fuera del rango
-    // para forzar posibles fallos en onDrawPoints Ganesh
     try {
       for (let i = 0; i < 100000; i++) {
-        // Coordenadas aleatorias en rango [-100000, 100000]
         let x = (Math.random() * 200000) - 100000;
         let y = (Math.random() * 200000) - 100000;
-
-        // Solo dibujamos si dentro del canvas para no ralentizar mucho
         if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
           ctx.fillRect(x, y, 1, 1);
         }
       }
-      logMsg("Dibujo completado sin errores aparentes.");
+      logMsg("Test 1 completado sin errores aparentes.");
     } catch (e) {
-      logMsg("Error durante el dibujo: " + e.message);
+      logMsg("Error en Test 1: " + e.message);
     }
   }
 
-  drawPoints();
+  // Test 2: Dibujar puntos con índices fuera del rango para forzar onDrawPoints corrupto
+  // Simulación de la falla que corrige el commit 875d8a6 (Ganesh boundary check)
+  function test2() {
+    clearLog();
+    logMsg("Test 2: Dibujando puntos con índices fuera de rango para onDrawPoints...");
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "cyan";
+
+    // Simulamos arrays con indices fuera de límites (se hará en canvas 2D, solo para provocar potencial fallo)
+    // Nota: no hay acceso directo a onDrawPoints, solo intentamos forzar con datos extremos.
+    try {
+      const points = [];
+      for (let i = 0; i < 100000; i++) {
+        // Valores fuera del rango canvas, negativos o muy grandes
+        points.push([(Math.random() * 1e7) - 5e6, (Math.random() * 1e7) - 5e6]);
+      }
+      for (const [x,y] of points) {
+        if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+      logMsg("Test 2 completado sin errores aparentes.");
+    } catch (e) {
+      logMsg("Error en Test 2: " + e.message);
+    }
+  }
+
+  // Test 3: Obtener información navegador y estado WebGL (si disponible)
+  function test3() {
+    clearLog();
+    logMsg("Test 3: Información navegador y WebGL:");
+
+    logMsg("User Agent: " + navigator.userAgent);
+    logMsg("Vendor: " + navigator.vendor);
+    logMsg("Platform: " + navigator.platform);
+
+    // Probar WebGL
+    let gl = null;
+    try {
+      gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+      if (!gl) throw new Error("WebGL no disponible");
+      logMsg("WebGL disponible");
+      logMsg("GL VERSION: " + gl.getParameter(gl.VERSION));
+      logMsg("GL VENDOR: " + gl.getParameter(gl.VENDOR));
+      logMsg("GL RENDERER: " + gl.getParameter(gl.RENDERER));
+      logMsg("GL SHADING LANGUAGE VERSION: " + gl.getParameter(gl.SHADING_LANGUAGE_VERSION));
+    } catch (e) {
+      logMsg("WebGL no disponible o error: " + e.message);
+    }
+  }
+
+  document.getElementById("test1").onclick = test1;
+  document.getElementById("test2").onclick = test2;
+  document.getElementById("test3").onclick = test3;
 </script>
 </body>
 </html>
