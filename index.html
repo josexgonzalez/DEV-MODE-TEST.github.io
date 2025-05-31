@@ -2,45 +2,39 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>createImageBitmap UAF Attempt</title>
+  <title>createImageBitmap Fallback Test</title>
   <style>
     body { background: black; color: lime; font-family: monospace; }
     #log { white-space: pre-wrap; padding: 1em; }
   </style>
 </head>
 <body>
-  <h1>createImageBitmap UAF Test</h1>
+  <h1>Fallback createImageBitmap Test</h1>
   <div id="log">Running...</div>
+  <canvas id="c" width="64" height="64" style="display:none;"></canvas>
   <script>
     const log = msg => document.getElementById("log").textContent += "\n" + msg;
 
     async function run() {
-      let canvas = new OffscreenCanvas(64, 64);
-      let ctx = canvas.getContext('2d');
-      ctx.fillStyle = 'red';
+      const canvas = document.getElementById("c");
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "red";
       ctx.fillRect(0, 0, 64, 64);
 
-      let ref = null;
-      let recycled = [];
-
+      let bitmaps = [];
       for (let i = 0; i < 10000; i++) {
         try {
-          ref = await createImageBitmap(canvas);
-          if (i % 1000 === 0) log(`[+] Allocated ${i} bitmaps`);
+          let bmp = await createImageBitmap(canvas);
+          bitmaps.push(bmp);
+          if (i % 100 === 0) log(`[+] Allocated ${i} bitmaps`);
         } catch (e) {
-          log(`[-] Error at ${i}: ${e.message}`);
+          log(`[-] Exception at ${i}: ${e}`);
           break;
         }
 
-        if (i % 20 === 0) {
-          // Spray heap with random garbage to increase chance of reuse
-          for (let j = 0; j < 100; j++) recycled.push({ leak: new Uint32Array(1024) });
-        }
-
-        if (i % 500 === 0) {
-          ref.close(); // Force deallocation
-          ref = null;
-          await new Promise(r => setTimeout(r, 10)); // Give GC time
+        if (i % 200 === 0) {
+          bitmaps = []; // clear refs
+          await new Promise(r => setTimeout(r, 10));
         }
       }
 
@@ -51,4 +45,3 @@
   </script>
 </body>
 </html>
-
