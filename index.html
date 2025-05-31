@@ -1,57 +1,16 @@
+
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <title>WebRTC Detection PoC (PS5)</title>
-  <style>
-    body {
-      background: #111;
-      color: #0f0;
-      font-family: monospace;
-      padding: 20px;
-    }
-    #log {
-      white-space: pre-wrap;
-      word-wrap: break-word;
-    }
-  </style>
+    <title>Test PDF Malformado</title>
+    <style>
+        body { background: #111; color: white; font-family: monospace; padding: 20px; }
+        iframe { border: 2px solid red; width: 90vw; height: 90vh; }
+    </style>
 </head>
 <body>
-  <h1>WebRTC Detection</h1>
-  <div id="log">Checking for WebRTC support...</div>
-
-  <script>
-    function log(msg) {
-      document.getElementById('log').textContent += '\n' + msg;
-      console.log(msg);
-    }
-
-    try {
-      const rtc = window.RTCPeerConnection || window.webkitRTCPeerConnection || window.mozRTCPeerConnection;
-
-      if (rtc) {
-        log("✅ WebRTC API detected.");
-        const pc = new rtc();
-
-        if (pc.createDataChannel) {
-          log("✅ createDataChannel is available.");
-        } else {
-          log("❌ createDataChannel is not available.");
-        }
-
-        if (pc.createOffer) {
-          log("✅ createOffer is available.");
-        } else {
-          log("❌ createOffer is not available.");
-        }
-
-        pc.close();
-      } else {
-        log("❌ WebRTC not supported.");
-      }
-    } catch (e) {
-      log("❌ Exception occurred: " + e.message);
-    }
-  </script>
+    <h1>Test de Visualización de PDF en PS5</h1>
+    <p>Este PDF contiene una estructura JBIG2 sospechosa. Si la PS5 tiene un parser, podría fallar o bloquearse.</p>
+    <iframe src="test_jbig2.pdf"></iframe>
 </body>
 </html>
