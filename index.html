@@ -1,83 +1,53 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <title>Skia RP SkSL Stress Test</title>
-  <style>
-    body { background: #111; color: #eee; font-family: monospace; }
-    canvas { border: 1px solid #444; display: block; margin: 20px auto; background: black; }
-    #log { white-space: pre-wrap; margin: 10px auto; width: 512px; max-height: 200px; overflow-y: auto; background: #222; padding: 10px; border-radius: 4px; }
-  </style>
+<meta charset="UTF-8" />
+<title>Prueba de onDrawPoints boundary check (Skia Ganesh)</title>
+<style>
+  body { background: #111; color: #eee; font-family: monospace; text-align: center; }
+  canvas { background: black; margin: 20px auto; display: block; border: 1px solid #666; }
+  #log { max-width: 512px; margin: auto; white-space: pre-wrap; background: #222; padding: 10px; border-radius: 6px; }
+</style>
 </head>
 <body>
-  <h2 style="text-align:center;">Skia RP SkSL Canvas Stress Test</h2>
-  <canvas id="canvas" width="512" height="512"></canvas>
-  <div id="log"></div>
+<h2>Prueba onDrawPoints con coordenadas extremas</h2>
+<canvas id="canvas" width="512" height="512"></canvas>
+<div id="log">Iniciando prueba...</div>
+<script>
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+  const log = document.getElementById("log");
 
-  <script>
-    const canvas = document.getElementById("canvas");
-    const ctx = canvas.getContext("2d");
-    const logElem = document.getElementById("log");
-    function log(...args) {
-      console.log(...args);
-      logElem.textContent += args.join(" ") + "\n";
-    }
+  function logMsg(msg) {
+    log.textContent += msg + "\n";
+  }
 
-    function stressTest() {
-      log("Iniciando prueba de estrés...");
+  function drawPoints() {
+    logMsg("Dibujando puntos con coordenadas extremas...");
 
-      // Fondo degradado complejo
-      let gradient = ctx.createRadialGradient(256, 256, 10, 256, 256, 256);
-      gradient.addColorStop(0, "rgba(255, 0, 0, 0.8)");
-      gradient.addColorStop(0.5, "rgba(0, 255, 0, 0.5)");
-      gradient.addColorStop(1, "rgba(0, 0, 255, 0)");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "lime";
 
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, 512, 512);
+    // Intentamos dibujar 100,000 puntos con coordenadas fuera del rango
+    // para forzar posibles fallos en onDrawPoints Ganesh
+    try {
+      for (let i = 0; i < 100000; i++) {
+        // Coordenadas aleatorias en rango [-100000, 100000]
+        let x = (Math.random() * 200000) - 100000;
+        let y = (Math.random() * 200000) - 100000;
 
-      // Dibujo líneas con sombra borrosa y traslación para antialiasing
-      ctx.shadowColor = "rgba(255, 255, 255, 0.7)";
-      ctx.shadowBlur = 20;
-
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = "white";
-
-      for (let angle = 0; angle < 360; angle += 10) {
-        ctx.beginPath();
-        const rad = angle * Math.PI / 180;
-        const x1 = 256 + Math.cos(rad) * 150;
-        const y1 = 256 + Math.sin(rad) * 150;
-        const x2 = 256 + Math.cos(rad) * 200;
-        const y2 = 256 + Math.sin(rad) * 200;
-
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
+        // Solo dibujamos si dentro del canvas para no ralentizar mucho
+        if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
+          ctx.fillRect(x, y, 1, 1);
+        }
       }
-
-      // Composición con globalAlpha y globalCompositeOperation compleja
-      ctx.globalAlpha = 0.7;
-      ctx.globalCompositeOperation = "lighter";
-
-      for (let i = 0; i < 3000; i++) {
-        const x = Math.random() * 512;
-        const y = Math.random() * 512;
-        const r = Math.random() * 4 + 1;
-
-        ctx.beginPath();
-        ctx.fillStyle = `rgba(${Math.floor(Math.random()*256)},${Math.floor(Math.random()*256)},${Math.floor(Math.random()*256)},0.6)`;
-        ctx.arc(x, y, r, 0, 2 * Math.PI);
-        ctx.fill();
-      }
-
-      // Reset composiciones
-      ctx.globalAlpha = 1.0;
-      ctx.globalCompositeOperation = "source-over";
-
-      log("Prueba de estrés completada. Observa si hay glitches o parpadeos.");
+      logMsg("Dibujo completado sin errores aparentes.");
+    } catch (e) {
+      logMsg("Error durante el dibujo: " + e.message);
     }
+  }
 
-    stressTest();
-  </script>
+  drawPoints();
+</script>
 </body>
 </html>
