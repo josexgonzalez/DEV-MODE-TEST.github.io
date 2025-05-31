@@ -1,74 +1,79 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>WebKit Hybrid Crash PoC</title>
+  <title>WebKit Exploit Test - Heap Fragment + Canvas</title>
   <style>
-    body {
-      background-color: #000;
-      color: #0f0;
-      font-family: monospace;
-    }
-    .box {
-      width: 60px;
-      height: 60px;
-      background: rgba(255, 0, 0, 0.3);
-      position: absolute;
-      transition: transform 0.05s linear;
-    }
+    body { background: #000; color: #0f0; font-family: monospace; }
+    canvas { display: none; }
   </style>
 </head>
 <body>
-  <h1>Ejecutando prueba híbrida WebKit...</h1>
-  <pre id="log">Inicializando...</pre>
+  <h1>WebKit Aggressive Test (PS5)</h1>
+  <pre id="log">Iniciando...</pre>
 
   <script>
     const log = msg => document.getElementById("log").textContent += "\n" + msg;
 
-    try {
-      log("Generando elementos dinámicos y transformaciones...");
+    const buffers = [];
+    const holes = [];
 
-      const container = document.createElement("div");
-      document.body.appendChild(container);
+    function sprayMemory() {
+      log("Spray inicial: ArrayBuffer pequeños (fragmentación)");
 
-      // Crear muchos elementos con transformaciones
-      for (let i = 0; i < 3000; i++) {
-        const div = document.createElement("div");
-        div.className = "box";
-        div.style.left = `${Math.random() * window.innerWidth}px`;
-        div.style.top = `${Math.random() * window.innerHeight}px`;
-        div.style.transform = `rotate(${Math.random() * 360}deg) scale(${1 + Math.random() * 3})`;
-        container.appendChild(div);
+      for (let i = 0; i < 1000; i++) {
+        // Alternamos tamaños para crear huecos en el heap
+        let size = (i % 2 === 0) ? 0x1000 : 0x2000;
+        buffers.push(new ArrayBuffer(size));
       }
 
-      log("Reservando memoria controlada con ArrayBuffer...");
+      // Liberar algunos bloques para crear huecos
+      for (let i = 0; i < buffers.length; i += 3) {
+        buffers[i] = null;
+        holes.push(i);
+      }
 
-      let buffers = [];
-      let totalMB = 0;
+      log("Fragmentación completa. Reservando bloques más grandes...");
 
-      // Solo reservamos hasta ~200 MB para evitar el error
-      for (let i = 0; i < 200; i++) {
+      for (let i = 0; i < 50; i++) {
         buffers.push(new ArrayBuffer(1024 * 1024)); // 1 MB
-        totalMB++;
-        if (i % 20 === 0) log(`ArrayBuffers: ${totalMB} MB`);
       }
 
-      log("Estresando el motor con cambios rápidos...");
-
-      let tick = 0;
-      const interval = setInterval(() => {
-        container.childNodes.forEach(node => {
-          node.style.transform = `rotate(${tick}deg) scale(${1 + (tick % 5)})`;
-        });
-        tick += 15;
-        if (tick > 5000) {
-          clearInterval(interval);
-          log("Prueba completada.");
-        }
-      }, 50);
-
-    } catch (e) {
-      log("Excepción atrapada: " + e.toString());
+      log("Spray finalizado. Ejecutando presión gráfica...");
+      stressCanvas();
     }
+
+    function stressCanvas() {
+      let canvas = document.createElement("canvas");
+      canvas.width = 1024;
+      canvas.height = 1024;
+      document.body.appendChild(canvas);
+      let ctx = canvas.getContext("2d");
+
+      let frames = 0;
+
+      const interval = setInterval(() => {
+        for (let i = 0; i < 100; i++) {
+          ctx.fillStyle = `rgba(${Math.random()*255},${Math.random()*255},${Math.random()*255},1)`;
+          ctx.fillRect(Math.random()*1024, Math.random()*1024, 50, 50);
+        }
+
+        // Fuerza a WebKit a codificar el canvas a base64 (mucha presión de CPU y RAM)
+        try {
+          canvas.toDataURL("image/png");
+        } catch (e) {
+          log("Error en toDataURL: " + e.message);
+        }
+
+        frames++;
+        if (frames > 60) {
+          clearInterval(interval);
+          log("Finalizado. Si no se colgó, está bien parcheado.");
+        }
+      }, 100);
+    }
+
+    log("Iniciando test...");
+    setTimeout(sprayMemory, 500);
   </script>
 </body>
 </html>
