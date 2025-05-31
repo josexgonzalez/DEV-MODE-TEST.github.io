@@ -20,7 +20,7 @@
     try {
       log("Iniciando test de corrupción de capa de renderizado...");
 
-      for (let i = 0; i < 10000; i++) {
+      for (let i = 0; i < 1000; i++) {
         const iframe = document.createElement("iframe");
         iframe.srcdoc = `<script>while(1)document.body.appendChild(document.createElement('div'))<\/script>`;
         iframe.style.position = "absolute";
@@ -31,7 +31,7 @@
 
       log("Probando animaciones y transformaciones pesadas...");
 
-      for (let i = 0; i < 10000; i++) {
+      for (let i = 0; i < 1000; i++) {
         let div = document.createElement("div");
         div.style.width = div.style.height = "100px";
         div.style.background = "#0f0";
