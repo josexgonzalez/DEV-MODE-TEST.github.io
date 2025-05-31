@@ -1,47 +1,86 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>createImageBitmap Fallback Test</title>
+  <meta charset="utf-8">
+  <title>💥 PS5 Nuke + OOB test</title>
   <style>
-    body { background: black; color: lime; font-family: monospace; }
-    #log { white-space: pre-wrap; padding: 1em; }
+    body {
+      background: black;
+      color: lime;
+      font-family: monospace;
+    }
   </style>
 </head>
 <body>
-  <h1>Fallback createImageBitmap Test</h1>
-  <div id="log">Running...</div>
-  <canvas id="c" width="64" height="64" style="display:none;"></canvas>
+  <h1>💥 PS5 Nuke + OOB test</h1>
+  <p>Ejecutando técnicas agresivas + corrupción Out-Of-Bounds tentativa</p>
+  <pre id="log"></pre>
+
   <script>
-    const log = msg => document.getElementById("log").textContent += "\n" + msg;
-
-    async function run() {
-      const canvas = document.getElementById("c");
-      const ctx = canvas.getContext("2d");
-      ctx.fillStyle = "red";
-      ctx.fillRect(0, 0, 64, 64);
-
-      let bitmaps = [];
-      for (let i = 0; i < 10000; i++) {
-        try {
-          let bmp = await createImageBitmap(canvas);
-          bitmaps.push(bmp);
-          if (i % 100 === 0) log(`[+] Allocated ${i} bitmaps`);
-        } catch (e) {
-          log(`[-] Exception at ${i}: ${e}`);
-          break;
-        }
-
-        if (i % 200 === 0) {
-          bitmaps = []; // clear refs
-          await new Promise(r => setTimeout(r, 10));
-        }
-      }
-
-      log("[+] Done.");
+    const log = document.getElementById("log");
+    function print(msg) {
+      console.log(msg);
+      log.textContent += msg + "\n";
     }
 
-    run();
+    // Convierte float64 <-> int64 (64bit)
+    const buf = new ArrayBuffer(8);
+    const f64 = new Float64Array(buf);
+    const u32 = new Uint32Array(buf);
+
+    function f2i(f) {
+      f64[0] = f;
+      return u32[0] + u32[1] * 0x100000000;
+    }
+
+    function i2f(i) {
+      u32[0] = i % 0x100000000;
+      u32[1] = i / 0x100000000;
+      return f64[0];
+    }
+
+    // 1. Saturar la memoria para preparar heap
+    function memoryFlood() {
+      const big = [];
+      try {
+        while (true) {
+          big.push(new Uint8Array(50_000_000));
+          if (big.length % 10 === 0) print(`💣 Memoria saturada: ${big.length * 50}MB aprox`);
+        }
+      } catch (e) {
+        print("💥 Memoria saturada capturada: " + e);
+      }
+      return big;
+    }
+
+    // 2. Corrupción OOB tentativa en array
+    function corruptArrayOOB() {
+      print("[*] Intentando corrupción OOB");
+      let arr = [1.1, 2.2, 3.3];
+      try {
+        Object.defineProperty(arr, 'length', { value: 0x100 });
+        print("[+] Corrupt length a 0x100");
+      } catch (e) {
+        print("[-] No se pudo corromper length: " + e);
+      }
+
+      try {
+        let leak = arr[0x80];
+        print("[+] Leak OOB en arr[0x80]: " + leak);
+      } catch (e) {
+        print("[-] No se pudo leer fuera de límites: " + e);
+      }
+    }
+
+    // Base agresiva (simplificada, solo memoria)
+    function aggressiveBase() {
+      memoryFlood();
+      corruptArrayOOB();
+    }
+
+    window.onload = () => {
+      setTimeout(aggressiveBase, 10);
+    };
   </script>
 </body>
 </html>
