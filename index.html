@@ -1,16 +1,25 @@
-
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Test PDF Malformado</title>
-    <style>
-        body { background: #111; color: white; font-family: monospace; padding: 20px; }
-        iframe { border: 2px solid red; width: 90vw; height: 90vh; }
-    </style>
+  <title>Test ALAC PS5</title>
+  <style>
+    body { background: #111; color: #0f0; font-family: monospace; padding: 2em; }
+    #log { white-space: pre-wrap; }
+  </style>
 </head>
 <body>
-    <h1>Test de Visualización de PDF en PS5</h1>
-    <p>Este PDF contiene una estructura JBIG2 sospechosa. Si la PS5 tiene un parser, podría fallar o bloquearse.</p>
-    <iframe src="test_jbig2.pdf"></iframe>
+  <h2>Verificación de ALAC en PS5</h2>
+  <audio id="player" src="corrupted.m4a" controls autoplay></audio>
+  <div id="log">Cargando audio...</div>
+
+  <script>
+    const log = (msg) => {
+      document.getElementById("log").textContent += "\n" + msg;
+    };
+
+    const player = document.getElementById("player");
+    player.oncanplay = () => log("✅ Puede reproducirse (ALAC soportado)");
+    player.onerror = () => log("❌ Error al reproducir (archivo rechazado o crash)");
+  </script>
 </body>
 </html>
