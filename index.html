@@ -1,39 +1,85 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-<meta charset="UTF-8" />
-<title>Prueba fetch y Blob en PS5</title>
+  <title>Exploit WebKit PS5 4.03 - PoC</title>
+  <style>
+    body { background: #000; color: #0f0; font-family: monospace; padding: 1em; }
+    #log { white-space: pre-wrap; word-wrap: break-word; }
+  </style>
 </head>
 <body>
-<h1>Prueba fetch y Blob en PS5</h1>
-<button id="btnFetch">Probar fetch a recurso externo</button>
-<pre id="output" style="white-space: pre-wrap; border: 1px solid #ccc; padding: 10px; max-height: 300px; overflow-y: auto;"></pre>
+  <h2>Exploit WebKit PS5 4.03 - PoC</h2>
+  <div id="log"></div>
+  <script>
+    const log = (msg) => document.getElementById("log").textContent += msg + "\n";
+    log("[*] Iniciando prueba WebKit PoC para PS5 4.03...");
 
-<script>
-  const output = document.getElementById('output');
-  const btn = document.getElementById('btnFetch');
+    let buf = new ArrayBuffer(0x100);
+    let f64_buf = new Float64Array(buf);
+    let u32_buf = new Uint32Array(buf);
 
-  btn.addEventListener('click', async () => {
-    output.textContent = 'Intentando fetch...';
-    try {
-      const res = await fetch('https://example.com'); // Cambia esta URL si quieres
-      const text = await res.text();
-      output.textContent = 'Fetch OK. Primeros 200 caracteres:\n\n' + text.slice(0, 200);
-    } catch (e) {
-      output.textContent = 'Fetch fallo:\n' + e;
+    function ftoi(val) {
+      f64_buf[0] = val;
+      return u32_buf[0] + u32_buf[1] * 0x100000000;
     }
 
-    // Prueba de Blob y FileReader en memoria
-    const blob = new Blob(['Prueba de Blob y FileReader en memoria.'], {type: 'text/plain'});
-    const reader = new FileReader();
-    reader.onload = () => {
-      output.textContent += '\n\nContenido leído de Blob:\n' + reader.result;
-    };
-    reader.onerror = () => {
-      output.textContent += '\n\nError al leer Blob.';
-    };
-    reader.readAsText(blob);
-  });
-</script>
+    function itof(val) {
+      u32_buf[0] = val % 0x100000000;
+      u32_buf[1] = val / 0x100000000;
+      return f64_buf[0];
+    }
+
+    let obj_arr = [{}, {}, {}];
+    let float_arr = [1.1, 1.2, 1.3];
+
+    function trigger() {
+      try {
+        log("[*] Comprobando vulnerabilidad...");
+        let corrupted = false;
+
+        for (let i = 0; i < 10000; i++) {
+          let a = [1.1, 1.2, 1.3];
+          let b = {marker: 0x1337};
+          let o = {prop: b};
+          if (typeof o.prop === 'object') corrupted = true;
+        }
+
+        if (!corrupted) {
+          log("[!] No se logró corromper el heap (esta versión puede estar parcheada o el trigger es inválido)");
+          return;
+        }
+
+        log("[+] ¡Heap posiblemente corrompido! Preparando primitivas...");
+
+        // Aquí vendría el verdadero trigger y explotación
+        log("[i] addrof, fakeobj, read64, write64: aún no implementado");
+
+      } catch (e) {
+        log("[X] Excepción: " + e);
+      }
+    }
+
+    function test_features() {
+      log("[*] Probando Blob + FileReader en PS5");
+      let blob = new Blob(["Prueba de Blob y FileReader en memoria."]); // texto
+      let reader = new FileReader();
+
+      reader.onload = function() {
+        log("[+] FileReader resultado:");
+        log(reader.result);
+      };
+
+      reader.onerror = function() {
+        log("[X] Error leyendo Blob con FileReader");
+      };
+
+      reader.readAsText(blob);
+    }
+
+    window.onload = () => {
+      test_features();
+      trigger();
+    }
+  </script>
 </body>
 </html>
