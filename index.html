@@ -3,22 +3,32 @@
 <head>
 <meta charset="UTF-8" />
 <title>Prueba FileReader en PS5</title>
-<style>
-  body { background: #111; color: #0f0; font-family: monospace; padding: 20px; }
-</style>
 </head>
 <body>
-<h1>Prueba de FileReader en PS5</h1>
-<div id="resultado"></div>
+<h1>Prueba FileReader en PS5</h1>
+<p>Selecciona un archivo para leer su contenido:</p>
+<input type="file" id="fileInput" />
+<pre id="fileContent" style="white-space: pre-wrap; border: 1px solid #ccc; padding: 10px; max-height: 300px; overflow-y: auto;"></pre>
 
 <script>
-  const resultado = document.getElementById('resultado');
+  const fileInput = document.getElementById('fileInput');
+  const fileContent = document.getElementById('fileContent');
 
-  if (typeof FileReader !== 'undefined') {
-    resultado.textContent = 'FileReader está presente en este navegador.';
-  } else {
-    resultado.textContent = 'FileReader NO está presente en este navegador.';
-  }
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files[0];
+    if (!file) {
+      fileContent.textContent = 'No se ha seleccionado ningún archivo.';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      fileContent.textContent = reader.result;
+    };
+    reader.onerror = () => {
+      fileContent.textContent = 'Error al leer el archivo.';
+    };
+    reader.readAsText(file);
+  });
 </script>
 </body>
 </html>
