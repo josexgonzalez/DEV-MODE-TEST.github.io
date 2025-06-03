@@ -2,32 +2,37 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<title>Prueba FileReader en PS5</title>
+<title>Prueba fetch y Blob en PS5</title>
 </head>
 <body>
-<h1>Prueba FileReader en PS5</h1>
-<p>Selecciona un archivo para leer su contenido:</p>
-<input type="file" id="fileInput" />
-<pre id="fileContent" style="white-space: pre-wrap; border: 1px solid #ccc; padding: 10px; max-height: 300px; overflow-y: auto;"></pre>
+<h1>Prueba fetch y Blob en PS5</h1>
+<button id="btnFetch">Probar fetch a recurso externo</button>
+<pre id="output" style="white-space: pre-wrap; border: 1px solid #ccc; padding: 10px; max-height: 300px; overflow-y: auto;"></pre>
 
 <script>
-  const fileInput = document.getElementById('fileInput');
-  const fileContent = document.getElementById('fileContent');
+  const output = document.getElementById('output');
+  const btn = document.getElementById('btnFetch');
 
-  fileInput.addEventListener('change', () => {
-    const file = fileInput.files[0];
-    if (!file) {
-      fileContent.textContent = 'No se ha seleccionado ningún archivo.';
-      return;
+  btn.addEventListener('click', async () => {
+    output.textContent = 'Intentando fetch...';
+    try {
+      const res = await fetch('https://example.com'); // Cambia esta URL si quieres
+      const text = await res.text();
+      output.textContent = 'Fetch OK. Primeros 200 caracteres:\n\n' + text.slice(0, 200);
+    } catch (e) {
+      output.textContent = 'Fetch fallo:\n' + e;
     }
+
+    // Prueba de Blob y FileReader en memoria
+    const blob = new Blob(['Prueba de Blob y FileReader en memoria.'], {type: 'text/plain'});
     const reader = new FileReader();
     reader.onload = () => {
-      fileContent.textContent = reader.result;
+      output.textContent += '\n\nContenido leído de Blob:\n' + reader.result;
     };
     reader.onerror = () => {
-      fileContent.textContent = 'Error al leer el archivo.';
+      output.textContent += '\n\nError al leer Blob.';
     };
-    reader.readAsText(file);
+    reader.readAsText(blob);
   });
 </script>
 </body>
