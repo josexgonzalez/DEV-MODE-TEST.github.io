@@ -1,53 +1,24 @@
 <!DOCTYPE html>
-<html>
-<head><title>PoC Use-After-Free Agresivo PS5 4.03</title></head>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>Prueba FileReader en PS5</title>
+<style>
+  body { background: #111; color: #0f0; font-family: monospace; padding: 20px; }
+</style>
+</head>
 <body>
-<h1>Prueba Use-After-Free Agresivo FileReader</h1>
+<h1>Prueba de FileReader en PS5</h1>
+<div id="resultado"></div>
+
 <script>
-function aggressiveUAF() {
-    let count = 0;
-    const total = 100;
-    const intervalMs = 50;
+  const resultado = document.getElementById('resultado');
 
-    function createAndFree() {
-        if (count >= total) {
-            console.log("Test terminado.");
-            return;
-        }
-
-        try {
-            // Blob más grande
-            let blob = new Blob([new Array(1000).fill('A').join('')], { type: "text/plain" });
-
-            // Crear FileReader
-            let fr = new FileReader();
-
-            fr.onloadend = function() {
-                try {
-                    // Intento de read después de carga para forzar potencial UAF
-                    fr.readAsText(blob);
-                } catch (e) {
-                    console.log("Error lectura:", e);
-                }
-            };
-
-            fr.readAsText(blob);
-
-            // Liberar la referencia
-            fr = null;
-            blob = null;
-        } catch (e) {
-            console.log("Error general:", e);
-        }
-
-        count++;
-        setTimeout(createAndFree, intervalMs);
-    }
-
-    createAndFree();
-}
-
-window.onload = aggressiveUAF;
+  if (typeof FileReader !== 'undefined') {
+    resultado.textContent = 'FileReader está presente en este navegador.';
+  } else {
+    resultado.textContent = 'FileReader NO está presente en este navegador.';
+  }
 </script>
 </body>
 </html>
