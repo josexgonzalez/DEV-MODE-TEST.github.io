@@ -1,53 +1,50 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>PS5 4.03 GPU CVE-2023-4969 PoC</title>
+  <title>GC Heap PS5 Test</title>
+  <script>
+    const log = msg => {
+      console.log('[GC Test] ' + msg);
+    };
+
+    let collected = false;
+
+    // Usamos FinalizationRegistry si está disponible
+    if (typeof FinalizationRegistry === 'function' && typeof WeakRef === 'function') {
+      const registry = new FinalizationRegistry((heldValue) => {
+        collected = true;
+        log('✅ Objeto recolectado por el GC: ' + heldValue);
+      });
+
+      function testGC() {
+        let obj = { data: new Array(10000).fill(1337) }; // algo grande
+        registry.register(obj, 'payload');
+        const weak = new WeakRef(obj);
+        obj = null;
+
+        setTimeout(() => {
+          if (weak.deref() === undefined) {
+            log('⚠️ El objeto ya fue recolectado (deref undefined).');
+          } else {
+            log('⏳ Objeto aún en memoria.');
+          }
+
+          if (!collected) {
+            log('❌ GC aún no activado o objeto no recolectado.');
+          }
+        }, 2000);
+      }
+
+      window.onload = () => {
+        log('🚀 Ejecutando test GC...');
+        testGC();
+      };
+    } else {
+      log('❌ FinalizationRegistry o WeakRef no disponibles en este entorno.');
+    }
+  </script>
 </head>
 <body>
-<h1>GPU Left-over Locals Test</h1>
-<pre id="log"></pre>
-<script>
-function log(msg) {
-  document.getElementById("log").textContent += msg + "\n";
-}
-
-async function runTest() {
-  log("Iniciando test de residuos GPU...");
-
-  try {
-    // Creamos un enorme ImageBitmap sin inicializar
-    const width = 8192;
-    const height = 8192;
-
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext("2d");
-
-    // Intentamos crear un buffer vacío
-    ctx.clearRect(0, 0, width, height);
-
-    const imageData = ctx.getImageData(0, 0, width, height);
-    const data = imageData.data;
-
-    let foundNonZero = false;
-    for (let i = 0; i < data.length; i++) {
-      if (data[i] !== 0) {
-        foundNonZero = true;
-        log(`Posible residuo encontrado en posición ${i}: valor ${data[i]}`);
-        break;
-      }
-    }
-
-    if (!foundNonZero) {
-      log("No se detectaron residuos en este intento.");
-    }
-  } catch (e) {
-    log("Error durante el test: " + e);
-  }
-}
-
-runTest();
-</script>
+  <h1>PS5 GC Heap Test</h1>
 </body>
 </html>
